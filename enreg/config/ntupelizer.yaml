@@ -1,0 +1,29 @@
+use_slurm: True
+use_multiprocessing: True
+tree_path: events
+branches:
+  - MCParticles
+  - MergedRecoParticles
+  - SiTracks_Refitted_1
+  - PrimaryVertices
+test_run: False
+samples_to_process:
+  - Z_Ztautau
+  - ZH_Htautau
+  - QCD
+samples:
+  Z_Ztautau:
+    input_dir: /local/joosep/clic_edm4hep/p8_ee_Z_Ztautau_ecm380/
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230925/Z_Ztautau
+  ZH_Htautau:
+    input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_ZH_Htautau_ecm380/
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230525/ZH_Htautau
+  QCD:
+    input_dir: /local/joosep/clic_edm4hep_2023_02_27/p8_ee_qq_ecm380/
+    output_dir: /scratch/persistent/laurits/CLIC_data_20230525/QCD
+validation:
+  output_dir: $HOME/CLIC_ntuple_validation_v5
+  validation_samples:
+    - Z_Ztautau
+    - ZH_Htautau
+    - QCD

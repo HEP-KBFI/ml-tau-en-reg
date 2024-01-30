@@ -1,0 +1,54 @@
+plotting:
+  output_dir: /home/laurits/CLIC_metrics_202300921
+  n_files: -1
+sig_sample: Z_Ztautau
+algorithms:
+  ParticleTransformer:
+    sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Jun22_wLifetime/ParticleTransformer/ZH_Htautau
+    bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Jun22_wLifetime/ParticleTransformer/QCD
+    json_metrics_path: /foo/bar
+    compare: True
+metrics:  # Are those still needed?
+  denominator: "pt >= 20 && |eta| < 2.3"
+  numerator: "pt >= 20 && |eta| < 2.3"
+  WPs:  # Are those still needed?
+    ParticleTransformer:
+    Loose: 0.975
+    Medium: 0.967
+    Tight: 0.930
+  efficiency:
+    variables:
+      - name: pt
+        x_range: [20, 180]
+        n_bins: 9
+      - name: eta
+        x_range: [-2.6, 2.6]
+        n_bins: 9
+      - name: theta
+        x_range: [10, 90]
+        n_bins: 9
+  fakerate:
+    variables:
+      - name: pt
+        x_range: [20, 180]
+        n_bins: 8
+      - name: eta
+        x_range: [-2.6, 2.6]
+        n_bins: 8
+      - name: theta
+        x_range: [10, 90]
+        n_bins: 8
+markers:
+  ParticleTransformer: "v"
+colors:
+  ParticleTransformer: "tab:purple"
+defaults:
+  - datasets: datasets
+  - _self_
+plotting_metrics:
+  ROC: True
+  fakerate: True
+  efficiency: True
+  tauClassifier: False
+  energy_resolution: False
+  decaymode: False

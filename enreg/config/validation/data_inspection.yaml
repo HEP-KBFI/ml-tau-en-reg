@@ -1,0 +1,4 @@
+n_files_per_sample: -1
+output_dir: /foo/bar
+plot_dataset_info: True
+plot_paper_plots: True

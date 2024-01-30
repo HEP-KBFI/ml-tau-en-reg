@@ -1,0 +1,15 @@
+buider: ParticleTransformer
+output_dir: /scratch/persistent/laurits/test
+n_files: -1
+verbosity: 0
+start: 0
+use_multiprocessing: True
+test_only: False
+datasets_to_process:
+  - test
+  - train
+  - validation
+defaults:
+  - datasets: datasets
+  - models: models
+  - _self_

@@ -1,0 +1,1 @@
+Kas lrfinderParticleTransformer on kusagil kasutusel?

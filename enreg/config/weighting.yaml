@@ -1,0 +1,18 @@
+weighting:
+  weights_dir: /foo/bar
+  variables:
+    pt:
+      range: [20, 200]
+      n_bins: 45
+    eta:
+      range: [-2.8, 2.8]
+      n_bins: 27
+    theta:
+      range: [10, 170]
+      n_bins: 41
+produce_plots: True
+add_weights: True
+n_files_per_sample: 100000
+defaults:
+  - ntupelizer
+  - _self_
