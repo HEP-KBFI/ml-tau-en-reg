@@ -1,15 +1,19 @@
-buider: ParticleTransformer
+builder: ParticleTransformer
 output_dir: /scratch/persistent/laurits/test
-n_files: -1
+n_files: 1
+use_slurm: False
 verbosity: 0
-start: 0
-use_multiprocessing: True
-test_only: False
+use_multiprocessing: False
 datasets_to_process:
   - test
   - train
   - validation
+samples_to_process:
+  - ZH_Htautau
+  - Z_Ztautau
+  - QCD
 defaults:
   - datasets: datasets
   - models: models
+  - ntupelizer
   - _self_

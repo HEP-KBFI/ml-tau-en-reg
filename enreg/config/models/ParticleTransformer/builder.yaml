@@ -1,7 +1,7 @@
-metric: "theta-phi" # dataset.yaml sees kas see - kus ja miks vaja kasutada
-model_path: /home/veelken/ml-tau-reco/data/ParticleTransformer_model_wLifetime_2023Jun22.pt
-feature_standardization:
-  standardize_inputs: True
-  method: "mean_rms"
-  path: /home/veelken/ml-tau-reco/data/ParticleTransformer_FeatureStandardization_wLifetime_2023Jun22.json
-  # path: /home/veelken/ml-tau-reco/data/ParticleTransformer_FeatureStandardization.json
+builder:
+  metric: "theta-phi" # dataset.yaml sees kas see - kus ja miks vaja kasutada
+  model_path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_model_wLifetime_2023Jun22.pt
+  feature_standardization:
+    standardize_inputs: False
+    method: "mean_rms"
+    path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_FeatureStandardization_wLifetime_2023Jun22.json

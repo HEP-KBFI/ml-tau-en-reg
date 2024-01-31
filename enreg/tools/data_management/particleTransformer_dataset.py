@@ -1,10 +1,13 @@
 import torch
+import json
 import numpy as np
 import awkward as ak
 import enreg.tools.general as g
+from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
 import enreg.tools.data_management.features as f
+from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
 
 class ParticleTransformerDataset(Dataset):
@@ -20,12 +23,12 @@ class ParticleTransformerDataset(Dataset):
         jet_constituent_p4s = g.reinitialize_p4(self.data.reco_cand_p4s)
         jet_p4s = g.reinitialize_p4(self.data.reco_jet_p4s)
         no_mask = ak.ones_like(self.data.gen_jet_tau_decaymode, dtype=bool)
-        min_jet_theta_mask = no_mask if self.cfg.min_jet_theta == -1 else jet_p4s.theta >= cfg.min_jet_theta
-        max_jet_theta_mask = no_mask if self.cfg.max_jet_theta == -1 else jet_p4s.theta <= cfg.max_jet_theta
-        min_jet_pt_mask = no_mask if self.cfg.min_jet_pt == -1 else jet_p4s.pt >= cfg.min_jet_pt
-        max_jet_pt_mask = no_mask if self.cfg.max_jet_pt == -1 else jet_p4s.pt <= cfg.max_jet_pt
+        min_jet_theta_mask = no_mask if self.cfg.min_jet_theta == -1 else jet_p4s.theta >= self.cfg.min_jet_theta
+        max_jet_theta_mask = no_mask if self.cfg.max_jet_theta == -1 else jet_p4s.theta <= self.cfg.max_jet_theta
+        min_jet_pt_mask = no_mask if self.cfg.min_jet_pt == -1 else jet_p4s.pt >= self.cfg.min_jet_pt
+        max_jet_pt_mask = no_mask if self.cfg.max_jet_pt == -1 else jet_p4s.pt <= self.cfg.max_jet_pt
         preselection_mask = min_jet_theta_mask * max_jet_theta_mask * min_jet_pt_mask * max_jet_pt_mask
-        self.data = self.data[preselection_mask]
+        self.data = ak.Array({field: self.data[field] for field in self.data.fields})[preselection_mask]
 
     def build_tensors(self):
         jet_constituent_p4s = g.reinitialize_p4(self.data.reco_cand_p4s)
@@ -85,26 +88,19 @@ class ParticleTransformerDataset(Dataset):
                 ak.pad_none(cand_kinematics[cand_property], self.cfg.max_cands, clip=True),
                 0,
             )
-        # Swpping the axes such that it has the shape of (nJets, nParticles, nFeatures)
-        x_tensor_full = np.swapaxes(
-            np.swapaxes(
-                np.array([cand_features[feature].to_list() for feature in cand_features.fields]
-            ), 0, 1),
-        1, 2)
+        # Swpping the axes such that it has the shape of (nJets, nFeatures, nParticles)
+        x_tensor_full = np.swapaxes(np.array([cand_features[feature].to_list() for feature in cand_features.fields]), 0, 1)
         v_tensor_full = np.swapaxes(
-            np.swapaxes(
-                np.array([cand_kinematics[feature].to_list() for feature in cand_kinematics.fields]
-            ), 0, 1),
-        1, 2)
+                np.array([cand_kinematics[feature].to_list() for feature in cand_kinematics.fields]), 0, 1)
         # Splitting the full_tensor nJets subtensors:
-        self.x_tensors = torch.split(torch.tensor(x_tensor_full, dtype=torch.float32), 1)
-        self.v_tensors = torch.split(torch.tensor(v_tensor_full, dtype=torch.float32), 1)
-        self.node_mask_tensors = torch.tensor(
-            ak.fill_none(
-                ak.pad_none(ak.ones_like(self.data.reco_cand_pdg), self.cfg.max_cands, clip=True),
-                0,
+        self.x_tensors = torch.tensor(x_tensor_full, dtype=torch.float32)
+        self.v_tensors = torch.tensor(v_tensor_full, dtype=torch.float32)
+        self.node_mask_tensors = torch.unsqueeze(
+            torch.tensor(
+                ak.fill_none(ak.pad_none(ak.ones_like(self.data.reco_cand_pdg), self.cfg.max_cands, clip=True), 0,),
+                dtype=torch.float32
             ),
-            dtype=torch.float32
+            dim=1
         )
         self.x_is_one_hot_encoded = torch.tensor(
             [[self.cfg.one_hot_encoding[feature] for feature in cand_features.fields]] * len(jet_p4s),
@@ -114,8 +110,11 @@ class ParticleTransformerDataset(Dataset):
             [[self.cfg.one_hot_encoding[feature] for feature in cand_kinematics.fields]] * len(jet_p4s),
             dtype=torch.bool
         )
-        self.weight_tensors = torch.split(torch.tensor(self.data.weight.to_list(), dtype=torch.float32), 1)
-        self.y_tensors = torch.split(torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=int), 1)
+        if not "weight" in self.data.fields:
+            self.weight_tensors = torch.tensor(ak.ones_like(self.data.gen_jet_tau_decaymode), dtype=torch.float32)
+        else:
+            self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
+        self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=int)
 
     def __len__(self):
         return self.num_jets
@@ -142,35 +141,44 @@ class ParticleTransformerTauBuilder:
         print("::: ParticleTransformer :::")
         self.verbosity = verbosity
         self.cfg = cfg
-        if self.cfg.standardize_inputs:
-            self.transform = FeatureStandardization(
-                method=self.cfg.featureStandardization_method,
+        if self.cfg.builder.feature_standardization.standardize_inputs:
+            self.transform = f.FeatureStandardization(
+                method=self.cfg.builder.feature_standardization.method,
                 features=["x", "v"],
                 feature_dim=1,
                 verbosity=self.verbosity,
             )
-            self.transform.load_params(self.filename_transform)
+            self.transform.load_params(self.cfg.builder.feature_standardization.path)
 
+        input_dim = 7
+        if self.cfg.dataset.use_pdgId:
+            input_dim += 6
+        if self.cfg.dataset.use_lifetime:
+            input_dim += 4
         #  TODO: check this out if needs a change?
         self.model = ParticleTransformer(
-            input_dim=self.input_dim,
+            input_dim=input_dim,
             num_classes=2,
             use_pre_activation_pair=False,
             for_inference=False,  # CV: keep same as for training and apply softmax function on NN output manually
             use_amp=False,
-            metric=metric,
+            metric=cfg.builder.metric,
             verbosity=verbosity,
         )
-        self.model.load_state_dict(torch.load(self.filename_model, map_location=torch.device("cpu")))
+        self.model.load_state_dict(torch.load(self.cfg.builder.model_path, map_location=torch.device("cpu")))
         self.model.eval()
+
+    def print_config(self):
+        primitive_cfg = OmegaConf.to_container(self.cfg)
+        print(json.dumps(primitive_cfg, indent=4))
 
     def process_jets(self, data: ak.Array):
         print("::: Starting to process jets ::: ")
-        dataset = ParticleTransformerDataset(data, self.cfg)
-        if self.cfg.standardize_inputs:
+        dataset = ParticleTransformerDataset(data, self.cfg.dataset)
+        if self.cfg.builder.feature_standardization.standardize_inputs:
             X = {
-                "v": dataset.v_tensors,
                 "x": dataset.x_tensors,
+                "v": dataset.v_tensors,
                 "mask": dataset.node_mask_tensors,
             }
             X_transformed = self.transform(X)
@@ -183,12 +191,12 @@ class ParticleTransformerTauBuilder:
             node_mask_tensor = dataset.node_mask_tensors
         pred = self.model(x_tensor, v_tensor, node_mask_tensor)
         pred = torch.softmax(pred, dim=1)
-        tauClassifier = pred[:, 1] * pred_mask_tensor
+        tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones
         tauClassifier = list(tauClassifier.detach().numpy())
         tau_p4s = g.reinitialize_p4(data["reco_jet_p4s"])
         tauSigCand_p4s = data["reco_cand_p4s"]
-        tauCharges = np.zeros(num_jets)
-        tau_decaymode = np.zeros(num_jets)
+        tauCharges = np.zeros(len(dataset))
+        tau_decaymode = np.zeros(len(dataset))
         return {
             "tau_p4s": tau_p4s,
             "tauSigCand_p4s": tauSigCand_p4s,
@@ -196,47 +204,3 @@ class ParticleTransformerTauBuilder:
             "tau_charge": tauCharges,
             "tau_decaymode": tau_decaymode,
         }
-
-# from omegaconf import OmegaConf  # can be removed later
-
-# cfg = {
-#     "max_cands": 25,
-#     "use_pdgId": True,
-#     "use_lifetime": True,
-#     "min_jet_theta": -1,
-#     "max_jet_theta": -1,
-#     "min_jet_pt": -1,
-#     "max_jet_pt": -1,
-#     "one_hot_encoding": {
-#         "cand_deta": False,
-#         "cand_dphi": False,
-#         "cand_logpt": False,
-#         "cand_loge": False,
-#         "cand_logptrel": False,
-#         "cand_logerel": False,
-#         "cand_deltaR": False,
-#         "cand_charge": False,
-#         "isElectron": True,
-#         "isMuon": True,
-#         "isPhoton": True,
-#         "isChargedHadron": True,
-#         "isNeutralHadron": True,
-#         "cand_d0": False,
-#         "cand_d0_err": False,
-#         "cand_dz": False,
-#         "cand_dz_err": False,
-#         "cand_px": False,
-#         "cand_py": False,
-#         "cand_pz": False,
-#         "cand_en": False,
-#     },
-# }
-
-# cfg = OmegaConf.create(cfg)
-# data = g.load_all_data(
-#     "/scratch/persistent/laurits/ml-tau-ntupelized-data/CLIC_data_20230525/ZH_Htautau/",
-#     n_files=5,
-# )
-# dataset = ParticleTransformerDataset(data, cfg)
-
-# dataset[0]
