@@ -3,7 +3,7 @@ import mplhep as hep
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from sklearn.metrics import confusion_matrix
-from .histogram import Histogram
+from enreg.tools.visualization.histogram import Histogram
 
 hep.style.use(hep.styles.CMS)
 

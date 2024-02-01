@@ -5,7 +5,7 @@ import numpy as np
 import awkward as ak
 import plotting as pl
 from omegaconf import DictConfig
-from ..general import load_all_data
+from enreg.tools.general import load_all_data
 
 
 @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)

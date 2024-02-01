@@ -1,5 +1,5 @@
-from .. import general as g
-from ..visualization import base as pl
+from enreg.tools import general as g
+from enreg.tools.visualization import base as pl
 
 
 

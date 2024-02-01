@@ -1,4 +1,4 @@
-builder: ParticleTransformer
+builder: HPS
 output_dir: /scratch/persistent/laurits/test
 n_files: 1
 use_slurm: False

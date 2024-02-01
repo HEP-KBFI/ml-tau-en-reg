@@ -1,0 +1,73 @@
+builder:
+  signalCands:
+    minChargedHadronPt: 0.5 
+    minElectronPt: 0.5
+    minMuonPt: 1.0e12
+  isolationCands: 
+    minChargedHadronPt: 0.5
+    minElectronPt: 0.5
+    minGammaPt: 1.0
+    minMuonPt: 0.5
+    minNeutralHadronPt: 10.0
+  matchingConeSize: 1.0e-1
+  isolationConeSize: 5.0e-1
+  metric: theta-phi  # Can be removed soon
+  StripAlgo: 
+    useGammas: true
+    minGammaPtSeed: 1.0
+    minGammaPtAdd: 1.0
+    useElectrons: true
+    minElectronPtSeed: 0.5
+    minElectronPtAdd: 0.5
+    minStripPt: 1.0
+    updateStripAfterEachCand: false
+    maxStripBuildIterations: -1
+    maxStripSizeEta: 0.05
+    maxStripSizePhi: 0.20
+  decayModes:
+    1Prong0Pi0:
+      dm_idx: 0
+      numChargedCands: 1
+      numStrips: 0
+      minTauMass: -1.0e3
+      maxTauMass: 1.0
+      maxChargedCands: 6
+      maxStrips: 0
+    1Prong1Pi0:
+      dm_idx: 1
+      numChargedCands: 1
+      numStrips: 1
+      minTauMass: 0.3
+      maxTauMass: 1.3
+      minStripMass: -1.0e3
+      maxStripMass: 1.0e3
+      maxChargedCands: 6
+      maxStrips: 6
+    1Prong2Pi0:
+      dm_idx: 2
+      numChargedCands: 1
+      numStrips: 2
+      minTauMass: 0.4
+      maxTauMass: 1.2
+      minStripMass: 0.05
+      maxStripMass: 0.20
+      maxChargedCands: 6
+      maxStrips: 5
+    3Prong0Pi0:
+      dm_idx: 10
+      numChargedCands: 3
+      numStrips: 0
+      minTauMass: 0.8
+      maxTauMass: 1.5
+      maxChargedCands: 6
+      maxStrips: 0
+    3Prong1Pi0:
+      dm_idx: 11
+      numChargedCands: 3
+      numStrips: 1
+      minTauMass: 0.9
+      maxTauMass: 1.6
+      minStripMass: -1.0e3
+      maxStripMass: 1.0e3
+      maxChargedCands: 6
+      maxStrips: 3

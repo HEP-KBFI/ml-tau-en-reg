@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 
 sftp-config.json
+discussions*

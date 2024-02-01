@@ -7,6 +7,7 @@ import multiprocessing
 from itertools import repeat
 from omegaconf import DictConfig
 from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerTauBuilder
+from enreg.tools.models.HPS import HPSTauBuilder
 
 
 def process_single_file(input_path: str, builder, output_path: str) -> None:
@@ -28,6 +29,8 @@ def build_taus(cfg: DictConfig) -> None:
     print("<runBuilder>:")
     if cfg.builder == "ParticleTransformer":
         builder = ParticleTransformerTauBuilder(cfg=cfg.models.ParticleTransformer)
+    if cfg.builder == "HPS":
+        builder = HPSTauBuilder(cfg=cfg.models.HPS)
     builder.print_config()
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
     input_paths = []
@@ -43,7 +46,7 @@ def build_taus(cfg: DictConfig) -> None:
                 exist_ok=True
             )
             if not os.path.exists(samples_dir):
-                raise OSError("Ntuples do not exist: %s" % (samples_dir))
+                raise OSError(f"No ntuples found in {samples_dir}")
             if cfg.n_files == -1:
                 n_files = None
             else:
