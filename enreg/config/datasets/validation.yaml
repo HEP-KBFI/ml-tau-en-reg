@@ -1,5 +1,5 @@
-test:
-  Z_Ztautau:
+validation:
+  ZH_Htautau:
     - /scratch/persistent/laurits/CLIC_data_20230525/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200516.parquet
     - /scratch/persistent/laurits/CLIC_data_20230525/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_200984.parquet
     - /scratch/persistent/laurits/CLIC_data_20230525/ZH_Htautau/reco_p8_ee_ZH_Htautau_ecm380_201039.parquet
