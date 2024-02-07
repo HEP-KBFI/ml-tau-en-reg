@@ -38,8 +38,8 @@ def load_all_data(input_loc: str | list, n_files: int = None, columns: list = No
     else:
         raise ValueError(f"Unexpected input_loc")
     input_data = []
-    for file_path in input_files:
-        print(f"Loading from {file_path}")
+    for i, file_path in enumerate(input_files):
+        print(f"[{i+1}/{len(input_files)}] Loading from {file_path}")
         try:
             input_data.append(load_parquet(file_path, columns=columns))
         except ValueError:

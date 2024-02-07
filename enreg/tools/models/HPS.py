@@ -596,7 +596,7 @@ def writeTaus(taus):
         "tauIsoCand_d0err": write_tau_cand_attrs(taus, "iso_cands", "d0err", float),
         "tauIsoCand_dz": write_tau_cand_attrs(taus, "iso_cands", "dz", float),
         "tauIsoCand_dzerr": write_tau_cand_attrs(taus, "iso_cands", "dzerr", float),
-        "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),
+        # "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),  # As we do not want to overwrite the PT value for this.
         "tauChargedIso_dR0p5": ak.Array([tau.chargedIso_dR0p5 for tau in taus]),
         "tauGammaIso_dR0p5": ak.Array([tau.gammaIso_dR0p5 for tau in taus]),
         "tauNeutralHadronIso_dR0p5": ak.Array([tau.neutralHadronIso_dR0p5 for tau in taus]),

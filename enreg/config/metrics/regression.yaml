@@ -1,17 +1,20 @@
 regression:
-  classifier_WP:  # The values for ParticleTransformer from the previous paper
-      Loose: 0.975
+  ratio_plot:
+    bin_edges: [0, 20, 40, 60, 80, 100, 150, 200]
+  cls_wp: Tight
+  classifier_WPs:  # The values for ParticleTransformer from the previous paper
+      Loose: 0.930
       Medium: 0.967
-      Tight: 0.930
+      Tight: 0.975
   algorithms:
     ParticleTransformer:
       ntuples_dir: /foo/bar  # Actually we need only signal sample ntuples. Could be both ZH_Htautau and Z_Ztautau
       json_metrics_dir: /foo/bar
-      compare: True
+      compare: False
       marker: "v"
       color: "tab:purple"
     HPS:
-      ntuples_dir: /foo/bar
+      ntuples_dir: /scratch/persistent/laurits/20240302_Initial_run/HPS
       json_metrics_dir: /foo/bar
       compare: True
       marker: "o"
