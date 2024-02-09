@@ -12,12 +12,12 @@ import hydra
 import vector
 import fastjet
 import numpy as np
-import general as g
+from enreg.tools import general as g
 import awkward as ak
 import multiprocessing
 from itertools import repeat
 from omegaconf import DictConfig
-from lifeTimeTools import findTrackPCAs, calculateImpactParameterSigns
+from enreg.tools.data_management import lifeTimeTools as lt
 
 
 def save_record_to_file(data: dict, output_path: str) -> None:
@@ -48,9 +48,8 @@ def load_single_file_contents(
     return arrays
 
 
-def calculate_p4(p_type: str, arrs: ak.Array):
-    particles = arrs[p_type]
-    particles = ak.Record({k.replace(f"{p_type}.", ""): particles[k] for k in particles.fields})
+def calculate_p4(p_type: str, arrays: ak.Array):
+    particles = ak.Record({k.replace(f"{p_type}.", ""): arrays[k] for k in arrays.fields if p_type in k})
     particle_p4 = vector.awk(
         ak.zip(
             {
@@ -379,9 +378,13 @@ def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
                 mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
                 mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
             )
+            # Siin peab stabiilsed generaatori osakesed valima !!
             PDG_ids = np.abs(mc_particles.PDG[e_idx][daughter_indices])
-            vis_particle_map = (PDG_ids != 12) * (PDG_ids != 14) * (PDG_ids != 16)
-            for tau_daughter_p4 in mc_p4[e_idx][daughter_indices][vis_particle_map]:
+            
+            stable_pythia_mask = mc_particles["generatorStatus"][e_idx][daughter_indices] == 1
+            neutrino_mask = (abs(PDG_ids) != 12) * (abs(PDG_ids) != 14) * (abs(PDG_ids) != 16)
+            particle_mask = stable_pythia_mask * neutrino_mask
+            for tau_daughter_p4 in mc_p4[e_idx][daughter_indices][particle_mask]:
                 tau_vis_p4 = tau_vis_p4 + tau_daughter_p4
             tau_vis_p4s.append(tau_vis_p4)
         if len(tau_vis_p4s) > 0:
@@ -402,30 +405,30 @@ def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
     all_events_tau_vis_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_vis_p4s))
     return all_events_tau_vis_p4s
 
-
 def get_full_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
-    all_events_tau_p4s = []
-    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
-        tau_p4s = []
-        for d_idx in range(n_daughters):
-            tau_p4s.append(mc_p4[tau_mask][mask_addition][e_idx][d_idx])
-        if len(tau_p4s) > 0:
-            all_events_tau_p4s.append(tau_p4s)
-        else:
-            all_events_tau_p4s.append(
-                vector.awk(
-                    ak.zip(
-                        {
-                            "mass": [0.0],
-                            "x": [0.0],
-                            "y": [0.0],
-                            "z": [0.0],
-                        }
-                    )
-                )
-            )
-    all_events_tau_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_p4s))
+    # all_events_tau_p4s = []
+    # for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
+    #     n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
+    #     tau_p4s = []
+    #     for d_idx in range(n_daughters):
+    #         tau_p4s.append(mc_p4[tau_mask][mask_addition][e_idx][d_idx])
+    #     if len(tau_p4s) > 0:
+    #         all_events_tau_p4s.append(tau_p4s)
+    #     else:
+    #         all_events_tau_p4s.append(
+    #             vector.awk(
+    #                 ak.zip(
+    #                     {
+    #                         "mass": [0.0],
+    #                         "x": [0.0],
+    #                         "y": [0.0],
+    #                         "z": [0.0],
+    #                     }
+    #                 )
+    #             )
+    #         )
+    # all_events_tau_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_p4s))
+    all_events_tau_p4s = mc_p4[tau_mask][mask_addition]
     return all_events_tau_p4s
 
 
@@ -579,9 +582,9 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
     return jet_parton_PDGs
 
 
-def process_input_file(arrays: ak.Array, remove_background):
-    mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
-    reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
+def process_input_file(arrays: ak.Array, remove_background: bool):
+    mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrays=arrays)
+    reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrays=arrays)
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
     stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
@@ -602,7 +605,7 @@ def process_input_file(arrays: ak.Array, remove_background):
 
     gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition)
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_lifetime_infos = ak.from_iter([findTrackPCAs(arrays, i) for i in range(len(reco_p4))])
+    event_lifetime_infos = ak.from_iter([lt.findTrackPCAs(arrays, i) for i in range(len(reco_p4))])
     event_lifetime_info = event_lifetime_infos[:, 0]
     event_lifetime_errs = event_lifetime_infos[:, 1]
     event_dxy = event_lifetime_info[:, :, 0]
@@ -693,7 +696,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_dxy = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_dxy[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -707,7 +710,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_dz = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_dz[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -721,7 +724,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_d3 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_d3[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -735,7 +738,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_d0 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_d0[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -749,7 +752,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_z0 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_z0[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -763,7 +766,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_dxy_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_dxy_f2D[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -777,7 +780,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_dz_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_dz_f2D[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -791,7 +794,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_d3_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_d3_f2D[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -829,7 +832,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_dxy = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_dxy[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -843,7 +846,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_dz = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_dz[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -857,7 +860,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_d3 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_d3[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -871,7 +874,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_dxy_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_dxy_f2D[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -885,7 +888,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_dz_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_dz_f2D[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -899,7 +902,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_d3_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_d3_f2D[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -913,7 +916,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_d0 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_d0[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -927,7 +930,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_z0 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_z0[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -1063,16 +1066,15 @@ def process_single_file(
     input_path: str,
     output_dir: str,
     sample: str,
-    tree_path: str = "events",
-    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"],
+    cfg: DictConfig
 ):
     file_name = os.path.basename(input_path).replace(".root", ".parquet")
     output_ntuple_path = os.path.join(output_dir, file_name)
     if not os.path.exists(output_ntuple_path):
         # try:
         start_time = time.time()
-        remove_bkg = sample == "ZH_Htautau"
-        arrays = load_single_file_contents(input_path, tree_path, branches)
+        remove_bkg = cfg[sample].is_signal
+        arrays = load_single_file_contents(input_path, cfg.tree_path, cfg.branches)
         data = process_input_file(arrays, remove_background=remove_bkg)
         save_record_to_file(data, output_ntuple_path)
         end_time = time.time()
@@ -1083,26 +1085,26 @@ def process_single_file(
         print("File already processed, skipping.")
 
 
-@hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
-def process_all_input_files(cfg: DictConfig) -> None:
-    print("Working directory : {}".format(os.getcwd()))
-    for sample in cfg.samples_to_process:
-        output_dir = cfg.samples[sample].output_dir
-        input_dir = cfg.samples[sample].input_dir
-        os.makedirs(output_dir, exist_ok=True)
-        input_wcp = os.path.join(input_dir, "*.root")
-        if cfg.test_run:
-            n_files = 10
-        else:
-            n_files = None
-        input_paths = glob.glob(input_wcp)[:n_files]
-        if cfg.use_multiprocessing:
-            pool = multiprocessing.Pool(processes=10)
-            pool.starmap(process_single_file, zip(input_paths, repeat(output_dir), repeat(sample)))
-        else:
-            for path in input_paths:
-                process_single_file(path, output_dir, sample)
+# @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
+# def process_all_input_files(cfg: DictConfig) -> None:
+#     print("Working directory : {}".format(os.getcwd()))
+#     for sample_name, sample_cfg in cfg.samples_to_process.items():
+#         output_dir = sample_cfg.output_dir
+#         input_dir = sample_cfg.input_dir
+#         os.makedirs(output_dir, exist_ok=True)
+#         input_wcp = os.path.join(input_dir, "*.root")
+#         if cfg.test_run:
+#             n_files = 10
+#         else:
+#             n_files = None
+#         input_paths = glob.glob(input_wcp)[:n_files]
+#         if cfg.use_multiprocessing:
+#             pool = multiprocessing.Pool(processes=10)
+#             pool.starmap(process_single_file, zip(input_paths, repeat(output_dir), repeat(sample_name), repeat(cfg)))
+#         else:
+#             for path in input_paths:
+#                 process_single_file(path, output_dir, sample_name, cfg)
 
 
-if __name__ == "__main__":
-    process_all_input_files()
+# if __name__ == "__main__":
+#     process_all_input_files()

@@ -5,8 +5,8 @@ load_from_json: False
 comparison_datasets:
   - test
 comparison_samples:
-  - ZH_Htautau
-  # - Z_Ztautau
+  # - ZH_Htautau
+  - Z_Ztautau
 n_comparison_files: 10
 defaults:
   - metrics: metrics

@@ -27,17 +27,5 @@ def main(cfg: DictConfig) -> None:
     er.plot_energy_regression(algorithm_info, cfg)
 
 
-                # sample_data[sample] = {
-                #     "reco_tau_E": g.reinitialize_p4(data.tau_p4s).energy,
-                #     "reco_tau_pT": g.reinitialize_p4(data.tau_p4s).pt,
-                #     "gen_vis_tau_E": data.gen_jet_tau_vis_energy,
-                #     "gen_vis_tau_pT": g.reinitialize_p4(data.gen_jet_tau_p4s).pt,
-                #     "reco_gen_ratio": g.reinitialize_p4(data.tau_p4s).energy / data.gen_jet_tau_vis_energy,
-                #     "pT_reco_gen_ratio": g.reinitialize_p4(data.tau_p4s).pt / g.reinitialize_p4(data.gen_jet_tau_p4s).pt,
-                #     # "gen_full_tau_E": g.reinitialize_p4(data.gen_jet_full_tau_p4s).energy,
-                #     "tauClassifier": data.tauClassifier
-                # }
-
-
 if __name__ == '__main__':
     main()

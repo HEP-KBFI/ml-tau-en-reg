@@ -2,25 +2,60 @@ use_slurm: True
 use_multiprocessing: True
 tree_path: events
 branches:
-  - MCParticles
-  - MergedRecoParticles
+  - MCParticles.PDG
+  - MCParticles.generatorStatus
+  - MCParticles.charge
+  - MCParticles.mass
+  - MCParticles.vertex.x
+  - MCParticles.vertex.y
+  - MCParticles.vertex.z
+  - MCParticles.momentum.x
+  - MCParticles.momentum.y
+  - MCParticles.momentum.z
+  - MCParticles.parents_begin
+  - MCParticles.parents_end
+  - MCParticles.daughters_begin
+  - MCParticles.daughters_end
+  - MergedRecoParticles.type
+  - MergedRecoParticles.energy
+  - MergedRecoParticles.momentum.x
+  - MergedRecoParticles.momentum.y
+  - MergedRecoParticles.momentum.z
+  - MergedRecoParticles.referencePoint.x
+  - MergedRecoParticles.referencePoint.y
+  - MergedRecoParticles.referencePoint.z
+  - MergedRecoParticles.charge
+  - MergedRecoParticles.mass
+  - MergedRecoParticles.goodnessOfPID
+  - MergedRecoParticles.covMatrix[10]
+  - MergedRecoParticles.clusters_begin
+  - MergedRecoParticles.clusters_end
+  - MergedRecoParticles.tracks_begin
+  - MergedRecoParticles.tracks_end
+  - MergedRecoParticles.particles_begin
+  - MergedRecoParticles.particles_end
+  - MergedRecoParticles.particleIDs_begin
+  - MergedRecoParticles.particleIDs_end
   - SiTracks_Refitted_1
   - PrimaryVertices
 test_run: False
 samples_to_process:
   - Z_Ztautau
-  - ZH_Htautau-xyz
+  - ZH_Htautau
   - QCD
 samples:
   Z_Ztautau:
     input_dir: /foo/bar
     output_dir: /scratch/persistent/laurits/ml-tau-ntupelized-data/CLIC_data_20230925/Z_Ztautau
+    is_signal: True
   ZH_Htautau:
     input_dir: /foo/bar
     output_dir: /scratch/persistent/laurits/ml-tau-ntupelized-data/CLIC_data_20230525/ZH_Htautau
+    is_signal: True
   QCD:
     input_dir: /foo/bar
     output_dir: /scratch/persistent/laurits/ml-tau-ntupelized-data/CLIC_data_20230525/QCD
+    is_signal: False
 validation:
   output_dir: $HOME/CLIC_ntuple_validation_v5
   validation_samples:
