@@ -3,26 +3,15 @@
 Call with 'python3'
 """
 
-import os
-import time
-import glob
 import numba
 import uproot
-import hydra
 import vector
 import fastjet
 import numpy as np
-from enreg.tools import general as g
 import awkward as ak
-import multiprocessing
-from itertools import repeat
-from omegaconf import DictConfig
+from enreg.tools import general as g
 from enreg.tools.data_management import lifeTimeTools as lt
 
-
-def save_record_to_file(data: dict, output_path: str) -> None:
-    print(f"Saving to precessed data to {output_path}")
-    ak.to_parquet(ak.Record(data), output_path)
 
 
 def load_single_file_contents(
@@ -321,6 +310,7 @@ def to_vector(jet):
 
 
 def map_pdgid_to_candid(pdgid, charge):
+    # TODO: Add this to a config.
     if pdgid == 0:
         return 0
     # photon, electron, muon
@@ -378,9 +368,7 @@ def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
                 mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
                 mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
             )
-            # Siin peab stabiilsed generaatori osakesed valima !!
             PDG_ids = np.abs(mc_particles.PDG[e_idx][daughter_indices])
-            
             stable_pythia_mask = mc_particles["generatorStatus"][e_idx][daughter_indices] == 1
             neutrino_mask = (abs(PDG_ids) != 12) * (abs(PDG_ids) != 14) * (abs(PDG_ids) != 16)
             particle_mask = stable_pythia_mask * neutrino_mask
@@ -405,36 +393,10 @@ def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
     all_events_tau_vis_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_vis_p4s))
     return all_events_tau_vis_p4s
 
-def get_full_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
-    # all_events_tau_p4s = []
-    # for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
-    #     n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
-    #     tau_p4s = []
-    #     for d_idx in range(n_daughters):
-    #         tau_p4s.append(mc_p4[tau_mask][mask_addition][e_idx][d_idx])
-    #     if len(tau_p4s) > 0:
-    #         all_events_tau_p4s.append(tau_p4s)
-    #     else:
-    #         all_events_tau_p4s.append(
-    #             vector.awk(
-    #                 ak.zip(
-    #                     {
-    #                         "mass": [0.0],
-    #                         "x": [0.0],
-    #                         "y": [0.0],
-    #                         "z": [0.0],
-    #                     }
-    #                 )
-    #             )
-    #         )
-    # all_events_tau_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_p4s))
-    all_events_tau_p4s = mc_p4[tau_mask][mask_addition]
-    return all_events_tau_p4s
-
 
 def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4):
     vis_tau_p4s = get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
-    full_tau_p4s = get_full_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
+    full_tau_p4s = mc_p4[tau_mask][mask_addition]
     best_combos = get_all_tau_best_combinations(vis_tau_p4s, gen_jets)
     tau_energies = vis_tau_p4s.energy
     tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition)
@@ -451,9 +413,9 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
         )
     )[0]
     gen_tau_jet_info = {
-        "gen_jet_tau_vis_energy": get_matched_gen_tau_property(gen_jets, best_combos, tau_energies),
+        "gen_jet_tau_vis_energy": get_matched_gen_tau_property(gen_jets, best_combos, tau_energies, dummy_value=0.0),
         "gen_jet_tau_decaymode": get_matched_gen_tau_property(gen_jets, best_combos, tau_decaymodes),
-        "tau_gen_jet_charge": get_matched_gen_tau_property(gen_jets, best_combos, tau_charges),
+        "tau_gen_jet_charge": get_matched_gen_tau_property(gen_jets, best_combos, tau_charges, dummy_value=-1), # Other dummy value than -1 would be better
         "tau_gen_jet_p4s_full": get_matched_gen_tau_property(
             gen_jets, best_combos, full_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
         ),
@@ -494,33 +456,65 @@ def clean_reco_particles(reco_particles, reco_p4):
 
 
 def get_hadronically_decaying_hard_tau_masks(mc_particles):
+    """ This function creates the masks for picking out events and taus that decay hadronically.
+
+    Args:
+        mc_particles : ak.Record
+            The 'MCParticles' collection from the edm4hep .root file
+
+    Returns:
+        tau_mask : list of lists
+            Mask that picks out taus from all events
+        additional_mask : list of lists
+            Mask that picks out taus that are not decaying leptonically.
+    """
     tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
     mask_addition = []
-    for i in range(len(mc_particles.PDG[tau_mask])):
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][i])
+    for event_idx in range(len(mc_particles.PDG[tau_mask])):
+        n_taus = len(mc_particles.daughters_begin[tau_mask][event_idx])
         daughter_mask = []
-        for d in range(n_daughters):
-            parent_idx = mc_particles.parents_begin[tau_mask][i][d]
-            initial_tau = parent_idx < len(mc_particles.PDG[i])
-            initial_tau_2 = mc_particles.daughters_end[tau_mask][i][d] < len(mc_particles.PDG[i])
-            if initial_tau and initial_tau_2:
-                parent_pdg = mc_particles.PDG[i][parent_idx]
-                daughters_idx = range(
-                    mc_particles.daughters_begin[tau_mask][i][d], mc_particles.daughters_end[tau_mask][i][d]
-                )
-                daughter_pdgs = np.abs(mc_particles.PDG[i][daughters_idx])
-                daughter_charges = np.abs(mc_particles.charge[i][daughters_idx])
+        for tau_idx in range(n_taus):
+            final_tau = mc_particles.daughters_end[tau_mask][event_idx][tau_idx] < len(mc_particles.PDG[event_idx])
+            if final_tau:
+                daughters_idx = get_daughter_indices(
+                    particles=mc_particles, mask=tau_mask, event_idx=event_idx, tau_idx=tau_idx)
+                daughter_pdgs = np.abs(mc_particles.PDG[event_idx][daughters_idx])
+                # Some tau daughters have strange daughters without tau_neutrino but with electrons and photons
+                daughter_charges = np.abs(mc_particles.charge[event_idx][daughters_idx])
                 PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
                 decaymode = g.get_decaymode(PDGs, daughter_pdgs)
-                if decaymode != 16 and abs(parent_pdg) == 15:
+                if decaymode != 16 and 16 in daughter_pdgs: # For some reasond tau_neutrino not always in daughters??
+                    # In principle one could check the parent of the tau to filter out taus originating from other particles
+                    # This only if the parents_begin and parents_end would be correct
+                    print("Hadronic decay!!")
                     daughter_mask.append(True)
                 else:
+                    print("Leptonic decay!!")
                     daughter_mask.append(False)
             else:
                 daughter_mask.append(False)
         mask_addition.append(daughter_mask)
     mask_addition = ak.Array(mask_addition)
     return tau_mask, mask_addition
+
+
+def get_daughter_indices(particles: ak.Record, mask: ak.Array, event_idx: int, tau_idx: int):
+    """ Daughter indices are given as (daughters_begin, daughters_end]. The first index there corresponds to the current
+    particle index.
+
+    Args:
+        particles : ak.Array
+            The particle collection
+        mask : ak.Array
+            Mask for the particles
+
+    Returns:
+        daughter_indices : list
+            The indices of the daughers in the event
+    """
+    daughters_begin = particles.daughters_begin[mask][event_idx][tau_idx]
+    daughters_end = particles.daughters_end[mask][event_idx][tau_idx]
+    return list(range(daughters_begin + 1, daughters_end + 1))
 
 
 def filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
@@ -562,7 +556,6 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
         mask = mc_particles.PDG[ev] == 23
         daughter_idx = range(mc_particles.daughters_begin[ev][mask][-1], mc_particles.daughters_end[ev][mask][-1])
         daughter_PDGs = mc_particles.PDG[ev][daughter_idx]
-        #     print(daughter_PDGs, daughter_idx)
         daughter_p4s = mc_p4[ev][daughter_idx]
         all_daughter_PDGs.append(daughter_PDGs)
         all_daughter_p4s.append(daughter_p4s)
@@ -1055,56 +1048,8 @@ def process_input_file(arrays: ak.Array, remove_background: bool):
     }
     data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
 
-    ## remove ZH bkg part
+    ## remove backgrounds for signal samples
     if remove_background:
         removal_mask = data["gen_jet_tau_decaymode"] != -1
         data = {key: value[removal_mask] for key, value in data.items()}
     return data
-
-
-def process_single_file(
-    input_path: str,
-    output_dir: str,
-    sample: str,
-    cfg: DictConfig
-):
-    file_name = os.path.basename(input_path).replace(".root", ".parquet")
-    output_ntuple_path = os.path.join(output_dir, file_name)
-    if not os.path.exists(output_ntuple_path):
-        # try:
-        start_time = time.time()
-        remove_bkg = cfg[sample].is_signal
-        arrays = load_single_file_contents(input_path, cfg.tree_path, cfg.branches)
-        data = process_input_file(arrays, remove_background=remove_bkg)
-        save_record_to_file(data, output_ntuple_path)
-        end_time = time.time()
-        print(f"Finished processing in {end_time-start_time} s.")
-    # except Exception:
-    #     print(f"Broken input file at {input_path}")
-    else:
-        print("File already processed, skipping.")
-
-
-# @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
-# def process_all_input_files(cfg: DictConfig) -> None:
-#     print("Working directory : {}".format(os.getcwd()))
-#     for sample_name, sample_cfg in cfg.samples_to_process.items():
-#         output_dir = sample_cfg.output_dir
-#         input_dir = sample_cfg.input_dir
-#         os.makedirs(output_dir, exist_ok=True)
-#         input_wcp = os.path.join(input_dir, "*.root")
-#         if cfg.test_run:
-#             n_files = 10
-#         else:
-#             n_files = None
-#         input_paths = glob.glob(input_wcp)[:n_files]
-#         if cfg.use_multiprocessing:
-#             pool = multiprocessing.Pool(processes=10)
-#             pool.starmap(process_single_file, zip(input_paths, repeat(output_dir), repeat(sample_name), repeat(cfg)))
-#         else:
-#             for path in input_paths:
-#                 process_single_file(path, output_dir, sample_name, cfg)
-
-
-# if __name__ == "__main__":
-#     process_all_input_files()
