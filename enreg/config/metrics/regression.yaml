@@ -12,12 +12,14 @@ regression:
       json_metrics_dir: /foo/bar
       compare: False
       marker: "v"
+      hatch: "//"
       color: "tab:purple"
     HPS:
       ntuples_dir: /scratch/persistent/laurits/20240302_Initial_run/HPS
       json_metrics_dir: /foo/bar
       compare: True
       marker: "o"
+      hatch: '\\\\'
       color: "tab:blue"
 defaults:
   - _self_

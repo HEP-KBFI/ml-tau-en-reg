@@ -10,52 +10,169 @@ from enreg.tools import general as g
 
 hep.style.use(hep.styles.CMS)
 
-# TODO: Add later the possibility to check also full tau p4.
 
-def plot_tau_en_ratio_dependence(x_values, y_values, y_err, label, ax):
-    # plt.fill_between(
-    #     x=x_values,
-    #     y1=y_values-y_err,
-    #     y2=y_values+y_err,
-    #     label=label,
-    #     alpha=0.4
-    # )
-    plt.errorbar(
-        x=x_values,
-        y=y_values,
-        yerr=y_err,
-        color='k',
-        linestyle='',
-        label=label,
-        marker='.',
-        capsize=5
+def plot_E_gen_distribution(algorithm_info, cfg):
+    output_path = os.path.join(cfg.output_dir, 'gen_pt_distribution.png')
+    algo_name = list(algorithm_info.keys())[0]
+    dataset = 'test' if 'test' in algorithm_info[algo_name] else algorithm_info[algo_name][0]
+    gen_pts = []
+    sample_names = []
+    for sample_name, sample_data in algorithm_info[algo_name][dataset].items():
+        gen_pts.append(g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt)
+        sample_names.append(sample_name)
+    plot_multiple_histograms(
+        entries=gen_pts,
+        labels=sample_names,
+        output_path=output_path,
+        bin_edges=np.array(cfg.metrics.regression.ratio_plot.bin_edges),
+        x_label=r"$p_T^{gen}$",
+        y_label=r"Entries",
+        hatches=['//', '\\\\'],
+        colors=['b', 'r']
     )
-    plt.grid()
-    plt.legend(prop={"size": 30})
-    plt.title(r"$\tau_h$ energy reconstruction" , loc="left")
-    plt.ylabel(r"$\frac{E^{RECO}}{E^{GEN}}$", fontsize=30)
-    plt.xlabel(r"$E_{vis}^{GEN}$", fontsize=30)
-    plt.ylim([0, 5])
-    ax.tick_params(axis="x", labelsize=30)
-    ax.tick_params(axis="y", labelsize=30)
+
+def plot_multiple_histograms(
+    entries: list[np.array],
+    labels: list[str],
+    output_path: str,
+    bin_edges : list[float],
+    n_bins: int = 24,
+    figsize: tuple = (12, 12),
+    y_label: str = "",
+    x_label: str = "",
+    title: str = "",
+    integer_bins : bool = False,
+    hatches : list[str] = ["//"],
+    colors : list[str] = ["blue"],
+):
+    fig, ax = plt.subplots(figsize=figsize)
+    for entry, label, hatch, color in zip(entries, labels, hatches, colors):
+        hist, bin_edges = np.histogram(entry, bins=bin_edges)
+        hep.histplot(hist, bin_edges, label=label, hatch=hatch, color=color)
+    plt.xlabel(x_label, fontdict={"size": 20})
+    plt.ylabel(y_label, fontdict={"size": 20})
+    plt.grid(True, which="both")
+    plt.title(title, loc="left")
+    plt.legend()
+    plt.savefig(output_path)#, format="pdf")
+    plt.close("all")
 
 
 def plot_energy_regression(algorithm_info, cfg):
-    plot_tau_en_ratio(algorithm_info, cfg)
-    ratio_distribution(algorithm_info, cfg)
+    plotting_input = get_plotting_input(algorithm_info, cfg)
+    plot_E_gen_distribution(algorithm_info, cfg)
+    plot_mean(plotting_input, cfg, resolution_type='IQR', variable='pt')
+    plot_mean(plotting_input, cfg, resolution_type='IQR', variable='E')
+    plot_mean(plotting_input, cfg, resolution_type='std', variable='pt')
+    plot_mean(plotting_input, cfg, resolution_type='std', variable='E')
+    plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='E')
+    plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='E')
+    plot_resolution(plotting_input, cfg, resolution_type='std', variable='pt')
+    plot_resolution(plotting_input, cfg, resolution_type='std', variable='E')
+    plot_distribution_bin_wise(plotting_input, cfg, variable='E')
+    plot_distribution_bin_wise(plotting_input, cfg, variable='pt')
+    # ratio_distribution(algorithm_info, cfg)
 
 
-def prepare_violin_plot_data(
-    sample_data: ak.Array,
-    cfg: DictConfig
+def plot_distribution_bin_wise(plotting_input, cfg, variable, figsize=(12,12)):
+    x_label = r"$\frac{p_T^{reco}}{p_T^{gen}}$" if variable == 'pt' else r"$\frac{E_{vis}^{reco}}{E_{vis}^{gen}}$"
+    y_label = "Entries"
+    for sample in cfg.comparison_samples:
+            for dataset in cfg.comparison_datasets:
+                for algorithm in plotting_input.keys():
+                    output_dir = os.path.join(cfg.output_dir, sample, dataset, algorithm)
+                    os.makedirs(output_dir, exist_ok=True)
+                    bin_contents = plotting_input[algorithm][dataset][sample][f"{variable}_ratio_values"]
+                    bin_centers = plotting_input[algorithm][dataset][sample][f"{variable}_bin_centers"]
+                    for bin_content, bin_center in zip(bin_contents, bin_centers):
+                        output_path = os.path.join(output_dir, f"{variable}_bin_{bin_center}.png")
+                        fig, ax = plt.subplots(figsize=figsize)
+                        hist, bin_edges = np.histogram(bin_content, bins=24)
+                        hep.histplot(hist, bin_edges)
+                        plt.xlabel(x_label, fontdict={"size": 20})
+                        plt.ylabel(y_label, fontdict={"size": 20})
+                        plt.grid(True, which="both")
+                        plt.title(f"Bin @ {bin_center}", loc="left")
+                        # plt.legend()
+                        plt.savefig(output_path, bbox_inches='tight')
+                        plt.close("all")
+
+
+def plot_resolution(
+    plotting_input,
+    cfg,
+    resolution_type='IQR',
+    variable='pt',
+    figsize=(16,9)
 ):
-    reco_gen_E_ratio = g.reinitialize_p4(sample_data.tau_p4s).energy / sample_data.gen_jet_tau_vis_energy
-    gen_vis_tau_E = sample_data.gen_jet_tau_vis_energy
-    bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
-    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-    binned_gen_tau_energies = np.digitize(gen_vis_tau_E, bins=bin_edges)  # Biggest idx is overflow
-    ratio_values = [reco_gen_E_ratio[binned_gen_tau_energies == bin_idx].to_numpy() for bin_idx in range(1, len(bin_edges))]
-    return ratio_values, bin_centers
+    x_label = r"$p_T^{gen}$" if variable == 'pt' else r"$E_{vis}^{gen}$"
+    y_label = r"$\frac{IQR(reco/gen)}{median(reco/gen)}$"
+    for sample in cfg.comparison_samples:
+            fig, ax = plt.subplots(figsize=figsize)
+            for dataset in cfg.comparison_datasets:
+                for algorithm in plotting_input.keys():
+                    plotting_data = plotting_input[algorithm][dataset][sample]
+                    x_values = plotting_data[f"{variable}_bin_centers"]
+                    y_values = plotting_data[f"{variable}_resolution_w_{resolution_type}"]
+                    plt.plot(
+                        x_values,
+                        y_values,
+                        marker=cfg.metrics.regression.algorithms[algorithm].marker,
+                        color=cfg.metrics.regression.algorithms[algorithm].color,
+                        label=f"{dataset}: {algorithm}")
+            plt.xlabel(x_label, fontdict={"size": 20})
+            plt.ylabel(y_label, fontdict={"size": 20})
+            plt.grid(True, which="both")
+            plt.title(f"{sample} resolution using {resolution_type}", loc="left")
+            plt.legend()
+            output_path = os.path.join(cfg.output_dir, f"{sample}_{resolution_type}_resolution_{variable}.png")
+            plt.savefig(output_path, bbox_inches='tight')
+            plt.close("all")
+
+
+def plot_mean(
+    plotting_input,
+    cfg,
+    resolution_type='IQR',
+    variable='pt',
+    figsize=(16,9)
+):
+    mean_type = 'median' if resolution_type =='IQR' else 'mean'
+    x_label = r"$p_T^{gen}$" if variable == 'pt' else r"$E_{vis}^{gen}$"
+    y_label = r"$q_{50}(\frac{reco}{gen})$"
+    for sample in cfg.comparison_samples:
+            fig, ax = plt.subplots(figsize=figsize)
+            for dataset in cfg.comparison_datasets:
+                for algorithm in plotting_input.keys():
+                    plotting_data = plotting_input[algorithm][dataset][sample]
+                    x_values = plotting_data[f"{variable}_bin_centers"]
+                    y_values = plotting_data[f"{variable}_ratio_{mean_type}s"]
+                    plt.plot(
+                        x_values,
+                        y_values,
+                        marker=cfg.metrics.regression.algorithms[algorithm].marker,
+                        color=cfg.metrics.regression.algorithms[algorithm].color,
+                        label=f"{dataset}: {algorithm}")
+            plt.xlabel(x_label, fontdict={"size": 20})
+            plt.ylabel(y_label, fontdict={"size": 20})
+            plt.grid(True, which="both")
+            plt.title(f"{sample} {mean_type}", loc="left")
+            plt.legend()
+            output_path = os.path.join(cfg.output_dir, f"{sample}_{mean_type}_ratio_{variable}.png")
+            plt.savefig(output_path, bbox_inches='tight')
+            plt.close("all")
+
+# def prepare_violin_plot_data(
+#     sample_data: ak.Array,
+#     cfg: DictConfig
+# ):
+#     reco_gen_E_ratio = g.reinitialize_p4(sample_data.tau_p4s).energy / sample_data.gen_jet_tau_vis_energy
+#     gen_vis_tau_E = sample_data.gen_jet_tau_vis_energy
+#     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
+#     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+#     binned_gen_tau_energies = np.digitize(gen_vis_tau_E, bins=bin_edges)  # Biggest idx is overflow
+#     ratio_values = [reco_gen_E_ratio[binned_gen_tau_energies == bin_idx].to_numpy() for bin_idx in range(1, len(bin_edges))]
+#     return ratio_values, bin_centers
 
 
 def plot_ratio_violin_plot(
@@ -78,27 +195,54 @@ def plot_ratio_violin_plot(
     plt.savefig(output_path, bbox_inches='tight')
 
 
-def ratio_distribution(algorithm_info: dict, cfg: DictConfig):
-    for algorithm_name, algorithm_values in algorithm_info.items():
-        for dataset_name, dataset_values in algorithm_values.items():
-            for sample_name, sample_data in dataset_values.items():
-                label = f"{algorithm_name}: {sample_name}"
-                ratio_values, bin_centers = prepare_violin_plot_data(sample_data=sample_data, cfg=cfg)
-                plot_ratio_violin_plot(x_values=bin_centers, y_values=ratio_values, label=label, cfg=cfg)
-                resolutions, bin_centers = prepare_resolution_plot_data(sample_data, 'IQR', cfg)
-                plot_ATLAS_resolution(x_values=bin_centers, y_values=resolutions, cfg=cfg)
+# def ratio_distribution(algorithm_info: dict, cfg: DictConfig):
+#     for algorithm_name, algorithm_values in algorithm_info.items():
+#         for dataset_name, dataset_values in algorithm_values.items():
+#             for sample_name, sample_data in dataset_values.items():
+#                 label = f"{algorithm_name}: {sample_name}"
+#                 ratio_values, bin_centers = prepare_violin_plot_data(sample_data=sample_data, cfg=cfg)
+#                 plot_ratio_violin_plot(x_values=bin_centers, y_values=ratio_values, label=label, cfg=cfg)
+#                 resolutions, bin_centers = prepare_resolution_plot_data(sample_data, 'IQR', cfg)
+#                 plot_ATLAS_resolution(x_values=bin_centers, y_values=resolutions, cfg=cfg)
 
 
-def plot_tau_en_ratio(algorithm_info: dict, cfg: DictConfig):
-    fig, ax = plt.subplots(figsize=(16,9))
+def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
+    algorithms = {}
     for algorithm_name, algorithm_values in algorithm_info.items():
+        datasets = {}
         for dataset_name, dataset_values in algorithm_values.items():
+            samples = {}
             for sample_name, sample_data in dataset_values.items():
                 label = f"{algorithm_name}: {sample_name}"
-                ratio_means, ratio_std, bin_centers = prepare_tau_en_ratio_data(sample_data, 'IQR', cfg)
-                plot_tau_en_ratio_dependence(x_values=bin_centers, y_values=ratio_means, y_err=ratio_std, label=label, ax=ax)
-    output_path = os.path.join(os.path.expandvars(cfg.output_dir), "reco_gen_ratio.pdf")
-    plt.savefig(output_path)
+                E_ratio_means, E_ratio_std, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
+                    sample_data=sample_data, resolution_type='std', cfg=cfg)
+                E_ratio_medians, E_ratio_IQR, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
+                    sample_data=sample_data, resolution_type='IQR', cfg=cfg)
+                pt_ratio_means, pt_ratio_std, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
+                    sample_data=sample_data, resolution_type='std', cfg=cfg)
+                pt_ratio_medians, pt_ratio_IQR, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
+                    sample_data=sample_data, resolution_type='IQR', cfg=cfg)
+                samples[sample_name] = {
+                    "E_ratio_means": E_ratio_means,
+                    "E_ratio_values": E_ratio_values,
+                    "E_ratio_std": E_ratio_std,
+                    "E_resolution_w_std": E_ratio_std/E_ratio_means,
+                    "E_ratio_medians": E_ratio_medians,
+                    "E_ratio_IQR": E_ratio_IQR,
+                    "E_resolution_w_IQR": E_ratio_IQR/E_ratio_medians,
+                    "E_bin_centers": E_bin_centers,
+                    "pt_ratio_means": pt_ratio_means,
+                    "pt_ratio_values": pt_ratio_values,
+                    "pt_ratio_std": pt_ratio_std,
+                    "pt_resolution_w_std": pt_ratio_std/pt_ratio_means,
+                    "pt_ratio_medians": pt_ratio_medians,
+                    "pt_ratio_IQR": pt_ratio_IQR,
+                    "pt_resolution_w_IQR": pt_ratio_IQR/pt_ratio_medians,
+                    "pt_bin_centers": pt_bin_centers,
+                }
+            datasets[dataset_name] = samples
+        algorithms[algorithm_name] = datasets
+    return algorithms
 
 
 def prepare_tau_en_ratio_data(
@@ -118,44 +262,64 @@ def prepare_tau_en_ratio_data(
     elif resolution_type == 'IQR':
         ratio_means = np.array([np.median(ratio) for ratio in ratio_values])
         ratio_std = np.array([(np.quantile(ratio, 0.75) - np.quantile(ratio, 0.25)) for ratio in ratio_values])
-    return ratio_means, ratio_std, bin_centers
+    return ratio_means, ratio_std, bin_centers, ratio_values
 
 
-def prepare_resolution_plot_data(
+def prepare_tau_pt_ratio_data(
     sample_data: ak.Array,
     resolution_type: str,
     cfg: DictConfig
 ):
-    """ Prepares the data for the resolution plotting
-
-    Args:
-        sample_data : ak.Array
-            The input data
-        resolution_type : str
-            Either 'std' or 'IQR'.
-        cfg : DictConfig
-            Configuration
-
-    Returns:
-        resolutions : np.array
-            The resulting resolutions
-        gen_tau_pt : np.array
-            The bin centers for the resolutions
-    """
-    gen_vis_tau_pt = g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
     reco_gen_pt_ratio = g.reinitialize_p4(sample_data.tau_p4s).pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
+    gen_vis_tau_pt = g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-    binned_gen_tau_pt = np.digitize(gen_vis_tau_pt, bins=bin_edges)
+    binned_gen_tau_pt = np.digitize(gen_vis_tau_pt, bins=bin_edges)  # Biggest idx is overflow
     ratio_values = [reco_gen_pt_ratio[binned_gen_tau_pt == bin_idx].to_numpy() for bin_idx in range(1, len(bin_edges))]
     if resolution_type == 'std':
-        resolutions = np.array([np.std(ratio) / np.mean(ratio) for ratio in ratio_values])
+        ratio_means = np.array([np.mean(ratio) for ratio in ratio_values])
+        ratio_std = np.array([np.std(ratio) for ratio in ratio_values])
     elif resolution_type == 'IQR':
-        resolutions = np.array(
-            [(np.quantile(ratio, 0.75) - np.quantile(ratio, 0.25)) / np.median(ratio) for ratio in ratio_values]
-        )
-    resolutions *= 100
-    return resolutions, bin_centers
+        ratio_means = np.array([np.median(ratio) for ratio in ratio_values])
+        ratio_std = np.array([(np.quantile(ratio, 0.75) - np.quantile(ratio, 0.25)) for ratio in ratio_values])
+    return ratio_means, ratio_std, bin_centers, ratio_values
+
+
+# def prepare_resolution_plot_data(
+#     sample_data: ak.Array,
+#     resolution_type: str,
+#     cfg: DictConfig
+# ):
+#     """ Prepares the data for the resolution plotting
+
+#     Args:
+#         sample_data : ak.Array
+#             The input data
+#         resolution_type : str
+#             Either 'std' or 'IQR'.
+#         cfg : DictConfig
+#             Configuration
+
+#     Returns:
+#         resolutions : np.array
+#             The resulting resolutions
+#         gen_tau_pt : np.array
+#             The bin centers for the resolutions
+#     """
+#     gen_vis_tau_pt = g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
+#     reco_gen_pt_ratio = g.reinitialize_p4(sample_data.tau_p4s).pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
+#     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
+#     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+#     binned_gen_tau_pt = np.digitize(gen_vis_tau_pt, bins=bin_edges)
+#     ratio_values = [reco_gen_pt_ratio[binned_gen_tau_pt == bin_idx].to_numpy() for bin_idx in range(1, len(bin_edges))]
+#     if resolution_type == 'std':
+#         resolutions = np.array([np.std(ratio) / np.mean(ratio) for ratio in ratio_values])
+#     elif resolution_type == 'IQR':
+#         resolutions = np.array(
+#             [(np.quantile(ratio, 0.75) - np.quantile(ratio, 0.25)) / np.median(ratio) for ratio in ratio_values]
+#         )
+#     resolutions *= 100
+#     return resolutions, bin_centers
 
 
 

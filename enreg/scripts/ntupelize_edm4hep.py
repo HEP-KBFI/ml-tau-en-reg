@@ -23,7 +23,8 @@ def process_single_file(
 ):
     file_name = os.path.basename(input_path).replace(".root", ".parquet")
     output_ntuple_path = os.path.join(output_dir, file_name)
-    if not os.path.exists(output_ntuple_path):
+    # if not os.path.exists(output_ntuple_path):
+    if True:
         start_time = time.time()
         remove_bkg = cfg.samples[sample].is_signal
         arrays = nt.load_single_file_contents(input_path, cfg.tree_path, cfg.branches)
@@ -44,7 +45,7 @@ def process_all_input_files(cfg: DictConfig) -> None:
         os.makedirs(output_dir, exist_ok=True)
         input_wcp = os.path.join(input_dir, "*.root")
         if cfg.test_run:
-            n_files = 10
+            n_files = 3
         else:
             n_files = None
         input_paths = glob.glob(input_wcp)[:n_files]

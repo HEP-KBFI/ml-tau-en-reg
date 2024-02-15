@@ -23,7 +23,7 @@ def main(cfg: DictConfig) -> None:
                 mask = (unmasked_data.gen_jet_tau_vis_energy > 1) * (unmasked_data.tauClassifier > wp_value)
                 sample_data[sample] = unmasked_data[mask]
             dataset_info[dataset] = sample_data
-        algorithm_info["HPS"] = dataset_info
+        algorithm_info[algorithm] = dataset_info
     er.plot_energy_regression(algorithm_info, cfg)
 
 

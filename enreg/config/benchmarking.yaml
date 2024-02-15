@@ -1,4 +1,4 @@
-output_dir: /home/laurits/tmp/results2
+output_dir: /home/laurits/tmp/20240215_enreg_metrics
 plot_samples_separately: True
 gen_E_type: gen_vis_tau_E
 load_from_json: False
@@ -7,7 +7,7 @@ comparison_datasets:
 comparison_samples:
   - ZH_Htautau
   - Z_Ztautau
-n_comparison_files: 10
+n_comparison_files: -1
 defaults:
   - metrics: metrics
   - _self_
