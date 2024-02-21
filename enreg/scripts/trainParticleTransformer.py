@@ -40,14 +40,18 @@ def train_loop(
 ):
     num_jets_train = len(dataloader_train.dataset)
     loss_train = 0.0
-    loss_normalization_train = 0.0
+    normalization = 0.0
     if not is_energy_regression:
         accuracy_train = 0.0
         accuracy_normalization_train = 0.0
         class_true_train = []
         class_pred_train = []
     else:
-        reco_gen_ratios = []
+        mean_reco_gen_ratio = 0.0
+        median_reco_gen_ratio = 0.0
+        stdev_reco_gen_ratio = 0.0
+        iqr_reco_gen_ratio = 0.0
+        # reco_gen_ratios = []
     #     mean_absolute_errors = []
     #     mean_squared_errors = []
     #     root_mean_squared_errors = []
@@ -68,7 +72,7 @@ def train_loop(
         
         y = y.to(device=dev)
         weight = weight.to(device=dev)
-        pred = model(x, v, mask).to(device=dev)
+        pred = model(x, v, mask).to(device=dev)[:,0]
 
         loss = None
         if use_per_jet_weights:
@@ -77,15 +81,19 @@ def train_loop(
         else:
             loss = loss_fn(pred, y)
         loss_train += loss.sum().item()
-        loss_normalization_train += torch.flatten(loss).size(dim=0)
+        normalization += torch.flatten(loss).size(dim=0)
         if not is_energy_regression:
             accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
             accuracy_train += accuracy.sum().item()
             accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
-
             class_true_train.extend(y.detach().cpu().numpy())
             class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
-        # else:
+        else:
+            ratios = pred/y
+            mean_reco_gen_ratio += torch.mean(ratios)
+            median_reco_gen_ratio += torch.median(ratios)
+            stdev_reco_gen_ratio += torch.std(ratios)
+            iqr_reco_gen_ratio += torch.quantile(ratios, 0.75) - torch.quantile(ratios, 0.25)
         #     mean_squared_errors.extend(torch.nn.functional.mse_loss())
         #     mean_absolute_errors.extend(mae_loss(predicted, actual))
 
@@ -102,8 +110,11 @@ def train_loop(
         if (idx_batch % 100) == 0 or num_jets_processed >= (num_jets_train - batchsize):
             print(" Running loss: %1.6f  [%i/%s]" % (loss.mean().item(), num_jets_processed, num_jets_train))
 
-    loss_train /= loss_normalization_train
-
+    loss_train /= normalization
+    mean_reco_gen_ratio /= normalization
+    median_reco_gen_ratio /= normalization
+    stdev_reco_gen_ratio /= normalization
+    iqr_reco_gen_ratio /= normalization
     if not is_energy_regression:
         accuracy_train /= accuracy_normalization_train
         logTrainingProgress(
@@ -122,6 +133,10 @@ def train_loop(
             idx_epoch,
             "train",
             loss_train,
+            mean_reco_gen_ratio,
+            median_reco_gen_ratio,
+            stdev_reco_gen_ratio,
+            iqr_reco_gen_ratio,
             np.array(weights_train),
         )
 
@@ -139,12 +154,17 @@ def validation_loop(
     tensorboard,
 ):
     loss_validation = 0.0
-    loss_normalization_validation = 0.0
+    normalization = 0.0
     if not is_energy_regression:
         accuracy_validation = 0.0
         accuracy_normalization_validation = 0.0
         class_true_validation = []
         class_pred_validation = []
+    else:
+        mean_reco_gen_ratio = 0.0
+        median_reco_gen_ratio = 0.0
+        stdev_reco_gen_ratio = 0.0
+        iqr_reco_gen_ratio = 0.0
     weights_validation = []
     model.eval()
     with torch.no_grad():
@@ -158,7 +178,7 @@ def validation_loop(
             # y = y.squeeze(dim=1).to(device=dev)
             weight = weight.to(device=dev)
             # weight = weight.squeeze(dim=1).to(device=dev)
-            pred = model(x, v, mask).to(device=dev)
+            pred = model(x, v, mask).to(device=dev)[:,0]
 
             if use_per_jet_weights:
                 loss = loss_fn(pred, y)
@@ -166,7 +186,7 @@ def validation_loop(
             else:
                 loss = loss_fn(pred, y).item()
             loss_validation += loss.sum().item()
-            loss_normalization_validation += torch.flatten(loss).size(dim=0)
+            normalization += torch.flatten(loss).size(dim=0)
             if not is_energy_regression:
                 accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
                 accuracy_validation += accuracy.sum().item()
@@ -175,9 +195,19 @@ def validation_loop(
                 class_true_validation.extend(y.detach().cpu().numpy())
                 class_pred_validation.extend(pred.argmax(dim=1).detach().cpu().numpy())
                 weights_validation.extend(weight.detach().cpu().numpy())
+            else:
+                ratios = pred/y
+                mean_reco_gen_ratio += torch.mean(ratios)
+                median_reco_gen_ratio += torch.median(ratios)
+                stdev_reco_gen_ratio += torch.std(ratios)
+                iqr_reco_gen_ratio += torch.quantile(ratios, 0.75) - torch.quantile(ratios, 0.25)
 
-    loss_validation /= loss_normalization_validation
 
+    loss_validation /= normalization
+    mean_reco_gen_ratio /= normalization
+    median_reco_gen_ratio /= normalization
+    stdev_reco_gen_ratio /= normalization
+    iqr_reco_gen_ratio /= normalization
 
     if not is_energy_regression:
         accuracy_validation /= accuracy_normalization_validation
@@ -197,6 +227,10 @@ def validation_loop(
             idx_epoch,
             "validation",
             loss_validation,
+            mean_reco_gen_ratio,
+            median_reco_gen_ratio,
+            stdev_reco_gen_ratio,
+            iqr_reco_gen_ratio,
             np.array(weights_validation),
         )
 
