@@ -11,8 +11,9 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
 
 class ParticleTransformerDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig):
+    def __init__(self, data: ak.Array, cfg: DictConfig, is_energy_regression: bool = False):
         self.data = data
+        self.is_energy_regression = is_energy_regression
         self.cfg = cfg
         self.preselection()
         self.num_jets = len(self.data.reco_jet_p4s)
@@ -114,7 +115,10 @@ class ParticleTransformerDataset(Dataset):
             self.weight_tensors = torch.tensor(ak.ones_like(self.data.gen_jet_tau_decaymode), dtype=torch.float32)
         else:
             self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
-        self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=int)
+        if self.is_energy_regression:
+            self.y_tensors = torch.tensor(self.data.gen_jet_tau_vis_energy, dtype=torch.float32)
+        else:
+            self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=int)
 
     def __len__(self):
         return self.num_jets
@@ -141,14 +145,14 @@ class ParticleTransformerTauBuilder:
         print("::: ParticleTransformer :::")
         self.verbosity = verbosity
         self.cfg = cfg
-        if self.cfg.builder.feature_standardization.standardize_inputs:
+        if self.cfg.feature_standardization.standardize_inputs:
             self.transform = f.FeatureStandardization(
-                method=self.cfg.builder.feature_standardization.method,
+                method=self.cfg.feature_standardization.method,
                 features=["x", "v"],
                 feature_dim=1,
                 verbosity=self.verbosity,
             )
-            self.transform.load_params(self.cfg.builder.feature_standardization.path)
+            self.transform.load_params(self.cfg.feature_standardization.path)
 
         input_dim = 7
         if self.cfg.dataset.use_pdgId:
@@ -158,7 +162,7 @@ class ParticleTransformerTauBuilder:
         #  TODO: check this out if needs a change?
         self.model = ParticleTransformer(
             input_dim=input_dim,
-            num_classes=2,
+            num_classes=2, # TODO: if regression this needs to be one
             use_pre_activation_pair=False,
             for_inference=False,  # CV: keep same as for training and apply softmax function on NN output manually
             use_amp=False,
@@ -175,7 +179,7 @@ class ParticleTransformerTauBuilder:
     def process_jets(self, data: ak.Array):
         print("::: Starting to process jets ::: ")
         dataset = ParticleTransformerDataset(data, self.cfg.dataset)
-        if self.cfg.builder.feature_standardization.standardize_inputs:
+        if self.cfg.feature_standardization.standardize_inputs:
             X = {
                 "x": dataset.x_tensors,
                 "v": dataset.v_tensors,

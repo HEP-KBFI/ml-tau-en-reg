@@ -23,8 +23,7 @@ def process_single_file(
 ):
     file_name = os.path.basename(input_path).replace(".root", ".parquet")
     output_ntuple_path = os.path.join(output_dir, file_name)
-    # if not os.path.exists(output_ntuple_path):
-    if True:
+    if not os.path.exists(output_ntuple_path):
         start_time = time.time()
         remove_bkg = cfg.samples[sample].is_signal
         arrays = nt.load_single_file_contents(input_path, cfg.tree_path, cfg.branches)

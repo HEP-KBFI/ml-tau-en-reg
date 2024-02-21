@@ -14,7 +14,6 @@ datasets_to_process:
 samples_to_process:
   - ZH_Htautau
   - Z_Ztautau
-  # - QCD  # As we are interested only in the reconstruction of tau and not in the ID, the QCD not needed
 defaults:
   - datasets: datasets
   - models: models

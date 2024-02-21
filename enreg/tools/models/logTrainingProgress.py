@@ -38,3 +38,7 @@ def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true
     tensorboard.add_scalar("F1_score/%s" % mode, F1_score, global_step=idx_epoch)
     tensorboard.add_histogram("tauClassifier_sig/%s" % mode, class_pred[class_true == 1], global_step=idx_epoch)
     tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, class_pred[class_true == 0], global_step=idx_epoch)
+
+
+def logTrainingProgress_regression(tensorboard, idx_epoch, mode, loss, weights):
+    tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)

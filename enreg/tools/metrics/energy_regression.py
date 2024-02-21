@@ -106,7 +106,7 @@ def plot_resolution(
     figsize=(16,9)
 ):
     x_label = r"$p_T^{gen}$" if variable == 'pt' else r"$E_{vis}^{gen}$"
-    y_label = r"$\frac{IQR(reco/gen)}{median(reco/gen)}$"
+    y_label = r"$\frac{IQR(reco/gen)}{q_{50}(reco/gen)}$" if resolution_type =='IQR' else r"$\frac{\sigma(reco/gen)}{\mu(reco/gen)}$"
     for sample in cfg.comparison_samples:
             fig, ax = plt.subplots(figsize=figsize)
             for dataset in cfg.comparison_datasets:
@@ -123,7 +123,7 @@ def plot_resolution(
             plt.xlabel(x_label, fontdict={"size": 20})
             plt.ylabel(y_label, fontdict={"size": 20})
             plt.grid(True, which="both")
-            plt.title(f"{sample} resolution using {resolution_type}", loc="left")
+            plt.title(f"{sample} resolution", loc="left")
             plt.legend()
             output_path = os.path.join(cfg.output_dir, f"{sample}_{resolution_type}_resolution_{variable}.png")
             plt.savefig(output_path, bbox_inches='tight')
@@ -139,7 +139,7 @@ def plot_mean(
 ):
     mean_type = 'median' if resolution_type =='IQR' else 'mean'
     x_label = r"$p_T^{gen}$" if variable == 'pt' else r"$E_{vis}^{gen}$"
-    y_label = r"$q_{50}(\frac{reco}{gen})$"
+    y_label = r"$q_{50}(\frac{reco}{gen})$" if resolution_type =='IQR' else r"$\mu(\frac{reco}{gen})$"
     for sample in cfg.comparison_samples:
             fig, ax = plt.subplots(figsize=figsize)
             for dataset in cfg.comparison_datasets:
