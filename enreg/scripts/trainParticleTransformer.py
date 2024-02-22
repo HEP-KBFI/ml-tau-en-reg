@@ -1,14 +1,15 @@
 #!/usr/bin/python3
 
-import datetime
-import hydra
+import os
+import glob
 import json
+import yaml
+import hydra
+import psutil
+import datetime
+import subprocess
 import numpy as np
 from omegaconf import DictConfig
-import os
-import psutil
-import subprocess
-import yaml
 
 import torch
 from torch import nn
@@ -16,14 +17,14 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.tensorboard import SummaryWriter
 
-from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerDataset
+from enreg.tools import general as g
+from enreg.tools.losses.FocalLoss import FocalLoss
+from enreg.tools.models.Lookahead import Lookahead
+from enreg.tools.losses.initWeights import initWeights
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from enreg.tools.data_management.features import FeatureStandardization
-from enreg.tools.losses.FocalLoss import FocalLoss
-from enreg.tools.losses.initWeights import initWeights
-from enreg.tools.models.Lookahead import Lookahead
+from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerDataset
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
-from enreg.tools import general as g
 
 
 def train_loop(
@@ -37,6 +38,7 @@ def train_loop(
     optimizer,
     lr_scheduler,
     tensorboard,
+    is_energy_regression,
 ):
     num_jets_train = len(dataloader_train.dataset)
     loss_train = 0.0
@@ -63,10 +65,6 @@ def train_loop(
         x = X["x"].to(device=dev)
         v = X["v"].to(device=dev)
         mask = X["mask"].to(device=dev)
-        #### 
-        # y = y.squeeze(dim=1).to(device=dev)
-        # weight = weight.squeeze(dim=1).to(device=dev)
-        
         y = y.to(device=dev)
         weight = weight.to(device=dev)
         pred = model(x, v, mask).to(device=dev)[:,0]
@@ -87,8 +85,6 @@ def train_loop(
             class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
         else:
             ratios.extend((pred/y).detach().cpu().numpy())
-        #     mean_squared_errors.extend(torch.nn.functional.mse_loss())
-        #     mean_absolute_errors.extend(mae_loss(predicted, actual))
 
         weights_train.extend(weight.detach().cpu().numpy())
 
@@ -145,6 +141,7 @@ def validation_loop(
     loss_fn,
     use_per_jet_weights,
     tensorboard,
+    is_energy_regression,
 ):
     loss_validation = 0.0
     normalization = 0.0
@@ -165,9 +162,7 @@ def validation_loop(
             v = X["v"].to(device=dev)
             mask = X["mask"].to(device=dev)
             y = y.to(device=dev)
-            # y = y.squeeze(dim=1).to(device=dev)
             weight = weight.to(device=dev)
-            # weight = weight.squeeze(dim=1).to(device=dev)
             pred = model(x, v, mask).to(device=dev)[:,0]
 
             if use_per_jet_weights:
@@ -248,7 +243,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             validation_paths.extend(cfg.datasets.validation[sample])
 
 
-    training_data = g.load_all_data(train_paths, n_files=3)
+    training_data = g.load_all_data(train_paths, n_files=15)
     dataset_train = ParticleTransformerDataset(
         data=training_data,
         cfg=cfg.models.ParticleTransformer.dataset,
@@ -343,7 +338,6 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             print("Using CrossEntropyLoss.")
             loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
     else:
-        # loss_fn = nn.functional.huber_loss(input, target, reduction='mean', delta=1.0)
         loss_fn = nn.HuberLoss(reduction='mean', delta=1.0)
 
     # base_optimizer = None
@@ -393,6 +387,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             optimizer,
             lr_scheduler,
             tensorboard,
+            is_energy_regression
         )
         print(" lr = %1.3e" % lr_scheduler.get_last_lr()[0])
         # print(" lr = %1.3e" % get_lr(optimizer))
@@ -407,6 +402,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             loss_fn,
             cfg.models.ParticleTransformer.training.use_per_jet_weights,
             tensorboard,
+            is_energy_regression
         )
         if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
             print("Found new best model :)")
