@@ -47,10 +47,7 @@ def train_loop(
         class_true_train = []
         class_pred_train = []
     else:
-        mean_reco_gen_ratio = 0.0
-        median_reco_gen_ratio = 0.0
-        stdev_reco_gen_ratio = 0.0
-        iqr_reco_gen_ratio = 0.0
+        ratios = []
         # reco_gen_ratios = []
     #     mean_absolute_errors = []
     #     mean_squared_errors = []
@@ -89,11 +86,7 @@ def train_loop(
             class_true_train.extend(y.detach().cpu().numpy())
             class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
         else:
-            ratios = pred/y
-            mean_reco_gen_ratio += torch.mean(ratios)
-            median_reco_gen_ratio += torch.median(ratios)
-            stdev_reco_gen_ratio += torch.std(ratios)
-            iqr_reco_gen_ratio += torch.quantile(ratios, 0.75) - torch.quantile(ratios, 0.25)
+            ratios.extend((pred/y).detach().cpu().numpy())
         #     mean_squared_errors.extend(torch.nn.functional.mse_loss())
         #     mean_absolute_errors.extend(mae_loss(predicted, actual))
 
@@ -111,10 +104,10 @@ def train_loop(
             print(" Running loss: %1.6f  [%i/%s]" % (loss.mean().item(), num_jets_processed, num_jets_train))
 
     loss_train /= normalization
-    mean_reco_gen_ratio /= normalization
-    median_reco_gen_ratio /= normalization
-    stdev_reco_gen_ratio /= normalization
-    iqr_reco_gen_ratio /= normalization
+    mean_reco_gen_ratio = np.mean(np.abs(ratios))
+    median_reco_gen_ratio = np.median(np.abs(ratios))
+    stdev_reco_gen_ratio = np.std(np.abs(ratios))
+    iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
     if not is_energy_regression:
         accuracy_train /= accuracy_normalization_train
         logTrainingProgress(
@@ -161,10 +154,7 @@ def validation_loop(
         class_true_validation = []
         class_pred_validation = []
     else:
-        mean_reco_gen_ratio = 0.0
-        median_reco_gen_ratio = 0.0
-        stdev_reco_gen_ratio = 0.0
-        iqr_reco_gen_ratio = 0.0
+        ratios = []
     weights_validation = []
     model.eval()
     with torch.no_grad():
@@ -196,18 +186,15 @@ def validation_loop(
                 class_pred_validation.extend(pred.argmax(dim=1).detach().cpu().numpy())
                 weights_validation.extend(weight.detach().cpu().numpy())
             else:
-                ratios = pred/y
-                mean_reco_gen_ratio += torch.mean(ratios)
-                median_reco_gen_ratio += torch.median(ratios)
-                stdev_reco_gen_ratio += torch.std(ratios)
-                iqr_reco_gen_ratio += torch.quantile(ratios, 0.75) - torch.quantile(ratios, 0.25)
+                ratios.extend((pred/y).detach().cpu().numpy())
 
 
     loss_validation /= normalization
-    mean_reco_gen_ratio /= normalization
-    median_reco_gen_ratio /= normalization
-    stdev_reco_gen_ratio /= normalization
-    iqr_reco_gen_ratio /= normalization
+    mean_reco_gen_ratio = np.mean(np.abs(ratios))
+    median_reco_gen_ratio = np.median(np.abs(ratios))
+    stdev_reco_gen_ratio = np.std(np.abs(ratios))
+    iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
+
 
     if not is_energy_regression:
         accuracy_validation /= accuracy_normalization_validation
