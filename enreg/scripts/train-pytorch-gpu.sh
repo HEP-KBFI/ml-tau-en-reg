@@ -4,8 +4,5 @@
 #SBATCH --mem-per-gpu=10G
 #SBATCH -o slurm-%x-%j-%N.out
 
-IMG=/home/software/singularity/pytorch.simg
-TRAINING_SCRIPT=src/endtoend_simple.py
-cd ~/ml-tau-reco
 
-singularity exec -B /scratch/persistent --nv $IMG python3 $TRAINING_SCRIPT
+apptainer run --bind /scratch/persistent/laurits --nv /home/laurits/ml-tau-en-reg/p310/kookjamoos/ python /home/laurits/ml-tau-en-reg/enreg/scripts/trainParticleTransformer.py

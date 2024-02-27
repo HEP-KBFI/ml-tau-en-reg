@@ -61,16 +61,16 @@ def plot_multiple_histograms(
 def plot_energy_regression(algorithm_info, cfg):
     plotting_input = get_plotting_input(algorithm_info, cfg)
     plot_E_gen_distribution(algorithm_info, cfg)
-    plot_mean(plotting_input, cfg, resolution_type='IQR', variable='pt')
+    # plot_mean(plotting_input, cfg, resolution_type='IQR', variable='pt')
     plot_mean(plotting_input, cfg, resolution_type='IQR', variable='E')
-    plot_mean(plotting_input, cfg, resolution_type='std', variable='pt')
+    # plot_mean(plotting_input, cfg, resolution_type='std', variable='pt')
     plot_mean(plotting_input, cfg, resolution_type='std', variable='E')
     plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='E')
-    plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='E')
-    plot_resolution(plotting_input, cfg, resolution_type='std', variable='pt')
+    # plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='pt')
+    # plot_resolution(plotting_input, cfg, resolution_type='std', variable='pt')
     plot_resolution(plotting_input, cfg, resolution_type='std', variable='E')
     plot_distribution_bin_wise(plotting_input, cfg, variable='E')
-    plot_distribution_bin_wise(plotting_input, cfg, variable='pt')
+    # plot_distribution_bin_wise(plotting_input, cfg, variable='pt')
     # ratio_distribution(algorithm_info, cfg)
 
 
@@ -218,10 +218,10 @@ def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
                     sample_data=sample_data, resolution_type='std', cfg=cfg)
                 E_ratio_medians, E_ratio_IQR, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
                     sample_data=sample_data, resolution_type='IQR', cfg=cfg)
-                pt_ratio_means, pt_ratio_std, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
-                    sample_data=sample_data, resolution_type='std', cfg=cfg)
-                pt_ratio_medians, pt_ratio_IQR, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
-                    sample_data=sample_data, resolution_type='IQR', cfg=cfg)
+                # pt_ratio_means, pt_ratio_std, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
+                    # sample_data=sample_data, resolution_type='std', cfg=cfg)
+                # pt_ratio_medians, pt_ratio_IQR, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
+                    # sample_data=sample_data, resolution_type='IQR', cfg=cfg)
                 samples[sample_name] = {
                     "E_ratio_means": E_ratio_means,
                     "E_ratio_values": E_ratio_values,
@@ -231,14 +231,14 @@ def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
                     "E_ratio_IQR": E_ratio_IQR,
                     "E_resolution_w_IQR": E_ratio_IQR/E_ratio_medians,
                     "E_bin_centers": E_bin_centers,
-                    "pt_ratio_means": pt_ratio_means,
-                    "pt_ratio_values": pt_ratio_values,
-                    "pt_ratio_std": pt_ratio_std,
-                    "pt_resolution_w_std": pt_ratio_std/pt_ratio_means,
-                    "pt_ratio_medians": pt_ratio_medians,
-                    "pt_ratio_IQR": pt_ratio_IQR,
-                    "pt_resolution_w_IQR": pt_ratio_IQR/pt_ratio_medians,
-                    "pt_bin_centers": pt_bin_centers,
+                    # "pt_ratio_means": pt_ratio_means,
+                    # "pt_ratio_values": pt_ratio_values,
+                    # "pt_ratio_std": pt_ratio_std,
+                    # "pt_resolution_w_std": pt_ratio_std/pt_ratio_means,
+                    # "pt_ratio_medians": pt_ratio_medians,
+                    # "pt_ratio_IQR": pt_ratio_IQR,
+                    # "pt_resolution_w_IQR": pt_ratio_IQR/pt_ratio_medians,
+                    # "pt_bin_centers": pt_bin_centers,
                 }
             datasets[dataset_name] = samples
         algorithms[algorithm_name] = datasets
@@ -250,7 +250,10 @@ def prepare_tau_en_ratio_data(
     resolution_type: str,
     cfg: DictConfig
 ):
-    reco_gen_E_ratio = g.reinitialize_p4(sample_data.tau_p4s).energy / sample_data.gen_jet_tau_vis_energy
+    if 'tau_vis_energy' not in sample_data.fields:
+        reco_gen_E_ratio = g.reinitialize_p4(sample_data.tau_p4s).energy / sample_data.gen_jet_tau_vis_energy
+    else:
+        reco_gen_E_ratio = sample_data.tau_vis_energy / sample_data.gen_jet_tau_vis_energy
     gen_vis_tau_E = sample_data.gen_jet_tau_vis_energy
     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2

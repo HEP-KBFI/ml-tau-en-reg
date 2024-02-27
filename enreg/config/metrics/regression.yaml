@@ -8,9 +8,9 @@ regression:
       Tight: 0.975
   algorithms:
     ParticleTransformer:
-      ntuples_dir: /foo/bar  # Actually we need only signal sample ntuples. Could be both ZH_Htautau and Z_Ztautau
+      ntuples_dir: /home/laurits/240223_ParticleTransformer/ParticleTransformer
       json_metrics_dir: /foo/bar
-      compare: False
+      compare: True
       marker: "v"
       hatch: "//"
       color: "tab:purple"

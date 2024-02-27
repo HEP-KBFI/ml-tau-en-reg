@@ -1,5 +1,5 @@
 verbosity: 1
-output_dir: /home/laurits/tmp/PT_training
+output_dir: /home/laurits/240226_correction_regression
 samples_to_use:
   - ZH_Htautau
   # - Z_Ztautau # As there are no Z_Ztautau files in the training dataset

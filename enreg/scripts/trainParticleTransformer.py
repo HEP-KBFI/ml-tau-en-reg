@@ -26,6 +26,27 @@ from enreg.tools.data_management.features import FeatureStandardization
 from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerDataset
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
 
+import time
+
+
+class EarlyStopper:
+    def __init__(self, patience=1, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = float('inf')
+
+    def early_stop(self, validation_loss):
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > (self.min_validation_loss + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+
+
 
 def train_loop(
     idx_epoch,
@@ -40,6 +61,7 @@ def train_loop(
     tensorboard,
     is_energy_regression,
 ):
+    print("::::: TRAIN LOOP :::::")
     num_jets_train = len(dataloader_train.dataset)
     loss_train = 0.0
     normalization = 0.0
@@ -60,6 +82,7 @@ def train_loop(
     model.train()
     for idx_batch, (X, y, weight) in enumerate(dataloader_train):
         # Compute prediction and loss
+        print(f"batch idx: {idx_batch}")
         if transform:
             X = transform(X)
         x = X["x"].to(device=dev)
@@ -69,12 +92,18 @@ def train_loop(
         weight = weight.to(device=dev)
         pred = model(x, v, mask).to(device=dev)[:,0]
 
+        print("arrived post-pred")
+        # Predict the correction, not the full visible energy
+        jet_energy = X["reco_jet_energy"].to(device=dev)
+        pred += jet_energy
+
         loss = None
         if use_per_jet_weights:
             loss = loss_fn(pred, y)
             loss = loss * weight
         else:
             loss = loss_fn(pred, y)
+        print("Loss calculated")
         loss_train += loss.sum().item()
         normalization += torch.flatten(loss).size(dim=0)
         if not is_energy_regression:
@@ -89,11 +118,12 @@ def train_loop(
         weights_train.extend(weight.detach().cpu().numpy())
 
         # Backpropagation
+        print("Begin backprop")
         optimizer.zero_grad()
         loss.mean().backward()
         optimizer.step()
         lr_scheduler.step()
-
+        print("Backprop done")
         batchsize = pred.size(dim=0)
         num_jets_processed = min((idx_batch + 1) * batchsize, num_jets_train)
         if (idx_batch % 100) == 0 or num_jets_processed >= (num_jets_train - batchsize):
@@ -104,6 +134,7 @@ def train_loop(
     median_reco_gen_ratio = np.median(np.abs(ratios))
     stdev_reco_gen_ratio = np.std(np.abs(ratios))
     iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
+    print("start logging")
     if not is_energy_regression:
         accuracy_train /= accuracy_normalization_train
         logTrainingProgress(
@@ -128,6 +159,7 @@ def train_loop(
             iqr_reco_gen_ratio,
             np.array(weights_train),
         )
+    print("end logging")
 
     return loss_train
 
@@ -143,6 +175,7 @@ def validation_loop(
     tensorboard,
     is_energy_regression,
 ):
+    print("::::: VALIDATION LOOP :::::")
     loss_validation = 0.0
     normalization = 0.0
     if not is_energy_regression:
@@ -156,6 +189,7 @@ def validation_loop(
     model.eval()
     with torch.no_grad():
         for idx_batch, (X, y, weight) in enumerate(dataloader_validation):
+            print(f"batch idx: {idx_batch}")
             if transform:
                 X = transform(X)
             x = X["x"].to(device=dev)
@@ -164,12 +198,16 @@ def validation_loop(
             y = y.to(device=dev)
             weight = weight.to(device=dev)
             pred = model(x, v, mask).to(device=dev)[:,0]
-
+            print("Prediction done")
+            # Predict the correction, not the full visible energy
+            jet_energy = X["reco_jet_energy"].to(device=dev)
+            pred += jet_energy
             if use_per_jet_weights:
                 loss = loss_fn(pred, y)
                 loss = loss * weight
             else:
                 loss = loss_fn(pred, y).item()
+            print("Loss calculated")
             loss_validation += loss.sum().item()
             normalization += torch.flatten(loss).size(dim=0)
             if not is_energy_regression:
@@ -183,14 +221,13 @@ def validation_loop(
             else:
                 ratios.extend((pred/y).detach().cpu().numpy())
 
-
     loss_validation /= normalization
     mean_reco_gen_ratio = np.mean(np.abs(ratios))
     median_reco_gen_ratio = np.median(np.abs(ratios))
     stdev_reco_gen_ratio = np.std(np.abs(ratios))
     iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
 
-
+    print("start logging")
     if not is_energy_regression:
         accuracy_validation /= accuracy_normalization_validation
         logTrainingProgress(
@@ -215,6 +252,7 @@ def validation_loop(
             iqr_reco_gen_ratio,
             np.array(weights_validation),
         )
+    print("end logging")
 
     return loss_validation
 
@@ -243,13 +281,13 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             validation_paths.extend(cfg.datasets.validation[sample])
 
 
-    training_data = g.load_all_data(train_paths, n_files=15)
+    training_data = g.load_all_data(train_paths, n_files=cfg.models.ParticleTransformer.training.max_num_files)
     dataset_train = ParticleTransformerDataset(
         data=training_data,
         cfg=cfg.models.ParticleTransformer.dataset,
         is_energy_regression=is_energy_regression
     )
-    validation_data = g.load_all_data(validation_paths, n_files=3)
+    validation_data = g.load_all_data(validation_paths, n_files=cfg.models.ParticleTransformer.training.max_num_files)
     dataset_validation = ParticleTransformerDataset(
         data=validation_data,
         cfg=cfg.models.ParticleTransformer.dataset,
@@ -320,7 +358,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
         transform.compute_params(dataloader_train)
         transform.save_params(cfg.models.ParticleTransformer.feature_standardization.path)
 
-
+    # Actually in regression I think this is not needed, maybe only for different samples differently
     if cfg.models.ParticleTransformer.lrfinder.use_class_weights:
         classweight_bgr = cfg.models.ParticleTransformer.lrfinder.classweight_bgr
         classweight_sig = cfg.models.ParticleTransformer.lrfinder.classweight_sig
@@ -372,6 +410,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     print(" current time:", datetime.datetime.now())
     tensorboard = SummaryWriter(os.path.join(cfg.output_dir, f"tensorboard_{datetime.datetime.now()}"))
     min_loss_validation = -1.0
+    # early_stopper = EarlyStopper(patience=100, min_delta=0.01)
     for idx_epoch in range(cfg.models.ParticleTransformer.training.num_epochs):
         print("Processing epoch #%i" % idx_epoch)
         print(" current time:", datetime.datetime.now())
@@ -404,6 +443,8 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             tensorboard,
             is_energy_regression
         )
+
+
         if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
             print("Found new best model :)")
             best_model_file = cfg.models.ParticleTransformer.training.model_file.replace(".pt", "_best.pt")
@@ -412,17 +453,18 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             torch.save(model.state_dict(), best_model_output_path)
             print("Done.")
             min_loss_validation = loss_validation
-
         print("System utilization:")
         process = psutil.Process(os.getpid())
         cpu_percent = process.cpu_percent(interval=1)
         print(" CPU-Util = %1.2f%%" % cpu_percent)
         print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
-        if dev == "cuda":
-            print("GPU:")
-            run_command("nvidia-smi --id=%i" % torch.cuda.current_device())
-        else:
-            print("GPU: N/A")
+        # if dev == "cuda":
+        #     print("GPU:")
+        #     run_command("nvidia-smi --id=%i" % torch.cuda.current_device())
+        # else:
+        #     print("GPU: N/A")
+        # if early_stopper.early_stop(loss_validation):
+        #     break
     print("Finished training.")
     print("Current time:", datetime.datetime.now())
 
