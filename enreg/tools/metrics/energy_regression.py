@@ -1,12 +1,13 @@
 import os
+import json
+import mplhep as hep
 import numpy as np
 import awkward as ak
-from omegaconf import DictConfig
-import mplhep as hep
 import matplotlib.pyplot as plt
+from omegaconf import DictConfig
 import matplotlib.colors as colors
-from enreg.tools.visualization import base as b
 from enreg.tools import general as g
+from enreg.tools.visualization import base as b
 
 hep.style.use(hep.styles.CMS)
 
@@ -60,6 +61,12 @@ def plot_multiple_histograms(
 
 def plot_energy_regression(algorithm_info, cfg):
     plotting_input = get_plotting_input(algorithm_info, cfg)
+    for algorithm, properties in cfg.metrics.regression.algorithms.items():
+        if properties.load_from_json:
+            with open(properties.json_metrics_path, 'rt') as in_file:
+                plotting_input.update(json.load(in_file)[algorithm])
+    json_output_path = output_path = os.path.join(cfg.output_dir, 'plotting_data.json')
+    g.save_to_json(plotting_input, json_output_path)
     plot_E_gen_distribution(algorithm_info, cfg)
     # plot_mean(plotting_input, cfg, resolution_type='IQR', variable='pt')
     plot_mean(plotting_input, cfg, resolution_type='IQR', variable='E')
@@ -213,6 +220,8 @@ def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
         for dataset_name, dataset_values in algorithm_values.items():
             samples = {}
             for sample_name, sample_data in dataset_values.items():
+                gen_p4s = g.reinitialize_p4(sample_data.gen_jet_tau_p4s)
+                sample_data = sample_data[gen_p4s.pt > 15]
                 label = f"{algorithm_name}: {sample_name}"
                 E_ratio_means, E_ratio_std, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
                     sample_data=sample_data, resolution_type='std', cfg=cfg)
@@ -253,7 +262,7 @@ def prepare_tau_en_ratio_data(
     if 'tau_vis_energy' not in sample_data.fields:
         reco_gen_E_ratio = g.reinitialize_p4(sample_data.tau_p4s).energy / sample_data.gen_jet_tau_vis_energy
     else:
-        reco_gen_E_ratio = sample_data.tau_vis_energy / sample_data.gen_jet_tau_vis_energy
+        reco_gen_E_ratio = (sample_data.tau_vis_energy + g.reinitialize_p4(sample_data.reco_jet_p4s).energy) / sample_data.gen_jet_tau_vis_energy  # TODO: Here rever to only tau_vis_energy when the ntupelizer writing is done in the new way
     gen_vis_tau_E = sample_data.gen_jet_tau_vis_energy
     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2

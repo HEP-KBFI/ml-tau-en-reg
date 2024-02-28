@@ -1,12 +1,12 @@
 builder: ParticleTransformer #HPS
 builder_task: regression  # or classification
-output_dir: /home/laurits/240223_ParticleTransformer #/scratch/persistent/laurits/20240302_Initial_run
+output_dir: /home/laurits/240227_PT_correction_ntuples_v2 #/scratch/persistent/laurits/20240302_Initial_run
 PT_tauID_ntuple_dir: /scratch/persistent/laurits/PT_tauID_ntuples
 n_files: -1
 slurm_run: False
 verbosity: 0
 use_multiprocessing: False
-use_slurm: False
+use_slurm: True
 datasets_to_process:
   - test
   - train

@@ -119,6 +119,8 @@ class ParticleTransformerDataset(Dataset):
             self.y_tensors = torch.tensor(self.data.gen_jet_tau_vis_energy, dtype=torch.float32)
         else:
             self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=int)
+        self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
+        self.reco_jet_energy = torch.tensor(self.jet_p4s.energy, dtype=torch.float32)
 
     def __len__(self):
         return self.num_jets
@@ -132,8 +134,8 @@ class ParticleTransformerDataset(Dataset):
                     "x": self.x_tensors[idx],
                     "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
                     "mask": self.node_mask_tensors[idx],
-                    "reco_jet_pt": torch.tensor(self.jet_p4s.pt, dtype=torch.float32)[idx],
-                    "reco_jet_energy": torch.tensor(self.jet_p4s.energy, dtype=torch.float32)[idx],
+                    "reco_jet_pt": self.reco_jet_pt[idx],
+                    "reco_jet_energy": self.reco_jet_energy[idx],
                 },
                 self.y_tensors[idx],
                 self.weight_tensors[idx],

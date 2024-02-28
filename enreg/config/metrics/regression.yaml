@@ -8,15 +8,17 @@ regression:
       Tight: 0.975
   algorithms:
     ParticleTransformer:
-      ntuples_dir: /home/laurits/240223_ParticleTransformer/ParticleTransformer
-      json_metrics_dir: /foo/bar
+      ntuples_dir: /home/laurits/240227_PT_correction_ntuples_v2/ParticleTransformer
+      json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
+      load_from_json: False
       compare: True
       marker: "v"
       hatch: "//"
       color: "tab:purple"
     HPS:
       ntuples_dir: /scratch/persistent/laurits/20240302_Initial_run/HPS
-      json_metrics_dir: /foo/bar
+      json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
+      load_from_json: False
       compare: True
       marker: "o"
       hatch: '\\\\'

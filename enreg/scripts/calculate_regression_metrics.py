@@ -10,7 +10,7 @@ def main(cfg: DictConfig) -> None:
     os.makedirs(os.path.expandvars(cfg.output_dir), exist_ok=True)
     algorithm_info = {}
     for algorithm, properties in cfg.metrics.regression.algorithms.items():
-        if not properties.compare:
+        if not properties.compare or properties.load_from_json:
             continue
         ntuples_dir = properties.ntuples_dir
         dataset_info = {}

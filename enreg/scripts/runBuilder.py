@@ -25,11 +25,11 @@ def build_taus(cfg: DictConfig) -> None:
         input_paths = []
         with open(cfg.input_file, 'rt') as inFile:
             for line in inFile:
-                input_paths.append(line)
+                input_paths.append(line.strip('\n'))
         output_paths = []
         with open(cfg.output_file, 'rt') as inFile:
             for line in inFile:
-                output_paths.append(line)
+                output_paths.append(line.strip('\n'))
         for input_path, output_path in zip(input_paths, output_paths):
             tbt.process_single_file(input_path, builder, output_path)
     else:
@@ -57,11 +57,10 @@ def build_taus(cfg: DictConfig) -> None:
                 input_paths.extend(sample_input_paths)
                 output_paths.extend(sample_output_paths)
         if cfg.use_multiprocessing:
-            if not cfg.use_slurm:
-                pool = multiprocessing.Pool(processes=13)
-                pool.starmap(tbt.process_single_file, zip(input_paths, repeat(builder), output_paths))
-            else:
-                tbt.multipath_slurm_tau_builder(input_paths, output_paths)
+            pool = multiprocessing.Pool(processes=13)
+            pool.starmap(tbt.process_single_file, zip(input_paths, repeat(builder), output_paths))
+        elif cfg.use_slurm:
+            tbt.multipath_slurm_tau_builder(input_paths, output_paths)
         else:
             for input_path, output_path in zip(input_paths, output_paths):
                 tbt.process_single_file(input_path=input_path, builder=builder, output_path=output_path)

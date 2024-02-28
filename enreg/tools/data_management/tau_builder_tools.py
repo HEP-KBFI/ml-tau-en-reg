@@ -1,6 +1,6 @@
 import os
 import enreg
-import subprocess
+# import subprocess
 import numpy as np
 import awkward as ak
 from textwrap import dedent
@@ -23,13 +23,14 @@ def process_single_file(input_path: str, builder, output_path: str) -> None:
 
 def multipath_slurm_tau_builder(input_paths, output_paths, batch_size=10):
     output_dir = st.create_tmp_run_dir()
+    print(f"Temporary directory created to {output_dir}")
     number_batches = int(len(input_paths) / batch_size) + 1
     input_path_chunks = list(np.array_split(input_paths, number_batches))
     output_path_chunks = list(np.array_split(output_paths, number_batches))
     input_file_paths, output_file_paths = create_job_input_list(input_path_chunks, output_path_chunks, output_dir)
     for job_idx, (input_file_path, output_file_path) in enumerate(zip(input_file_paths, output_file_paths)):
         job_file = prepare_job_file(input_file_path, output_file_path, job_idx, output_dir)
-        subprocess.call(["sbatch", job_file])
+        # subprocess.call(["sbatch", job_file])
     # wait_iteration()
 
 
@@ -96,6 +97,6 @@ def prepare_job_file(
                 #SBATCH -o {log_file}
                 env
                 date
-                python {run_script} slurm_run=True +input_file={input_file} +output_file {output_file}
+                apptainer exec -B /scratch/persistent/laurits --env PYTHONPATH=/home/laurits/ml-tau-en-reg /home/software/singularity/pytorch.simg\:2024-02-13 python {run_script} slurm_run=True +input_file={input_file} +output_file={output_file}
             """).strip('\n'))
     return job_file

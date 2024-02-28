@@ -82,7 +82,6 @@ def train_loop(
     model.train()
     for idx_batch, (X, y, weight) in enumerate(dataloader_train):
         # Compute prediction and loss
-        print(f"batch idx: {idx_batch}")
         if transform:
             X = transform(X)
         x = X["x"].to(device=dev)
@@ -92,10 +91,10 @@ def train_loop(
         weight = weight.to(device=dev)
         pred = model(x, v, mask).to(device=dev)[:,0]
 
-        print("arrived post-pred")
         # Predict the correction, not the full visible energy
         jet_energy = X["reco_jet_energy"].to(device=dev)
-        pred += jet_energy
+        pred *= jet_energy
+        # pred += jet_energy
 
         loss = None
         if use_per_jet_weights:
@@ -103,7 +102,6 @@ def train_loop(
             loss = loss * weight
         else:
             loss = loss_fn(pred, y)
-        print("Loss calculated")
         loss_train += loss.sum().item()
         normalization += torch.flatten(loss).size(dim=0)
         if not is_energy_regression:
@@ -118,12 +116,10 @@ def train_loop(
         weights_train.extend(weight.detach().cpu().numpy())
 
         # Backpropagation
-        print("Begin backprop")
         optimizer.zero_grad()
         loss.mean().backward()
         optimizer.step()
         lr_scheduler.step()
-        print("Backprop done")
         batchsize = pred.size(dim=0)
         num_jets_processed = min((idx_batch + 1) * batchsize, num_jets_train)
         if (idx_batch % 100) == 0 or num_jets_processed >= (num_jets_train - batchsize):
@@ -134,7 +130,6 @@ def train_loop(
     median_reco_gen_ratio = np.median(np.abs(ratios))
     stdev_reco_gen_ratio = np.std(np.abs(ratios))
     iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
-    print("start logging")
     if not is_energy_regression:
         accuracy_train /= accuracy_normalization_train
         logTrainingProgress(
@@ -159,7 +154,6 @@ def train_loop(
             iqr_reco_gen_ratio,
             np.array(weights_train),
         )
-    print("end logging")
 
     return loss_train
 
@@ -189,7 +183,6 @@ def validation_loop(
     model.eval()
     with torch.no_grad():
         for idx_batch, (X, y, weight) in enumerate(dataloader_validation):
-            print(f"batch idx: {idx_batch}")
             if transform:
                 X = transform(X)
             x = X["x"].to(device=dev)
@@ -198,16 +191,15 @@ def validation_loop(
             y = y.to(device=dev)
             weight = weight.to(device=dev)
             pred = model(x, v, mask).to(device=dev)[:,0]
-            print("Prediction done")
             # Predict the correction, not the full visible energy
             jet_energy = X["reco_jet_energy"].to(device=dev)
-            pred += jet_energy
+            pred *= jet_energy
+            # pred += jet_energy
             if use_per_jet_weights:
                 loss = loss_fn(pred, y)
                 loss = loss * weight
             else:
                 loss = loss_fn(pred, y).item()
-            print("Loss calculated")
             loss_validation += loss.sum().item()
             normalization += torch.flatten(loss).size(dim=0)
             if not is_energy_regression:
@@ -227,7 +219,6 @@ def validation_loop(
     stdev_reco_gen_ratio = np.std(np.abs(ratios))
     iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
 
-    print("start logging")
     if not is_energy_regression:
         accuracy_validation /= accuracy_normalization_validation
         logTrainingProgress(
@@ -252,7 +243,6 @@ def validation_loop(
             iqr_reco_gen_ratio,
             np.array(weights_validation),
         )
-    print("end logging")
 
     return loss_validation
 
