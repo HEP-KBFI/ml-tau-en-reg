@@ -1,2 +1,2 @@
 #!/bin/bash
-singularity exec -B /local/ -B /scratch/persistent /home/software/singularity/pytorch.simg "$@"
+apptainer exec -B /scratch/persistent/laurits --env PYTHONPATH=`pwd` /home/software/singularity/pytorch.simg\:2024-02-13  "$@"

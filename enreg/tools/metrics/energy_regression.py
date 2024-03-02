@@ -68,17 +68,23 @@ def plot_energy_regression(algorithm_info, cfg):
     json_output_path = output_path = os.path.join(cfg.output_dir, 'plotting_data.json')
     g.save_to_json(plotting_input, json_output_path)
     plot_E_gen_distribution(algorithm_info, cfg)
+    # plot_mean(plotting_input, cfg, resolution_type='IQR', variable='E')
+    # plot_mean(plotting_input, cfg, resolution_type='std', variable='E')
+    # plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='E')
+    # plot_resolution(plotting_input, cfg, resolution_type='std', variable='E')
+    # plot_distribution_bin_wise(plotting_input, cfg, variable='E')
     # plot_mean(plotting_input, cfg, resolution_type='IQR', variable='pt')
-    plot_mean(plotting_input, cfg, resolution_type='IQR', variable='E')
     # plot_mean(plotting_input, cfg, resolution_type='std', variable='pt')
-    plot_mean(plotting_input, cfg, resolution_type='std', variable='E')
-    plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='E')
-    # plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='pt')
     # plot_resolution(plotting_input, cfg, resolution_type='std', variable='pt')
-    plot_resolution(plotting_input, cfg, resolution_type='std', variable='E')
-    plot_distribution_bin_wise(plotting_input, cfg, variable='E')
+    # plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='pt')
     # plot_distribution_bin_wise(plotting_input, cfg, variable='pt')
     # ratio_distribution(algorithm_info, cfg)
+    plot_ATLAS_resolution(
+        plotting_input['HPS']['test']['ZH_Htautau']["pt_bin_centers"],
+        plotting_input['HPS']['test']['ZH_Htautau']["pt_resolution_w_std"],
+        plotting_input['HPS']['test']['ZH_Htautau']["pt_resolution_w_IQR"],
+        cfg
+    )
 
 
 def plot_distribution_bin_wise(plotting_input, cfg, variable, figsize=(12,12)):
@@ -220,34 +226,40 @@ def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
         for dataset_name, dataset_values in algorithm_values.items():
             samples = {}
             for sample_name, sample_data in dataset_values.items():
-                gen_p4s = g.reinitialize_p4(sample_data.gen_jet_tau_p4s)
-                sample_data = sample_data[gen_p4s.pt > 15]
+                gen_tau_p4s = g.reinitialize_p4(sample_data.gen_jet_tau_p4s)
+                gen_jet_p4s = g.reinitialize_p4(sample_data.gen_jet_p4s)
+                pred_tau_p4s = g.reinitialize_p4(sample_data.tau_p4s)
+                gen_pt_mask = gen_jet_p4s.pt > 15
+                ratio_mask = np.abs(gen_tau_p4s.pt/gen_jet_p4s.pt - 1) < 0.2
+                prediction_mask = pred_tau_p4s.pt > 1
+                sample_data = sample_data[gen_pt_mask * ratio_mask * prediction_mask]
                 label = f"{algorithm_name}: {sample_name}"
-                E_ratio_means, E_ratio_std, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
+
+                # E_ratio_means, E_ratio_std, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
+                #     sample_data=sample_data, resolution_type='std', cfg=cfg)
+                # E_ratio_medians, E_ratio_IQR, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
+                #     sample_data=sample_data, resolution_type='IQR', cfg=cfg)
+                pt_ratio_means, pt_ratio_std, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
                     sample_data=sample_data, resolution_type='std', cfg=cfg)
-                E_ratio_medians, E_ratio_IQR, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
+                pt_ratio_medians, pt_ratio_IQR, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
                     sample_data=sample_data, resolution_type='IQR', cfg=cfg)
-                # pt_ratio_means, pt_ratio_std, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
-                    # sample_data=sample_data, resolution_type='std', cfg=cfg)
-                # pt_ratio_medians, pt_ratio_IQR, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
-                    # sample_data=sample_data, resolution_type='IQR', cfg=cfg)
                 samples[sample_name] = {
-                    "E_ratio_means": E_ratio_means,
-                    "E_ratio_values": E_ratio_values,
-                    "E_ratio_std": E_ratio_std,
-                    "E_resolution_w_std": E_ratio_std/E_ratio_means,
-                    "E_ratio_medians": E_ratio_medians,
-                    "E_ratio_IQR": E_ratio_IQR,
-                    "E_resolution_w_IQR": E_ratio_IQR/E_ratio_medians,
-                    "E_bin_centers": E_bin_centers,
-                    # "pt_ratio_means": pt_ratio_means,
-                    # "pt_ratio_values": pt_ratio_values,
-                    # "pt_ratio_std": pt_ratio_std,
-                    # "pt_resolution_w_std": pt_ratio_std/pt_ratio_means,
-                    # "pt_ratio_medians": pt_ratio_medians,
-                    # "pt_ratio_IQR": pt_ratio_IQR,
-                    # "pt_resolution_w_IQR": pt_ratio_IQR/pt_ratio_medians,
-                    # "pt_bin_centers": pt_bin_centers,
+                    # "E_ratio_means": E_ratio_means,
+                    # "E_ratio_values": E_ratio_values,
+                    # "E_ratio_std": E_ratio_std,
+                    # "E_resolution_w_std": E_ratio_std/E_ratio_means,
+                    # "E_ratio_medians": E_ratio_medians,
+                    # "E_ratio_IQR": E_ratio_IQR,
+                    # "E_resolution_w_IQR": E_ratio_IQR/E_ratio_medians,
+                    # "E_bin_centers": E_bin_centers,
+                    "pt_ratio_means": pt_ratio_means,
+                    "pt_ratio_values": pt_ratio_values,
+                    "pt_ratio_std": pt_ratio_std,
+                    "pt_resolution_w_std": pt_ratio_std/pt_ratio_means,
+                    "pt_ratio_medians": pt_ratio_medians,
+                    "pt_ratio_IQR": pt_ratio_IQR,
+                    "pt_resolution_w_IQR": pt_ratio_IQR/pt_ratio_medians,
+                    "pt_bin_centers": pt_bin_centers,
                 }
             datasets[dataset_name] = samples
         algorithms[algorithm_name] = datasets
@@ -335,7 +347,7 @@ def prepare_tau_pt_ratio_data(
 
 
 
-def plot_ATLAS_resolution(x_values, y_values, cfg):
+def plot_ATLAS_resolution(x_values, y_values_std, y_values_iqr, cfg):
     fig, ax = plt.subplots(figsize=(16,9))
     ATLAS_baseline = {
         "x": [30, 50, 68, 87, 105, 125, 145, 165, 182, 203, 222, 241, 260],
@@ -353,7 +365,9 @@ def plot_ATLAS_resolution(x_values, y_values, cfg):
     y_range = (0, 20)
     plt.plot(ATLAS_baseline["x"], ATLAS_baseline["y"], marker=ATLAS_baseline["marker"], color=ATLAS_baseline["color"], label="[ATLAS] Baseline")
     plt.plot(ATLAS_BRT["x"], ATLAS_BRT["y"], marker=ATLAS_BRT["marker"], color=ATLAS_BRT["color"], label="[ATLAS] BRT")
-    plt.plot(x_values, y_values, marker="*", color='green', label="HPS")
+    x_values_mask = x_values >= 20
+    plt.plot(x_values[x_values_mask], y_values_std[x_values_mask] * 100, marker="*", color='green', label="HPS w/ STD")
+    plt.plot(x_values[x_values_mask], y_values_iqr[x_values_mask] * 100, marker="*", color='green', label="HPS w/ IQR")
     plt.grid()
     plt.legend(prop={"size": 20})
     plt.title("response" , fontsize=18, loc="center", fontweight="bold", style="italic", family="monospace")

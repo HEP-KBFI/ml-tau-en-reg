@@ -78,7 +78,7 @@ def get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition):
         for tau_idx in range(n_taus):
             daughters_begin = mc_particles.daughters_begin[tau_mask][mask_addition][event_idx][tau_idx]
             daughters_end = mc_particles.daughters_end[tau_mask][mask_addition][event_idx][tau_idx]
-            daughter_indices = list(range(daughters_begin + 1, daughters_end + 1))
+            daughter_indices = list(range(daughters_begin, daughters_end))
             daughter_pdgs = np.abs(mc_particles.PDG[event_idx][daughter_indices])
             daughter_charges = np.abs(mc_particles.charge[event_idx][daughter_indices])
             PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
@@ -110,7 +110,7 @@ def get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition):
         for tau_idx in range(n_taus):
             daughters_begin = mc_particles.daughters_begin[tau_mask][mask_addition][event_idx][tau_idx]
             daughters_end = mc_particles.daughters_end[tau_mask][mask_addition][event_idx][tau_idx]
-            daughter_indices = list(range(daughters_begin + 1, daughters_end + 1))
+            daughter_indices = list(range(daughters_begin, daughters_end))
             first_daughter = daughter_indices[0]
             tau_decay_vertex_x = mc_particles["vertex.x"][event_idx][first_daughter]
             tau_decay_vertex_y = mc_particles["vertex.y"][event_idx][first_daughter]
@@ -138,7 +138,7 @@ def find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition):
         for tau_idx in range(len(mc_particles.daughters_begin[tau_mask][mask_addition][event_idx])):
             daughters_begin = mc_particles.daughters_begin[tau_mask][mask_addition][event_idx][tau_idx]
             daughters_end = mc_particles.daughters_end[tau_mask][mask_addition][event_idx][tau_idx]
-            daughter_indices = list(range(daughters_begin + 1, daughters_end + 1))
+            daughter_indices = list(range(daughters_begin, daughters_end))
             tau_daughter_indices.extend(daughter_indices)
         event_tau_daughters_begin = mc_particles.daughters_begin[event_idx]
         event_tau_daughters_end = mc_particles.daughters_end[event_idx]
@@ -163,8 +163,8 @@ def get_event_tau_daughters(
             if len(mc_particles.daughters_begin[event_idx][tau_daughter_idx][daughter_mask]) > 0:
                 daughters = list(
                     range(
-                        event_tau_daughters_begin[tau_daughter_idx][daughter_mask][0] + 1,
-                        event_tau_daughters_end[tau_daughter_idx][daughter_mask][0] + 1,
+                        event_tau_daughters_begin[tau_daughter_idx][daughter_mask][0],
+                        event_tau_daughters_end[tau_daughter_idx][daughter_mask][0],
                     )
                 )
                 new_tau_daughter_indices.extend(daughters)
@@ -347,6 +347,7 @@ def get_matched_gen_tau_property(gen_jets, best_combos, property_, dummy_value=-
 
 def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
     all_events_tau_vis_p4s = []
+    all_tau_daughter_indices = find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition)
     for event_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
         n_taus = len(mc_particles.daughters_begin[tau_mask][mask_addition][event_idx])
         tau_vis_p4s = []
@@ -363,12 +364,10 @@ def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
             )[0]
             daughters_begin = mc_particles.daughters_begin[tau_mask][mask_addition][event_idx][tau_idx]
             daughters_end = mc_particles.daughters_end[tau_mask][mask_addition][event_idx][tau_idx]
-            daughter_indices = list(range(daughters_begin + 1, daughters_end + 1))
+            daughter_indices = list(range(daughters_begin, daughters_end))
             PDG_ids = np.abs(mc_particles.PDG[event_idx][daughter_indices])
-            stable_pythia_mask = mc_particles["generatorStatus"][event_idx][daughter_indices] == 1
             neutrino_mask = (abs(PDG_ids) != 12) * (abs(PDG_ids) != 14) * (abs(PDG_ids) != 16)
-            particle_mask = stable_pythia_mask * neutrino_mask
-            for tau_daughter_p4 in mc_p4[event_idx][daughter_indices][particle_mask]:
+            for tau_daughter_p4 in mc_p4[event_idx][daughter_indices][neutrino_mask]:
                 tau_vis_p4 = tau_vis_p4 + tau_daughter_p4
             tau_vis_p4s.append(tau_vis_p4)
         if len(tau_vis_p4s) > 0:
@@ -396,7 +395,7 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
     best_combos = get_all_tau_best_combinations(vis_tau_p4s, gen_jets)
     tau_energies = vis_tau_p4s.energy
     tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition)
-    tau_dv_x, tau_dv_y, tau_dv_z = get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition)
+    tau_dv_x, tau_dv_y, tau_dv_z = get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition) # TODO
     tau_charges = mc_particles.charge[tau_mask][mask_addition]
     tau_gen_jet_p4s_fill_value = vector.awk(
         ak.zip(
@@ -472,17 +471,17 @@ def get_hadronically_decaying_hard_tau_masks(mc_particles):
         for tau_idx in range(n_taus):
             final_tau = mc_particles.daughters_end[tau_mask][event_idx][tau_idx] < len(mc_particles.PDG[event_idx])
             if final_tau:
-                # Daughter indices are given as (daughters_begin, daughters_end].
+                # Daughter indices are given as [daughters_begin, daughters_end).
                 # The first index there corresponds to the current particle index.
                 daughters_begin = mc_particles.daughters_begin[tau_mask][event_idx][tau_idx]
                 daughters_end = mc_particles.daughters_end[tau_mask][event_idx][tau_idx]
-                daughters_idx = list(range(daughters_begin + 1, daughters_end + 1))
+                daughters_idx = list(range(daughters_begin, daughters_end))
                 daughter_pdgs = np.abs(mc_particles.PDG[event_idx][daughters_idx])
                 # Some tau daughters have strange daughters without tau_neutrino but with electrons and photons
                 daughter_charges = np.abs(mc_particles.charge[event_idx][daughters_idx])
                 PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
                 decaymode = g.get_decaymode(PDGs, daughter_pdgs)
-                if decaymode != 16 and 16 in daughter_pdgs: # For some reasond tau_neutrino not always in daughters??
+                if decaymode != 16:# and 16 in daughter_pdgs: # For some reasond tau_neutrino not always in daughters??
                     # In principle one could check the parent of the tau to filter out taus originating from other particles
                     # This only if the parents_begin and parents_end would be correct
                     # print("Hadronic decay!!")
@@ -1024,7 +1023,7 @@ def process_input_file(arrays: ak.Array, remove_background: bool):
         "gen_jet_tau_decay_vertex_z": gen_tau_jet_info["tau_gen_jet_DV_z"],
         "reco_cand_matched_gen_energy": get_jet_matched_constituent_gen_energy(
             arrays, reco_jet_constituent_indices, num_ptcls_per_jet, mc_p4, gen_tau_daughters
-        ),
+        ), # This needs to be double checked, for what purpose?
     }
     data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
 
