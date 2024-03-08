@@ -1,8 +1,8 @@
 regression:
   ratio_plot:
-    bin_edges: [0, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 200]
+    # bin_edges: [0, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 200]
     # bin_edges: [0, 15, 25, 35, 45, 55, 65, 80, 100, 150, 200]
-    # bin_edges: [0, 20, 40, 60, 80, 100, 150, 200]
+    bin_edges: [0, 20, 40, 60, 80, 100, 150, 200]
   cls_wp: Tight
   classifier_WPs:  # The values for ParticleTransformer from the previous paper
       Loose: 0.930
@@ -10,10 +10,10 @@ regression:
       Tight: 0.975
   algorithms:
     ParticleTransformer:
-      ntuples_dir: /home/laurits/240227_PT_correction_ntuples_v2/ParticleTransformer
+      ntuples_dir: /home/laurits/240303_hjolberg2022jet_PT_ntuples/ParticleTransformer
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
-      compare: False
+      compare: True
       marker: "v"
       hatch: "//"
       color: "tab:purple"

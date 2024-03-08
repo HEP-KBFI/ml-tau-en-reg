@@ -33,6 +33,7 @@ class ParticleTransformerDataset(Dataset):
 
     def build_tensors(self):
         jet_constituent_p4s = g.reinitialize_p4(self.data.reco_cand_p4s)
+        gen_jet_p4s = g.reinitialize_p4(self.data.gen_jet_p4s)
         self.jet_p4s = g.reinitialize_p4(self.data.reco_jet_p4s)
         cand_features = ak.Array({
             "cand_deta": f.deltaEta(jet_constituent_p4s.eta, self.jet_p4s.eta),  # Could also use dTheta
@@ -116,7 +117,9 @@ class ParticleTransformerDataset(Dataset):
         else:
             self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
         if self.is_energy_regression:
-            self.y_tensors = torch.tensor(self.data.gen_jet_tau_vis_energy, dtype=torch.float32)
+            # self.y_tensors = torch.tensor(np.log(gen_jet_p4s.pt / self.jet_p4s.pt), dtype=torch.float32)
+            # self.y_tensors = torch.tensor(self.data.gen_jet_tau_vis_energy, dtype=torch.float32)
+            self.y_tensors = torch.tensor(gen_jet_p4s.pt, dtype=torch.float32)
         else:
             self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=int)
         self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
@@ -135,7 +138,7 @@ class ParticleTransformerDataset(Dataset):
                     "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
                     "mask": self.node_mask_tensors[idx],
                     "reco_jet_pt": self.reco_jet_pt[idx],
-                    "reco_jet_energy": self.reco_jet_energy[idx],
+                    # "reco_jet_energy": self.reco_jet_energy[idx],
                 },
                 self.y_tensors[idx],
                 self.weight_tensors[idx],
@@ -202,7 +205,7 @@ class ParticleTransformerTauBuilder:
         with torch.no_grad():
             pred = self.model(x_tensor, v_tensor, node_mask_tensor)
         if self.is_energy_regression:
-            return {"tau_vis_energy" : pred}
+            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
         else:
             pred = torch.softmax(pred, dim=1)
             tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones

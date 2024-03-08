@@ -1,4 +1,5 @@
-use_slurm: False
+use_slurm: True
+slurm_run: False
 use_multiprocessing: False
 tree_path: events
 branches:
@@ -41,16 +42,16 @@ branches:
 test_run: False
 samples_to_process:
   - Z_Ztautau
-  # - ZH_Htautau
+  - ZH_Htautau
   # - QCD
 samples:
   Z_Ztautau:
-    input_dir: /scratch/persistent/laurits/clic_edm4hep/p8_ee_Z_Ztautau_ecm380
-    output_dir: /home/laurits/tmp/test_ntuples/Z_Ztautau
+    input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
+    output_dir: /scratch/persistent/laurits/20240308_HEPMC_ntuples/Z_Ztautau
     is_signal: True
   ZH_Htautau:
-    input_dir: /scratch/persistent/laurits/clic_edm4hep/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /home/laurits/tmp/test_ntuples/ZH_Htautau
+    input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
+    output_dir: /scratch/persistent/laurits/20240308_HEPMC_ntuples/ZH_Htautau
     is_signal: True
   QCD:
     input_dir: /scratch/persistent/laurits/clic_edm4hep/p8_ee_qq_ecm380/
@@ -61,4 +62,4 @@ validation:
   validation_samples:
     - Z_Ztautau
     - ZH_Htautau
-    - QCD
+    # - QCD

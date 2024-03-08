@@ -1,5 +1,5 @@
 verbosity: 1
-output_dir: /home/laurits/240227_correction_regression_wMultiplication
+output_dir: /home/laurits/240303_holmberg2022jet_target
 samples_to_use:
   - ZH_Htautau
   # - Z_Ztautau # As there are no Z_Ztautau files in the training dataset

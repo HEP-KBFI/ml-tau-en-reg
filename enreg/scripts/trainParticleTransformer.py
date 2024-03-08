@@ -91,17 +91,22 @@ def train_loop(
         weight = weight.to(device=dev)
         pred = model(x, v, mask).to(device=dev)[:,0]
 
-        # Predict the correction, not the full visible energy
-        jet_energy = X["reco_jet_energy"].to(device=dev)
-        pred *= jet_energy
-        # pred += jet_energy
+        if is_energy_regression:
+            # Predict the correction, not the full visible energy
+            # jet_energy = X["reco_jet_energy"].to(device=dev)
+            # pred *= jet_energy
+            # pred += jet_energy
+            predicted_pt = torch.exp(pred) * X["reco_jet_pt"].to(device=dev)
+            y_for_loss = torch.log(y / X["reco_jet_pt"].to(device=dev))
+        else:
+            y_for_loss = y
 
         loss = None
         if use_per_jet_weights:
-            loss = loss_fn(pred, y)
+            loss = loss_fn(pred, y_for_loss)
             loss = loss * weight
         else:
-            loss = loss_fn(pred, y)
+            loss = loss_fn(pred, y_for_loss)
         loss_train += loss.sum().item()
         normalization += torch.flatten(loss).size(dim=0)
         if not is_energy_regression:
@@ -111,7 +116,7 @@ def train_loop(
             class_true_train.extend(y.detach().cpu().numpy())
             class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
         else:
-            ratios.extend((pred/y).detach().cpu().numpy())
+            ratios.extend((predicted_pt/y).detach().cpu().numpy())
 
         weights_train.extend(weight.detach().cpu().numpy())
 
@@ -126,10 +131,6 @@ def train_loop(
             print(" Running loss: %1.6f  [%i/%s]" % (loss.mean().item(), num_jets_processed, num_jets_train))
 
     loss_train /= normalization
-    mean_reco_gen_ratio = np.mean(np.abs(ratios))
-    median_reco_gen_ratio = np.median(np.abs(ratios))
-    stdev_reco_gen_ratio = np.std(np.abs(ratios))
-    iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
     if not is_energy_regression:
         accuracy_train /= accuracy_normalization_train
         logTrainingProgress(
@@ -143,6 +144,10 @@ def train_loop(
             np.array(weights_train),
         )
     else:
+        mean_reco_gen_ratio = np.mean(np.abs(ratios))
+        median_reco_gen_ratio = np.median(np.abs(ratios))
+        stdev_reco_gen_ratio = np.std(np.abs(ratios))
+        iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
         logTrainingProgress_regression(
             tensorboard,
             idx_epoch,
@@ -191,15 +196,22 @@ def validation_loop(
             y = y.to(device=dev)
             weight = weight.to(device=dev)
             pred = model(x, v, mask).to(device=dev)[:,0]
-            # Predict the correction, not the full visible energy
-            jet_energy = X["reco_jet_energy"].to(device=dev)
-            pred *= jet_energy
-            # pred += jet_energy
+
+            if is_energy_regression:
+                # Predict the correction, not the full visible energy
+                # jet_energy = X["reco_jet_energy"].to(device=dev)
+                # pred *= jet_energy
+                # pred += jet_energy
+                predicted_pt = torch.exp(pred) * X["reco_jet_pt"].to(device=dev)
+                y_for_loss = torch.log(y / X["reco_jet_pt"].to(device=dev))
+            else:
+                y_for_loss = y
+
             if use_per_jet_weights:
-                loss = loss_fn(pred, y)
+                loss = loss_fn(pred, y_for_loss)
                 loss = loss * weight
             else:
-                loss = loss_fn(pred, y).item()
+                loss = loss_fn(pred, y_for_loss).item()
             loss_validation += loss.sum().item()
             normalization += torch.flatten(loss).size(dim=0)
             if not is_energy_regression:
@@ -211,13 +223,9 @@ def validation_loop(
                 class_pred_validation.extend(pred.argmax(dim=1).detach().cpu().numpy())
                 weights_validation.extend(weight.detach().cpu().numpy())
             else:
-                ratios.extend((pred/y).detach().cpu().numpy())
+                ratios.extend((predicted_pt/y).detach().cpu().numpy())
 
     loss_validation /= normalization
-    mean_reco_gen_ratio = np.mean(np.abs(ratios))
-    median_reco_gen_ratio = np.median(np.abs(ratios))
-    stdev_reco_gen_ratio = np.std(np.abs(ratios))
-    iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
 
     if not is_energy_regression:
         accuracy_validation /= accuracy_normalization_validation
@@ -232,6 +240,10 @@ def validation_loop(
             np.array(weights_validation),
         )
     else:
+        mean_reco_gen_ratio = np.mean(np.abs(ratios))
+        median_reco_gen_ratio = np.median(np.abs(ratios))
+        stdev_reco_gen_ratio = np.std(np.abs(ratios))
+        iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
         logTrainingProgress_regression(
             tensorboard,
             idx_epoch,

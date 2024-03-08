@@ -9,6 +9,12 @@ from enreg.tools.data_management.particleTransformer_dataset import ParticleTran
 from enreg.tools.models.HPS import HPSTauBuilder
 from enreg.tools.data_management import tau_builder_tools as tbt
 
+os.environ["OMP_NUM_THREADS"]="1"
+os.environ["OPENBLAS_NUM_THREADS"]="1"
+os.environ["MKL_NUM_THREADS"]="1"
+os.environ["VECLIB_MAXIMUM_THREADS"]="1"
+os.environ["NUMEXPR_NUM_THREADS"]="1"
+
 
 @hydra.main(config_path="../config", config_name="tau_builder", version_base=None)
 def build_taus(cfg: DictConfig) -> None:

@@ -73,16 +73,18 @@ def plot_energy_regression(algorithm_info, cfg):
     # plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='E')
     # plot_resolution(plotting_input, cfg, resolution_type='std', variable='E')
     # plot_distribution_bin_wise(plotting_input, cfg, variable='E')
-    # plot_mean(plotting_input, cfg, resolution_type='IQR', variable='pt')
-    # plot_mean(plotting_input, cfg, resolution_type='std', variable='pt')
-    # plot_resolution(plotting_input, cfg, resolution_type='std', variable='pt')
-    # plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='pt')
-    # plot_distribution_bin_wise(plotting_input, cfg, variable='pt')
-    # ratio_distribution(algorithm_info, cfg)
+    plot_mean(plotting_input, cfg, resolution_type='IQR', variable='pt')
+    plot_mean(plotting_input, cfg, resolution_type='std', variable='pt')
+    plot_resolution(plotting_input, cfg, resolution_type='std', variable='pt')
+    plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='pt')
+    plot_distribution_bin_wise(plotting_input, cfg, variable='pt')
     plot_ATLAS_resolution(
         plotting_input['HPS']['test']['ZH_Htautau']["pt_bin_centers"],
         plotting_input['HPS']['test']['ZH_Htautau']["pt_resolution_w_std"],
         plotting_input['HPS']['test']['ZH_Htautau']["pt_resolution_w_IQR"],
+        plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_bin_centers"],
+        plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_resolution_w_std"],
+        plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_resolution_w_IQR"],
         cfg
     )
 
@@ -234,24 +236,11 @@ def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
                 prediction_mask = pred_tau_p4s.pt > 1
                 sample_data = sample_data[gen_pt_mask * ratio_mask * prediction_mask]
                 label = f"{algorithm_name}: {sample_name}"
-
-                # E_ratio_means, E_ratio_std, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
-                #     sample_data=sample_data, resolution_type='std', cfg=cfg)
-                # E_ratio_medians, E_ratio_IQR, E_bin_centers, E_ratio_values = prepare_tau_en_ratio_data(
-                #     sample_data=sample_data, resolution_type='IQR', cfg=cfg)
                 pt_ratio_means, pt_ratio_std, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
                     sample_data=sample_data, resolution_type='std', cfg=cfg)
                 pt_ratio_medians, pt_ratio_IQR, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
                     sample_data=sample_data, resolution_type='IQR', cfg=cfg)
                 samples[sample_name] = {
-                    # "E_ratio_means": E_ratio_means,
-                    # "E_ratio_values": E_ratio_values,
-                    # "E_ratio_std": E_ratio_std,
-                    # "E_resolution_w_std": E_ratio_std/E_ratio_means,
-                    # "E_ratio_medians": E_ratio_medians,
-                    # "E_ratio_IQR": E_ratio_IQR,
-                    # "E_resolution_w_IQR": E_ratio_IQR/E_ratio_medians,
-                    # "E_bin_centers": E_bin_centers,
                     "pt_ratio_means": pt_ratio_means,
                     "pt_ratio_values": pt_ratio_values,
                     "pt_ratio_std": pt_ratio_std,
@@ -274,7 +263,7 @@ def prepare_tau_en_ratio_data(
     if 'tau_vis_energy' not in sample_data.fields:
         reco_gen_E_ratio = g.reinitialize_p4(sample_data.tau_p4s).energy / sample_data.gen_jet_tau_vis_energy
     else:
-        reco_gen_E_ratio = (sample_data.tau_vis_energy + g.reinitialize_p4(sample_data.reco_jet_p4s).energy) / sample_data.gen_jet_tau_vis_energy  # TODO: Here rever to only tau_vis_energy when the ntupelizer writing is done in the new way
+        reco_gen_E_ratio = (sample_data.tau_vis_energy + g.reinitialize_p4(sample_data.reco_jet_p4s).energy) / sample_data.gen_jet_tau_vis_energy
     gen_vis_tau_E = sample_data.gen_jet_tau_vis_energy
     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
@@ -294,7 +283,10 @@ def prepare_tau_pt_ratio_data(
     resolution_type: str,
     cfg: DictConfig
 ):
-    reco_gen_pt_ratio = g.reinitialize_p4(sample_data.tau_p4s).pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
+    if 'tau_pt' not in sample_data.fields:
+        reco_gen_pt_ratio = g.reinitialize_p4(sample_data.tau_p4s).pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
+    else:
+        reco_gen_pt_ratio = sample_data.tau_pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
     gen_vis_tau_pt = g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
@@ -347,7 +339,7 @@ def prepare_tau_pt_ratio_data(
 
 
 
-def plot_ATLAS_resolution(x_values, y_values_std, y_values_iqr, cfg):
+def plot_ATLAS_resolution(HPS_x_values, HPS_y_values_std, HPS_y_values_iqr, PT_x_values, PT_y_values_std, PT_y_values_iqr, cfg):
     fig, ax = plt.subplots(figsize=(16,9))
     ATLAS_baseline = {
         "x": [30, 50, 68, 87, 105, 125, 145, 165, 182, 203, 222, 241, 260],
@@ -365,9 +357,12 @@ def plot_ATLAS_resolution(x_values, y_values_std, y_values_iqr, cfg):
     y_range = (0, 20)
     plt.plot(ATLAS_baseline["x"], ATLAS_baseline["y"], marker=ATLAS_baseline["marker"], color=ATLAS_baseline["color"], label="[ATLAS] Baseline")
     plt.plot(ATLAS_BRT["x"], ATLAS_BRT["y"], marker=ATLAS_BRT["marker"], color=ATLAS_BRT["color"], label="[ATLAS] BRT")
-    x_values_mask = x_values >= 20
-    plt.plot(x_values[x_values_mask], y_values_std[x_values_mask] * 100, marker="*", color='green', label="HPS w/ STD")
-    plt.plot(x_values[x_values_mask], y_values_iqr[x_values_mask] * 100, marker="*", color='green', label="HPS w/ IQR")
+    HPS_x_values_mask = HPS_x_values >= 20
+    PT_x_values_mask = PT_x_values >= 20
+    plt.plot(HPS_x_values[HPS_x_values_mask], HPS_y_values_std[HPS_x_values_mask] * 100, marker="*", color='green', ls='--', label="HPS w/ STD")
+    plt.plot(HPS_x_values[HPS_x_values_mask], HPS_y_values_iqr[HPS_x_values_mask] * 100, marker="*", color='green', ls='-', label="HPS w/ IQR")
+    plt.plot(PT_x_values[PT_x_values_mask], PT_y_values_std[PT_x_values_mask] * 100, marker="*", color='blue', ls='--', label="PT w/ STD")
+    plt.plot(PT_x_values[PT_x_values_mask], PT_y_values_iqr[PT_x_values_mask] * 100, marker="*", color='blue', ls='-', label="PT w/ IQR")
     plt.grid()
     plt.legend(prop={"size": 20})
     plt.title("response" , fontsize=18, loc="center", fontweight="bold", style="italic", family="monospace")

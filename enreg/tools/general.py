@@ -68,7 +68,7 @@ def load_parquet(input_path: str, columns: list = None) -> ak.Array:
     return ak.Array((ak.from_parquet(input_path, columns=columns).tolist()))
 
 
-def get_decaymode(pdg_ids, daughter_pdgs):
+def get_decaymode(pdg_ids):
     """Tau decaymodes are the following:
     decay_mode_mapping = {
         0: 'OneProng0PiZero',
