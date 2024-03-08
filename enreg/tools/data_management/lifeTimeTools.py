@@ -288,9 +288,9 @@ def findTrackPCAs(
     debug=-1,
 ):
     vertex = [
-        arrays[vertexCollection][ev][vertexCollection + ".position.x"][0],
-        arrays[vertexCollection][ev][vertexCollection + ".position.y"][0],
-        arrays[vertexCollection][ev][vertexCollection + ".position.z"][0],
+        arrays[vertexCollection + ".position.x"][ev][0],
+        arrays[vertexCollection + ".position.y"][ev][0],
+        arrays[vertexCollection + ".position.z"][ev][0],
     ]
     # particles_ = arrays[recoParticleCollection]
     particles = ak.Record({k.replace(f"{recoParticleCollection}.", ""): arrays[k] for k in arrays.fields})
@@ -332,7 +332,7 @@ def findTrackPCAs(
                 print("charge:", charge[ili])
                 print("pt:", P4.pt[ili])
                 print("predicted omega:", omegas_theo[ili] * charge[ili])
-                print("omega:", arrays[trackCollection][ev][trackCollection + ".omega"][part_trkidx * 4])
+                print("omega:", arrays[trackCollection + ".omega"][ev][part_trkidx * 4])
             print("########################################")
     for ili, part_trkidx in enumerate(partTickleTrackLink):
         # each track exists 4 times, go to copy for trackstate at IP as interpolation works best here
@@ -341,24 +341,24 @@ def findTrackPCAs(
         if part_trkidx < 0:
             if debug >= 0:
                 print("Found no SiTrack for particle! Maybe neutral?")
-        elif si_trkidx < 0 or si_trkidx >= len(arrays[trackCollection][ev][trackCollection + ".location"]):
+        elif si_trkidx < 0 or si_trkidx >= len(arrays[ev][trackCollection + ".location"]):
             print("Warning, invalid track indx, please check!")
         else:
             if debug >= 0:
                 print("Found SiTrack for particle!")
             trackP = {}
             pr = [
-                arrays[trackCollection][ev][trackCollection + ".referencePoint.x"][si_trkidx],
-                arrays[trackCollection][ev][trackCollection + ".referencePoint.y"][si_trkidx],
-                arrays[trackCollection][ev][trackCollection + ".referencePoint.z"][si_trkidx],
+                arrays[trackCollection + ".referencePoint.x"][ev][si_trkidx],
+                arrays[trackCollection + ".referencePoint.y"][ev][si_trkidx],
+                arrays[trackCollection + ".referencePoint.z"][ev][si_trkidx],
             ]
-            d0 = arrays[trackCollection][ev][trackCollection + ".D0"][si_trkidx]
-            z0 = arrays[trackCollection][ev][trackCollection + ".Z0"][si_trkidx]
-            phi0 = arrays[trackCollection][ev][trackCollection + ".phi"][si_trkidx]
-            tanL = arrays[trackCollection][ev][trackCollection + ".tanLambda"][si_trkidx]
-            omega = arrays[trackCollection][ev][trackCollection + ".omega"][si_trkidx]
+            d0 = arrays[trackCollection + ".D0"][ev][si_trkidx]
+            z0 = arrays[trackCollection + ".Z0"][ev][si_trkidx]
+            phi0 = arrays[trackCollection + ".phi"][ev][si_trkidx]
+            tanL = arrays[trackCollection + ".tanLambda"][ev][si_trkidx]
+            omega = arrays[trackCollection + ".omega"][ev][si_trkidx]
             # declared with 21 entries but only has 15 as expected
-            cov = arrays[trackCollection][ev][trackCollection + ".covMatrix[21]"][si_trkidx]
+            cov = arrays[trackCollection + ".covMatrix[21]"][ev][si_trkidx]
             """ following:
                 https://github.com/iLCSoft/ILDPerformance/blob/master/tracking/src/DDDiagnostics.cc#L777-L803
                 We only use the sign of omega, error not needed

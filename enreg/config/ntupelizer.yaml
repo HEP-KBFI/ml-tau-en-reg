@@ -37,8 +37,19 @@ branches:
   - MergedRecoParticles.particles_end
   - MergedRecoParticles.particleIDs_begin
   - MergedRecoParticles.particleIDs_end
-  - SiTracks_Refitted_1
-  - PrimaryVertices
+  - PrimaryVertices.position.x
+  - PrimaryVertices.position.y
+  - PrimaryVertices.position.z
+  - SiTracks_Refitted_1.location
+  - SiTracks_Refitted_1.referencePoint.x
+  - SiTracks_Refitted_1.referencePoint.y
+  - SiTracks_Refitted_1.referencePoint.z
+  - SiTracks_Refitted_1.D0
+  - SiTracks_Refitted_1.Z0
+  - SiTracks_Refitted_1.phi
+  - SiTracks_Refitted_1.tanLambda
+  - SiTracks_Refitted_1.omega
+  - SiTracks_Refitted_1.covMatrix[21]
 test_run: False
 samples_to_process:
   - Z_Ztautau
@@ -47,11 +58,11 @@ samples_to_process:
 samples:
   Z_Ztautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /scratch/persistent/laurits/20240308_HEPMC_ntuples/Z_Ztautau
+    output_dir: /home/laurits/ENREG/ntuples/20240308_HEPMC_ntuples/Z_Ztautau
     is_signal: True
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /scratch/persistent/laurits/20240308_HEPMC_ntuples/ZH_Htautau
+    output_dir: /home/laurits/ENREG/ntuples/20240308_HEPMC_ntuples/ZH_Htautau
     is_signal: True
   QCD:
     input_dir: /scratch/persistent/laurits/clic_edm4hep/p8_ee_qq_ecm380/

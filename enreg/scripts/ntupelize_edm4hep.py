@@ -53,7 +53,6 @@ def process_all_input_files(cfg: DictConfig) -> None:
         all_input_paths = []
         all_output_paths = []
         for sample_name in cfg.samples_to_process:
-            print(sample_name)
             output_dir = cfg.samples[sample_name].output_dir
             input_dir = cfg.samples[sample_name].input_dir
             os.makedirs(output_dir, exist_ok=True)
