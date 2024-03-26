@@ -1,5 +1,5 @@
 weighting:
-  weights_dir: /foo/bar
+  weights_dir: /home/laurits/ENREG/ntuples
   variables:
     pt:
       range: [20, 200]

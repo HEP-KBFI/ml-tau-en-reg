@@ -11,8 +11,9 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
 
 class ParticleTransformerDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig):
+    def __init__(self, data: ak.Array, cfg: DictConfig, is_energy_regression: bool = False):
         self.data = data
+        self.is_energy_regression = is_energy_regression
         self.cfg = cfg
         self.preselection()
         self.num_jets = len(self.data.reco_jet_p4s)
@@ -32,16 +33,17 @@ class ParticleTransformerDataset(Dataset):
 
     def build_tensors(self):
         jet_constituent_p4s = g.reinitialize_p4(self.data.reco_cand_p4s)
-        jet_p4s = g.reinitialize_p4(self.data.reco_jet_p4s)
+        gen_jet_p4s = g.reinitialize_p4(self.data.gen_jet_p4s)
+        self.jet_p4s = g.reinitialize_p4(self.data.reco_jet_p4s)
         cand_features = ak.Array({
-            "cand_deta": f.deltaEta(jet_constituent_p4s.eta, jet_p4s.eta),  # Could also use dTheta
-            "cand_dphi": f.deltaPhi(jet_constituent_p4s.phi, jet_p4s.phi),
+            "cand_deta": f.deltaEta(jet_constituent_p4s.eta, self.jet_p4s.eta),  # Could also use dTheta
+            "cand_dphi": f.deltaPhi(jet_constituent_p4s.phi, self.jet_p4s.phi),
             "cand_logpt": np.log(jet_constituent_p4s.pt),
             "cand_loge": np.log(jet_constituent_p4s.energy),
-            "cand_logptrel": np.log(jet_constituent_p4s.pt / jet_p4s.pt),
-            "cand_logerel": np.log(jet_constituent_p4s.energy / jet_p4s.energy),
+            "cand_logptrel": np.log(jet_constituent_p4s.pt / self.jet_p4s.pt),
+            "cand_logerel": np.log(jet_constituent_p4s.energy / self.jet_p4s.energy),
             "cand_deltaR": f.deltaR_etaPhi(
-                jet_constituent_p4s.eta, jet_constituent_p4s.phi, jet_p4s.eta, jet_p4s.phi), #angle3d
+                jet_constituent_p4s.eta, jet_constituent_p4s.phi, self.jet_p4s.eta, self.jet_p4s.phi), #angle3d
         })
         if self.cfg.use_pdgId:
             cand_features["cand_charge"] = self.data.reco_cand_charge
@@ -103,18 +105,25 @@ class ParticleTransformerDataset(Dataset):
             dim=1
         )
         self.x_is_one_hot_encoded = torch.tensor(
-            [[self.cfg.one_hot_encoding[feature] for feature in cand_features.fields]] * len(jet_p4s),
+            [[self.cfg.one_hot_encoding[feature] for feature in cand_features.fields]] * len(self.jet_p4s),
             dtype=torch.bool
         )
         self.v_is_one_hot_encoded = torch.tensor(
-            [[self.cfg.one_hot_encoding[feature] for feature in cand_kinematics.fields]] * len(jet_p4s),
+            [[self.cfg.one_hot_encoding[feature] for feature in cand_kinematics.fields]] * len(self.jet_p4s),
             dtype=torch.bool
         )
         if not "weight" in self.data.fields:
             self.weight_tensors = torch.tensor(ak.ones_like(self.data.gen_jet_tau_decaymode), dtype=torch.float32)
         else:
             self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
-        self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=int)
+        if self.is_energy_regression:
+            # self.y_tensors = torch.tensor(np.log(gen_jet_p4s.pt / self.jet_p4s.pt), dtype=torch.float32)
+            # self.y_tensors = torch.tensor(self.data.gen_jet_tau_vis_energy, dtype=torch.float32)
+            self.y_tensors = torch.tensor(gen_jet_p4s.pt, dtype=torch.float32)
+        else:
+            self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=torch.long)
+        self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
+        self.reco_jet_energy = torch.tensor(self.jet_p4s.energy, dtype=torch.float32)
 
     def __len__(self):
         return self.num_jets
@@ -128,6 +137,8 @@ class ParticleTransformerDataset(Dataset):
                     "x": self.x_tensors[idx],
                     "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
                     "mask": self.node_mask_tensors[idx],
+                    "reco_jet_pt": self.reco_jet_pt[idx],
+                    # "reco_jet_energy": self.reco_jet_energy[idx],
                 },
                 self.y_tensors[idx],
                 self.weight_tensors[idx],
@@ -140,32 +151,35 @@ class ParticleTransformerTauBuilder:
     def __init__(self, cfg: DictConfig, verbosity: int = 0):
         print("::: ParticleTransformer :::")
         self.verbosity = verbosity
+        self.is_energy_regression = cfg.builder.task == 'regression'
         self.cfg = cfg
-        if self.cfg.builder.feature_standardization.standardize_inputs:
+        if self.cfg.feature_standardization.standardize_inputs:
             self.transform = f.FeatureStandardization(
-                method=self.cfg.builder.feature_standardization.method,
+                method=self.cfg.feature_standardization.method,
                 features=["x", "v"],
                 feature_dim=1,
                 verbosity=self.verbosity,
             )
-            self.transform.load_params(self.cfg.builder.feature_standardization.path)
+            self.transform.load_params(self.cfg.feature_standardization.path)
 
         input_dim = 7
         if self.cfg.dataset.use_pdgId:
             input_dim += 6
         if self.cfg.dataset.use_lifetime:
             input_dim += 4
+        num_classes = 1 if self.is_energy_regression else 2
         #  TODO: check this out if needs a change?
         self.model = ParticleTransformer(
             input_dim=input_dim,
-            num_classes=2,
+            num_classes=num_classes,
             use_pre_activation_pair=False,
             for_inference=False,  # CV: keep same as for training and apply softmax function on NN output manually
             use_amp=False,
             metric=cfg.builder.metric,
             verbosity=verbosity,
         )
-        self.model.load_state_dict(torch.load(self.cfg.builder.model_path, map_location=torch.device("cpu")))
+        model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
+        self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         self.model.eval()
 
     def print_config(self):
@@ -174,8 +188,8 @@ class ParticleTransformerTauBuilder:
 
     def process_jets(self, data: ak.Array):
         print("::: Starting to process jets ::: ")
-        dataset = ParticleTransformerDataset(data, self.cfg.dataset)
-        if self.cfg.builder.feature_standardization.standardize_inputs:
+        dataset = ParticleTransformerDataset(data, self.cfg.dataset, self.is_energy_regression)
+        if self.cfg.feature_standardization.standardize_inputs:
             X = {
                 "x": dataset.x_tensors,
                 "v": dataset.v_tensors,
@@ -189,18 +203,22 @@ class ParticleTransformerTauBuilder:
             x_tensor = dataset.x_tensors
             v_tensor = dataset.v_tensors
             node_mask_tensor = dataset.node_mask_tensors
-        pred = self.model(x_tensor, v_tensor, node_mask_tensor)
-        pred = torch.softmax(pred, dim=1)
-        tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones
-        tauClassifier = list(tauClassifier.detach().numpy())
-        tau_p4s = g.reinitialize_p4(data["reco_jet_p4s"])
-        tauSigCand_p4s = data["reco_cand_p4s"]
-        tauCharges = np.zeros(len(dataset))
-        tau_decaymode = np.zeros(len(dataset))
-        return {
-            "tau_p4s": tau_p4s,
-            "tauSigCand_p4s": tauSigCand_p4s,
-            "tauClassifier": tauClassifier,
-            "tau_charge": tauCharges,
-            "tau_decaymode": tau_decaymode,
-        }
+        with torch.no_grad():
+            pred = self.model(x_tensor, v_tensor, node_mask_tensor)
+        if self.is_energy_regression:
+            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
+        else:
+            pred = torch.softmax(pred, dim=1)
+            tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones
+            tauClassifier = list(tauClassifier.detach().numpy())
+            tau_p4s = g.reinitialize_p4(data["reco_jet_p4s"])
+            tauSigCand_p4s = data["reco_cand_p4s"]
+            tauCharges = np.zeros(len(dataset))
+            tau_decaymode = np.zeros(len(dataset))
+            return {
+                "tau_p4s": tau_p4s,
+                "tauSigCand_p4s": tauSigCand_p4s,
+                "tauClassifier": tauClassifier,
+                "tau_charge": tauCharges,
+                "tau_decaymode": tau_decaymode,
+            }

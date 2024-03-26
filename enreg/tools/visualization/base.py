@@ -3,7 +3,7 @@ import mplhep as hep
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from sklearn.metrics import confusion_matrix
-from .histogram import Histogram
+from enreg.tools.visualization.histogram import Histogram
 
 hep.style.use(hep.styles.CMS)
 
@@ -268,13 +268,14 @@ def plot_histogram(
     hep.histplot(hist, bin_edges, label=title, hatch=hatch, color=color)
     plt.xlabel(x_label, fontdict={"size": 20})
     plt.ylabel(y_label, fontdict={"size": 20})
-    # plt.grid(True, which="both")
+    plt.grid(True, which="both")
     plt.yscale("log")
+    plt.title(title, loc="left")
     # ax.legend(loc="center left", bbox_to_anchor=(1, 0.9))
     # textstr = "\n".join((r"$\mu=%.2f$" % (np.mean(entries),), r"$\sigma=%.2f$" % (np.std(entries),)))
     # props = {"boxstyle": "round", "facecolor": "wheat", "alpha": 0.5}
     # ax.text(1.07, 0.6, textstr, transform=ax.transAxes, fontsize=16, verticalalignment="top", bbox=props)
-    plt.savefig(output_path, format="pdf")
+    plt.savefig(output_path)#, format="pdf")
     plt.close("all")
 
 
@@ -421,9 +422,9 @@ def plot_efficiency(
     eff_fake_data,
     key,
     cfg,
-    output_dir
+    output_dir,
     name_map: dict = {},
-)
+):
     name_map = {algorithm: algorithm if algorithm not in name_map.keys() else name_map[algorithm] for algorithm in efficiencies.keys()}
     ylabels = {
         "fakerate": r"P_{misid}",

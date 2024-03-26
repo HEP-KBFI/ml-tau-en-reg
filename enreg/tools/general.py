@@ -38,18 +38,18 @@ def load_all_data(input_loc: str | list, n_files: int = None, columns: list = No
     else:
         raise ValueError(f"Unexpected input_loc")
     input_data = []
-    for file_path in input_files:
-        print(f"Loading from {file_path}")
+    for i, file_path in enumerate(input_files):
+        print(f"[{i+1}/{len(input_files)}] Loading from {file_path}")
         try:
             input_data.append(load_parquet(file_path, columns=columns))
         except ValueError:
             print(f"{file_path} does not exist")
     if len(input_data) > 0:
-        input_data = ak.concatenate(input_data)
+        data = ak.concatenate(input_data)
         print("Input data loaded")
     else:
         raise ValueError(f"No files found in {input_loc}")
-    return input_data
+    return data
 
 
 def load_parquet(input_path: str, columns: list = None) -> ak.Array:
@@ -65,10 +65,12 @@ def load_parquet(input_path: str, columns: list = None) -> ak.Array:
         input_data : ak.Array
             The data from the .parquet file
     """
-    return ak.Array((ak.from_parquet(input_path, columns=columns).tolist()))
+    ret = ak.from_parquet(input_path, columns=columns)
+    ret = ak.Array({k: ret[k] for k in ret.fields})
+    return ret
 
 
-def get_decaymode(pdg_ids, daughter_pdgs):
+def get_decaymode(pdg_ids):
     """Tau decaymodes are the following:
     decay_mode_mapping = {
         0: 'OneProng0PiZero',

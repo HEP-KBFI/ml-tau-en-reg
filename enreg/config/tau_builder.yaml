@@ -1,9 +1,12 @@
-builder: ParticleTransformer
-output_dir: /scratch/persistent/laurits/test
-n_files: 1
-use_slurm: False
+builder: ParticleTransformer #HPS
+builder_task: regression #classification #regression  # or classification
+output_dir: /home/laurits/ENREG/ntuples/2024013_HPS_HEPMC_ntuples
+PT_tauID_ntuple_dir: /scratch/persistent/laurits/PT_tauID_ntuples
+n_files: -1
+slurm_run: False
 verbosity: 0
 use_multiprocessing: False
+use_slurm: True
 datasets_to_process:
   - test
   - train
@@ -11,7 +14,6 @@ datasets_to_process:
 samples_to_process:
   - ZH_Htautau
   - Z_Ztautau
-  - QCD
 defaults:
   - datasets: datasets
   - models: models

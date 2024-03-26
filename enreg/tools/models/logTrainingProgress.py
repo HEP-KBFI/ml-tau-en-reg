@@ -38,3 +38,21 @@ def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true
     tensorboard.add_scalar("F1_score/%s" % mode, F1_score, global_step=idx_epoch)
     tensorboard.add_histogram("tauClassifier_sig/%s" % mode, class_pred[class_true == 1], global_step=idx_epoch)
     tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, class_pred[class_true == 0], global_step=idx_epoch)
+
+
+def logTrainingProgress_regression(
+    tensorboard,
+    idx_epoch,
+    mode,
+    loss,
+    mean_reco_gen_ratio,
+    median_reco_gen_ratio,
+    stdev_reco_gen_ratio,
+    iqr_reco_gen_ratio,
+    weights
+):
+    tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)
+    tensorboard.add_scalar("Mean ratio/%s" % mode, mean_reco_gen_ratio, global_step=idx_epoch)
+    tensorboard.add_scalar("Median ratio/%s" % mode, median_reco_gen_ratio, global_step=idx_epoch)
+    tensorboard.add_scalar("Stdev ratio/%s" % mode, stdev_reco_gen_ratio, global_step=idx_epoch)
+    tensorboard.add_scalar("IQR ratio/%s" % mode, iqr_reco_gen_ratio, global_step=idx_epoch)

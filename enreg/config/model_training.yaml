@@ -1,0 +1,12 @@
+verbosity: 1
+output_dir: /home/laurits/ENREG/training/20240314_HEPMC_based_PT_tauID/
+samples_to_use:
+  - ZH_Htautau
+  - QCD
+  # - Z_Ztautau # As there are no Z_Ztautau files in the training dataset
+defaults:
+  - models: models
+  - datasets: datasets
+  - tau_builder
+  - ntupelizer
+  - _self_

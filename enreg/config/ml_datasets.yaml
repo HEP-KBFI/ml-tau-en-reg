@@ -1,0 +1,11 @@
+# list_dir: $HOME/ml-tau-en-reg/enreg/config/datasets
+list_dir: /home/laurits/tmp/datasets
+relative_sizes:
+  train: 0.7
+  test: 0.2
+  validation: 0.1
+only_append_to_test: False
+defaults:
+  - datasets: datasets
+  - ntupelizer
+  - _self_

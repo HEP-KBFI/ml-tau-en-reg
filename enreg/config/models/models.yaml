@@ -1,2 +1,3 @@
 defaults:
   - ParticleTransformer: ParticleTransformer
+  - HPS: HPS

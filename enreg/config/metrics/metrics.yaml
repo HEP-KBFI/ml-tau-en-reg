@@ -1,0 +1,4 @@
+defaults:
+  - classifier
+  - regression
+  - _self_

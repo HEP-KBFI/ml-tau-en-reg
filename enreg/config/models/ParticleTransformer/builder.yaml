@@ -1,7 +1,7 @@
 builder:
+  task: "classification"
   metric: "theta-phi" # dataset.yaml sees kas see - kus ja miks vaja kasutada
-  model_path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_model_wLifetime_2023Jun22.pt
-  feature_standardization:
-    standardize_inputs: False
-    method: "mean_rms"
-    path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_FeatureStandardization_wLifetime_2023Jun22.json
+  regression:
+    model_path: /home/laurits/ENREG/training/20240312_HEPMC_based_regression/ParticleTransformer_model_best.pt  # regression
+  classification:
+    model_path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_model_wLifetime_2023Jun22.pt #  PT classifier

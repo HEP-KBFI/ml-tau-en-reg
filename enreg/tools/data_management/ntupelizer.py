@@ -4,25 +4,21 @@ Call with 'python3'
 """
 
 import os
-import time
-import glob
 import numba
 import uproot
-import hydra
 import vector
+import pyhepmc
 import fastjet
 import numpy as np
-import general as g
 import awkward as ak
-import multiprocessing
-from itertools import repeat
-from omegaconf import DictConfig
-from lifeTimeTools import findTrackPCAs, calculateImpactParameterSigns
+from enreg.tools import general as g
+from enreg.tools.data_management import lifeTimeTools as lt
 
-
-def save_record_to_file(data: dict, output_path: str) -> None:
-    print(f"Saving to precessed data to {output_path}")
-    ak.to_parquet(ak.Record(data), output_path)
+os.environ["OMP_NUM_THREADS"]="1"
+os.environ["OPENBLAS_NUM_THREADS"]="1"
+os.environ["MKL_NUM_THREADS"]="1"
+os.environ["VECLIB_MAXIMUM_THREADS"]="1"
+os.environ["NUMEXPR_NUM_THREADS"]="1"
 
 
 def load_single_file_contents(
@@ -48,9 +44,8 @@ def load_single_file_contents(
     return arrays
 
 
-def calculate_p4(p_type: str, arrs: ak.Array):
-    particles = arrs[p_type]
-    particles = ak.Record({k.replace(f"{p_type}.", ""): particles[k] for k in particles.fields})
+def calculate_p4(p_type: str, arrays: ak.Array):
+    particles = ak.Record({k.replace(f"{p_type}.", ""): arrays[k] for k in arrays.fields if p_type in k})
     particle_p4 = vector.awk(
         ak.zip(
             {
@@ -73,70 +68,6 @@ def cluster_jets(particles_p4):
     return jets, constituent_index
 
 
-###############################################################################
-###############################################################################
-#####                 TAU DECAYMODE CALCULATION                         #######
-###############################################################################
-###############################################################################
-
-
-def get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition):
-    all_decaymodes = []
-    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
-        event_decaymodes = []
-        if n_daughters == 0:
-            event_decaymodes.append(-1)
-        for d_idx in range(n_daughters):
-            daughter_indices = range(
-                mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
-                mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
-            )
-            daughter_pdgs = np.abs(mc_particles.PDG[e_idx][daughter_indices])
-            daughter_charges = np.abs(mc_particles.charge[e_idx][daughter_indices])
-            PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
-            event_decaymodes.append(g.get_decaymode(PDGs, daughter_pdgs))
-        all_decaymodes.append(event_decaymodes)
-    return ak.from_iter(all_decaymodes)
-
-
-###############################################################################
-###############################################################################
-#####                 TAU DECAY VERTEX FINDING                          #######
-###############################################################################
-###############################################################################
-
-
-def get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition):
-    all_decay_vertices_x = []
-    all_decay_vertices_y = []
-    all_decay_vertices_z = []
-    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
-        event_decay_vertices_x = []
-        event_decay_vertices_y = []
-        event_decay_vertices_z = []
-        if n_daughters == 0:
-            event_decay_vertices_x.append(-1)
-            event_decay_vertices_y.append(-1)
-            event_decay_vertices_z.append(-1)
-        for d_idx in range(n_daughters):
-            daughter_indices = range(
-                mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
-                mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
-            )
-            first_daughter = daughter_indices[0]
-            tau_decay_vertex_x = mc_particles["vertex.x"][e_idx][first_daughter]
-            tau_decay_vertex_y = mc_particles["vertex.y"][e_idx][first_daughter]
-            tau_decay_vertex_z = mc_particles["vertex.z"][e_idx][first_daughter]
-            event_decay_vertices_x.append(tau_decay_vertex_x)
-            event_decay_vertices_y.append(tau_decay_vertex_y)
-            event_decay_vertices_z.append(tau_decay_vertex_z)
-        all_decay_vertices_x.append(event_decay_vertices_x)
-        all_decay_vertices_y.append(event_decay_vertices_y)
-        all_decay_vertices_z.append(event_decay_vertices_z)
-    return ak.from_iter(all_decay_vertices_x), ak.from_iter(all_decay_vertices_y), ak.from_iter(all_decay_vertices_z)
-
 
 ###############################################################################
 ###############################################################################
@@ -149,12 +80,11 @@ def find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition):
     tau_daughters_all_events = []
     for event_idx in range(len(mc_particles.daughters_begin)):
         tau_daughter_indices = []
-        for daughter_idx in range(len(mc_particles.daughters_begin[tau_mask][mask_addition][event_idx])):
-            daughters = range(
-                mc_particles.daughters_begin[tau_mask][mask_addition][event_idx][daughter_idx],
-                mc_particles.daughters_end[tau_mask][mask_addition][event_idx][daughter_idx],
-            )
-            tau_daughter_indices.extend(daughters)
+        for tau_idx in range(len(mc_particles.daughters_begin[tau_mask][mask_addition][event_idx])):
+            daughters_begin = mc_particles.daughters_begin[tau_mask][mask_addition][event_idx][tau_idx]
+            daughters_end = mc_particles.daughters_end[tau_mask][mask_addition][event_idx][tau_idx]
+            daughter_indices = list(range(daughters_begin, daughters_end))
+            tau_daughter_indices.extend(daughter_indices)
         event_tau_daughters_begin = mc_particles.daughters_begin[event_idx]
         event_tau_daughters_end = mc_particles.daughters_end[event_idx]
         all_tau_daughter_indices = get_event_tau_daughters(
@@ -229,7 +159,7 @@ def get_all_tau_best_combinations(vis_tau_p4s, gen_jets):
             "energy": gen_jets.energy,
         }
     )
-    tau_indices, gen_indices = match_jets(vis_tau_p4s, gen_jets_p4, 0.1)
+    tau_indices, gen_indices = match_jets(vis_tau_p4s, gen_jets_p4, 0.4)
     pairs = []
     for tau_idx, gen_idx in zip(tau_indices, gen_indices):
         pair = []
@@ -322,6 +252,7 @@ def to_vector(jet):
 
 
 def map_pdgid_to_candid(pdgid, charge):
+    # TODO: Add this to a config.
     if pdgid == 0:
         return 0
     # photon, electron, muon
@@ -359,84 +290,81 @@ def get_matched_gen_tau_property(gen_jets, best_combos, property_, dummy_value=-
     return ak.Array(gen_jet_full_info_array)
 
 
-def get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
-    all_events_tau_vis_p4s = []
-    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
-        tau_vis_p4s = []
-        for d_idx in range(n_daughters):
-            tau_vis_p4 = vector.awk(
+def retrieve_tau_info(tau_children, n_taus):
+    tau_decay_modes = []
+    tau_vis_p4s = []
+    tau_full_p4s = []
+    for ti in range(n_taus):
+        daughter_charges = [np.sign(tc.pid) if abs(tc.pid) not in [12, 14, 16, 111, 130] else 0 for tc in tau_children[ti]]
+        daughter_pdgs = [tc.pid for tc in tau_children[ti]]
+        PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
+        tau_vis_p4 = vector.awk(
+            ak.zip(
+                {
+                    # "mass": [0.0],
+                    "energy": [0.0],
+                    "x": [0.0],
+                    "y": [0.0],
+                    "z": [0.0],
+                }
+            )
+        )[0]
+        for tc in tau_children[ti]:
+            daughter_p4 = vector.awk(
                 ak.zip(
                     {
-                        "mass": [0.0],
-                        "x": [0.0],
-                        "y": [0.0],
-                        "z": [0.0],
+                        # "mass": [tc.generated_mass],
+                        "energy": [tc.momentum.e],
+                        "x": [tc.momentum.px],
+                        "y": [tc.momentum.py],
+                        "z": [tc.momentum.pz],
                     }
                 )
             )[0]
-            daughter_indices = range(
-                mc_particles.daughters_begin[tau_mask][mask_addition][e_idx][d_idx],
-                mc_particles.daughters_end[tau_mask][mask_addition][e_idx][d_idx],
-            )
-            PDG_ids = np.abs(mc_particles.PDG[e_idx][daughter_indices])
-            vis_particle_map = (PDG_ids != 12) * (PDG_ids != 14) * (PDG_ids != 16)
-            for tau_daughter_p4 in mc_p4[e_idx][daughter_indices][vis_particle_map]:
-                tau_vis_p4 = tau_vis_p4 + tau_daughter_p4
-            tau_vis_p4s.append(tau_vis_p4)
-        if len(tau_vis_p4s) > 0:
-            all_events_tau_vis_p4s.append(tau_vis_p4s)
-        else:
-            all_events_tau_vis_p4s.append(
-                vector.awk(
-                    ak.zip(
-                        {
-                            "mass": [0.0],
-                            "x": [0.0],
-                            "y": [0.0],
-                            "z": [0.0],
-                        }
-                    )
-                )
-            )
-    all_events_tau_vis_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_vis_p4s))
-    return all_events_tau_vis_p4s
+            if abs(tc.pid) not in [12, 14, 16]:
+                tau_vis_p4 = tau_vis_p4 + daughter_p4
+        tau_vis_p4s.append(tau_vis_p4)
+        tau_decay_modes.append(g.get_decaymode(PDGs))
+    tau_info = {
+        "tau_decaymodes": tau_decay_modes,
+        "tau_vis_p4s": tau_vis_p4s,
+        "daughter_PDG": PDGs
+    }
+    return tau_info
 
 
-def get_full_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4):
-    all_events_tau_p4s = []
-    for e_idx in range(len(mc_particles.PDG[tau_mask][mask_addition])):
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][mask_addition][e_idx])
-        tau_p4s = []
-        for d_idx in range(n_daughters):
-            tau_p4s.append(mc_p4[tau_mask][mask_addition][e_idx][d_idx])
-        if len(tau_p4s) > 0:
-            all_events_tau_p4s.append(tau_p4s)
-        else:
-            all_events_tau_p4s.append(
-                vector.awk(
-                    ak.zip(
-                        {
-                            "mass": [0.0],
-                            "x": [0.0],
-                            "y": [0.0],
-                            "z": [0.0],
-                        }
-                    )
-                )
-            )
-    all_events_tau_p4s = g.reinitialize_p4(ak.from_iter(all_events_tau_p4s))
-    return all_events_tau_p4s
+def retrieve_hepmc_gen_tau_info(hepmc_events, gen_jets):
+    event_tau_infos = []
+    tau_info = {
+        "tau_DV_x": [],
+        "tau_DV_y": [],
+        "tau_DV_z": [],
+        "tau_full_p4s": [],
+        "tau_decaymodes": [],
+        "tau_vis_p4s": [],
+        "tau_charges": [],
+        "daughter_PDG": []
+    }
+    for i, event in enumerate(hepmc_events):
+        taus = [p for p in event.particles if (abs(p.pid) == 15) and (p.status == 2)]
+        tau_children = [p.children for p in event.particles if (abs(p.pid) == 15) and (p.status == 2)]
+        tau_info["tau_full_p4s"].append([vector.awk(ak.zip({
+            "energy": [tau.momentum.e],
+            "x": [tau.momentum.px],
+            "y": [tau.momentum.py],
+            "z": [tau.momentum.pz]}))[0] for tau in taus])
+        tau_info["tau_DV_x"].append([tau.end_vertex.position[0] for tau in taus])
+        tau_info["tau_DV_y"].append([tau.end_vertex.position[1] for tau in taus])
+        tau_info["tau_DV_z"].append([tau.end_vertex.position[2] for tau in taus])
+        tau_info["tau_charges"].append([np.sign(tau.pid) for tau in taus])
+        info = retrieve_tau_info(tau_children, len(taus))
+        for key, value in info.items():
+            tau_info[key].append(value)
+    for key, value in tau_info.items():
+        tau_info[key] = ak.Array(value)
 
-
-def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4):
-    vis_tau_p4s = get_vis_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
-    full_tau_p4s = get_full_tau_p4s(tau_mask, mask_addition, mc_particles, mc_p4)
-    best_combos = get_all_tau_best_combinations(vis_tau_p4s, gen_jets)
-    tau_energies = vis_tau_p4s.energy
-    tau_decaymodes = get_all_tau_decaymodes(mc_particles, tau_mask, mask_addition)
-    tau_dv_x, tau_dv_y, tau_dv_z = get_all_tau_decayvertices(mc_particles, tau_mask, mask_addition)
-    tau_charges = mc_particles.charge[tau_mask][mask_addition]
+    tau_vis_p4 = g.reinitialize_p4(tau_info['tau_vis_p4s'])
+    best_combos = get_all_tau_best_combinations(tau_vis_p4, gen_jets)
     tau_gen_jet_p4s_fill_value = vector.awk(
         ak.zip(
             {
@@ -448,18 +376,16 @@ def get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
         )
     )[0]
     gen_tau_jet_info = {
-        "gen_jet_tau_vis_energy": get_matched_gen_tau_property(gen_jets, best_combos, tau_energies),
-        "gen_jet_tau_decaymode": get_matched_gen_tau_property(gen_jets, best_combos, tau_decaymodes),
-        "tau_gen_jet_charge": get_matched_gen_tau_property(gen_jets, best_combos, tau_charges),
+        "gen_jet_tau_vis_energy": get_matched_gen_tau_property(gen_jets, best_combos, tau_vis_p4.energy, dummy_value=0.0),
+        "gen_jet_tau_decaymode": get_matched_gen_tau_property(gen_jets, best_combos, tau_info['tau_decaymodes']),
+        "tau_gen_jet_charge": get_matched_gen_tau_property(gen_jets, best_combos, tau_info['tau_charges'], dummy_value=-999),
         "tau_gen_jet_p4s_full": get_matched_gen_tau_property(
-            gen_jets, best_combos, full_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
-        ),
+            gen_jets, best_combos, tau_info['tau_full_p4s'], dummy_value=tau_gen_jet_p4s_fill_value),
         "tau_gen_jet_p4s": get_matched_gen_tau_property(
-            gen_jets, best_combos, vis_tau_p4s, dummy_value=tau_gen_jet_p4s_fill_value
-        ),
-        "tau_gen_jet_DV_x": get_matched_gen_tau_property(gen_jets, best_combos, tau_dv_x),
-        "tau_gen_jet_DV_y": get_matched_gen_tau_property(gen_jets, best_combos, tau_dv_y),
-        "tau_gen_jet_DV_z": get_matched_gen_tau_property(gen_jets, best_combos, tau_dv_z),
+            gen_jets, best_combos, tau_vis_p4, dummy_value=tau_gen_jet_p4s_fill_value),
+        "tau_gen_jet_DV_x": get_matched_gen_tau_property(gen_jets, best_combos, tau_info['tau_DV_x']),
+        "tau_gen_jet_DV_y": get_matched_gen_tau_property(gen_jets, best_combos, tau_info['tau_DV_y']),
+        "tau_gen_jet_DV_z": get_matched_gen_tau_property(gen_jets, best_combos, tau_info['tau_DV_z']),
     }
     return gen_tau_jet_info
 
@@ -490,36 +416,6 @@ def clean_reco_particles(reco_particles, reco_p4):
     return reco_particles, reco_p4
 
 
-def get_hadronically_decaying_hard_tau_masks(mc_particles):
-    tau_mask = (np.abs(mc_particles["PDG"]) == 15) & (mc_particles["generatorStatus"] == 2)
-    mask_addition = []
-    for i in range(len(mc_particles.PDG[tau_mask])):
-        n_daughters = len(mc_particles.daughters_begin[tau_mask][i])
-        daughter_mask = []
-        for d in range(n_daughters):
-            parent_idx = mc_particles.parents_begin[tau_mask][i][d]
-            initial_tau = parent_idx < len(mc_particles.PDG[i])
-            initial_tau_2 = mc_particles.daughters_end[tau_mask][i][d] < len(mc_particles.PDG[i])
-            if initial_tau and initial_tau_2:
-                parent_pdg = mc_particles.PDG[i][parent_idx]
-                daughters_idx = range(
-                    mc_particles.daughters_begin[tau_mask][i][d], mc_particles.daughters_end[tau_mask][i][d]
-                )
-                daughter_pdgs = np.abs(mc_particles.PDG[i][daughters_idx])
-                daughter_charges = np.abs(mc_particles.charge[i][daughters_idx])
-                PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
-                decaymode = g.get_decaymode(PDGs, daughter_pdgs)
-                if decaymode != 16 and abs(parent_pdg) == 15:
-                    daughter_mask.append(True)
-                else:
-                    daughter_mask.append(False)
-            else:
-                daughter_mask.append(False)
-        mask_addition.append(daughter_mask)
-    mask_addition = ak.Array(mask_addition)
-    return tau_mask, mask_addition
-
-
 def filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
     """Filter out all gen jets that have a lepton as one of their consituents (so in dR < 0.4)
     Currently see that also some jets with 6 hadrons and an electron are filtered out
@@ -537,7 +433,7 @@ def filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
                 sub_mask.append(True)
         mask.append(sub_mask)
     mask = ak.Array(mask)
-    return gen_jets[mask]
+    return gen_jets[mask], gen_jet_constituent_indices[mask]
 
 
 def get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles):
@@ -559,7 +455,6 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
         mask = mc_particles.PDG[ev] == 23
         daughter_idx = range(mc_particles.daughters_begin[ev][mask][-1], mc_particles.daughters_end[ev][mask][-1])
         daughter_PDGs = mc_particles.PDG[ev][daughter_idx]
-        #     print(daughter_PDGs, daughter_idx)
         daughter_p4s = mc_p4[ev][daughter_idx]
         all_daughter_PDGs.append(daughter_PDGs)
         all_daughter_p4s.append(daughter_p4s)
@@ -568,7 +463,7 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
     all_daughter_p4s = g.reinitialize_p4(all_daughter_p4s)
     v_all_daughter_p4s = to_vector(all_daughter_p4s)
     reco_jets = to_vector(reco_jets)
-    jet_indices, Z_daughter_indices = match_jets(reco_jets, v_all_daughter_p4s, 0.1)
+    jet_indices, Z_daughter_indices = match_jets(reco_jets, v_all_daughter_p4s, 0.4)
     jet_parton_PDGs = []
     for ev in range(len(jet_indices)):
         ev_jet_parton_PDGs = np.zeros(len(reco_jets[ev]))
@@ -579,14 +474,59 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
     return jet_parton_PDGs
 
 
-def process_input_file(arrays: ak.Array, remove_background):
-    mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrs=arrays)
-    reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrs=arrays)
+def load_events_from_hepmc(root_file_path: str):
+    hepmc_file_path  = root_file_path.replace(".root", ".hepmc").replace("reco_", "sim_")
+    events = []
+    if not os.path.exists(hepmc_file_path):
+        print(f"Incorrect path for the .hepmc file: {hepmc_file_path}")
+    with pyhepmc.open(hepmc_file_path) as f:
+        for event in f:
+            events.append(event)
+    return events
+
+
+def no_tau_genjet_matching(gen_jets):
+    gen_tau_jet_info = {
+        "gen_jet_tau_vis_energy": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
+        "gen_jet_tau_decaymode": ak.values_astype(ak.Array(ak.ones_like(gen_jets) == ak.ones_like(gen_jets)), int) * -1,
+        "tau_gen_jet_charge": ak.values_astype(ak.Array(ak.ones_like(gen_jets) == ak.ones_like(gen_jets)), int) * -999,
+        "tau_gen_jet_p4s_full": ak.zeros_like(gen_jets),
+        "tau_gen_jet_p4s": ak.zeros_like(gen_jets),
+        "tau_gen_jet_DV_x": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
+        "tau_gen_jet_DV_y": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
+        "tau_gen_jet_DV_z": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
+    }
+    return gen_tau_jet_info
+
+
+def retrieve_hepmc_gen_particles(hepmc_events):
+    stable_mc_p4 = []
+    stable_mc_particles = []
+    for i, event in enumerate(hepmc_events):
+        event_stable_gen_particles = [p for p in event.particles if (p.status == 1) and (abs(p.pid) not in [12,14,16])]
+        stable_mc_particles.append([{"PDG": p.pid} for p in event_stable_gen_particles])
+        stable_mc_p4.append([vector.awk(ak.zip({
+            "energy": [gp.momentum.e],
+            "x": [gp.momentum.px],
+            "y": [gp.momentum.py],
+            "z": [gp.momentum.pz]
+        }))[0] for gp in event_stable_gen_particles])
+    stable_mc_p4 = g.reinitialize_p4(ak.Array(stable_mc_p4))
+    stable_mc_particles = ak.Array(stable_mc_particles)
+    return stable_mc_p4, stable_mc_particles
+
+
+def process_input_file(input_path: ak.Array, tree_path: str, branches: list, remove_background: bool):
+    arrays = load_single_file_contents(input_path, tree_path, branches)
+    reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrays=arrays)
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
+    hepmc_events = load_events_from_hepmc(input_path)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
-    stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
+    # mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrays=arrays)
+    # stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
+    stable_mc_p4, stable_mc_particles = retrieve_hepmc_gen_particles(hepmc_events)
     gen_jets, gen_jet_constituent_indices = cluster_jets(stable_mc_p4)
-    gen_jets = filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles)
+    gen_jets, gen_jet_constituent_indices = filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles)
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
     reco_jets = ak.from_iter([reco_jets[i][idx] for i, idx in enumerate(reco_indices)])
@@ -594,15 +534,17 @@ def process_input_file(arrays: ak.Array, remove_background):
     gen_jets = ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)])
     gen_jets = g.reinitialize_p4(gen_jets)
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
-    tau_mask, mask_addition = get_hadronically_decaying_hard_tau_masks(mc_particles)
-    gen_tau_jet_info = get_gen_tau_jet_info(gen_jets, tau_mask, mask_addition, mc_particles, mc_p4)
+    if remove_background:
+        gen_tau_jet_info = retrieve_hepmc_gen_tau_info(hepmc_events, gen_jets)
+    else:
+        gen_tau_jet_info = no_tau_genjet_matching(gen_jets)
 
-    reco_particle_genPDG = get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles)
-    jet_parton_PDGs = match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets)
+    # reco_particle_genPDG = get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles)  # Why matching mc_particles, not stable_mc_particles
 
-    gen_tau_daughters = find_tau_daughters_all_generations(mc_particles, tau_mask, mask_addition)
+    # jet_parton_PDGs = match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets)  # Why matching mc_particles, not stable_mc_particles
+
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
-    event_lifetime_infos = ak.from_iter([findTrackPCAs(arrays, i) for i in range(len(reco_p4))])
+    event_lifetime_infos = ak.from_iter([lt.findTrackPCAs(arrays, i) for i in range(len(reco_p4))])
     event_lifetime_info = event_lifetime_infos[:, 0]
     event_lifetime_errs = event_lifetime_infos[:, 1]
     event_dxy = event_lifetime_info[:, :, 0]
@@ -693,7 +635,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_dxy = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_dxy[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -707,7 +649,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_dz = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_dz[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -721,7 +663,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_d3 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_d3[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -735,7 +677,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_d0 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_d0[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -749,7 +691,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_z0 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_z0[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -763,7 +705,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_dxy_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_dxy_f2D[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -777,7 +719,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_dz_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_dz_f2D[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -791,7 +733,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     event_reco_cand_signed_d3_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     event_reco_cand_d3_f2D[j][i],
                     [event_reco_cand_PCA_x[j][i], event_reco_cand_PCA_y[j][i], event_reco_cand_PCA_z[j][i]],
                     [event_reco_cand_PV_x[j][i], event_reco_cand_PV_y[j][i], event_reco_cand_PV_z[j][i]],
@@ -829,7 +771,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_dxy = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_dxy[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -843,7 +785,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_dz = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_dz[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -857,7 +799,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_d3 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_d3[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -871,7 +813,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_dxy_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_dxy_f2D[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -885,7 +827,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_dz_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_dz_f2D[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -899,7 +841,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_d3_f2D = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_d3_f2D[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -913,7 +855,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_d0 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_d0[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -927,7 +869,7 @@ def process_input_file(arrays: ak.Array, remove_background):
     reco_cand_signed_z0 = ak.from_iter(
         [
             [
-                calculateImpactParameterSigns(
+                lt.calculateImpactParameterSigns(
                     reco_cand_z0[j][i],
                     [reco_cand_PCA_x[j][i], reco_cand_PCA_y[j][i], reco_cand_PCA_z[j][i]],
                     [reco_cand_PV_x[j][i], reco_cand_PV_y[j][i], reco_cand_PV_z[j][i]],
@@ -961,10 +903,10 @@ def process_input_file(arrays: ak.Array, remove_background):
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
-        "reco_jet_Z_Dparton_pdg": jet_parton_PDGs,
-        "reco_cand_genPDG": get_jet_constituent_property(
-            reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet
-        ),
+        # "reco_jet_Z_Dparton_pdg": jet_parton_PDGs,
+        # "reco_cand_genPDG": get_jet_constituent_property(
+        #     reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet
+        # ),
         "event_reco_cand_dxy": event_reco_cand_dxy,  # impact parameter in xy  for all pf in event
         "event_reco_cand_dz": event_reco_cand_dz,  # impact parameter in z for all pf in event
         "event_reco_cand_d3": event_reco_cand_d3,  # impact parameter in 3d for all pf in event
@@ -1046,63 +988,12 @@ def process_input_file(arrays: ak.Array, remove_background):
         "gen_jet_tau_decay_vertex_x": gen_tau_jet_info["tau_gen_jet_DV_x"],
         "gen_jet_tau_decay_vertex_y": gen_tau_jet_info["tau_gen_jet_DV_y"],
         "gen_jet_tau_decay_vertex_z": gen_tau_jet_info["tau_gen_jet_DV_z"],
-        "reco_cand_matched_gen_energy": get_jet_matched_constituent_gen_energy(
-            arrays, reco_jet_constituent_indices, num_ptcls_per_jet, mc_p4, gen_tau_daughters
-        ),
     }
     data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
 
-    ## remove ZH bkg part
+    ## remove backgrounds for signal samples
+    removal_mask = data["gen_jet_tau_decaymode"] != 15
     if remove_background:
-        removal_mask = data["gen_jet_tau_decaymode"] != -1
-        data = {key: value[removal_mask] for key, value in data.items()}
+        removal_mask = (data["gen_jet_tau_decaymode"] != -1) * removal_mask
+    data = {key: value[removal_mask] for key, value in data.items()}
     return data
-
-
-def process_single_file(
-    input_path: str,
-    output_dir: str,
-    sample: str,
-    tree_path: str = "events",
-    branches: list = ["MCParticles", "MergedRecoParticles", "SiTracks_Refitted_1", "PrimaryVertices"],
-):
-    file_name = os.path.basename(input_path).replace(".root", ".parquet")
-    output_ntuple_path = os.path.join(output_dir, file_name)
-    if not os.path.exists(output_ntuple_path):
-        # try:
-        start_time = time.time()
-        remove_bkg = sample == "ZH_Htautau"
-        arrays = load_single_file_contents(input_path, tree_path, branches)
-        data = process_input_file(arrays, remove_background=remove_bkg)
-        save_record_to_file(data, output_ntuple_path)
-        end_time = time.time()
-        print(f"Finished processing in {end_time-start_time} s.")
-    # except Exception:
-    #     print(f"Broken input file at {input_path}")
-    else:
-        print("File already processed, skipping.")
-
-
-@hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
-def process_all_input_files(cfg: DictConfig) -> None:
-    print("Working directory : {}".format(os.getcwd()))
-    for sample in cfg.samples_to_process:
-        output_dir = cfg.samples[sample].output_dir
-        input_dir = cfg.samples[sample].input_dir
-        os.makedirs(output_dir, exist_ok=True)
-        input_wcp = os.path.join(input_dir, "*.root")
-        if cfg.test_run:
-            n_files = 10
-        else:
-            n_files = None
-        input_paths = glob.glob(input_wcp)[:n_files]
-        if cfg.use_multiprocessing:
-            pool = multiprocessing.Pool(processes=10)
-            pool.starmap(process_single_file, zip(input_paths, repeat(output_dir), repeat(sample)))
-        else:
-            for path in input_paths:
-                process_single_file(path, output_dir, sample)
-
-
-if __name__ == "__main__":
-    process_all_input_files()
