@@ -9,11 +9,11 @@ from enreg.tools.data_management.particleTransformer_dataset import ParticleTran
 from enreg.tools.models.HPS import HPSTauBuilder
 from enreg.tools.data_management import tau_builder_tools as tbt
 
-os.environ["OMP_NUM_THREADS"]="1"
-os.environ["OPENBLAS_NUM_THREADS"]="1"
-os.environ["MKL_NUM_THREADS"]="1"
-os.environ["VECLIB_MAXIMUM_THREADS"]="1"
-os.environ["NUMEXPR_NUM_THREADS"]="1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
 
 
 @hydra.main(config_path="../config", config_name="tau_builder", version_base=None)
@@ -45,19 +45,20 @@ def build_taus(cfg: DictConfig) -> None:
             print(f"::: Collecting files {dataset} dataset :::")
             dataset_dir = os.path.join(algo_output_dir, dataset)
             for sample in cfg.samples_to_process:
-                samples_dir = os.path.join(cfg.PT_tauID_ntuple_dir, dataset, sample)
+                # samples_dir = os.path.join(cfg.PT_tauID_ntuple_dir, dataset, sample)
                 sample_output_dir = os.path.join(dataset_dir, sample)
                 os.makedirs(
                     os.path.join(sample_output_dir),
                     exist_ok=True
                 )
-                if not os.path.exists(samples_dir):
-                    raise OSError(f"No ntuples found in {samples_dir}")
+                # if not os.path.exists(samples_dir):
+                #     raise OSError(f"No ntuples found in {samples_dir}")
                 if cfg.n_files == -1:
                     n_files = None
                 else:
                     n_files = cfg.n_files
-                sample_input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[:n_files]
+                sample_input_paths = cfg.datasets[dataset][sample][:n_files]
+                # sample_input_paths = glob.glob(os.path.join(samples_dir, "*.parquet"))[:n_files]
                 sample_output_paths = [os.path.join(sample_output_dir, os.path.basename(ip)) for ip in sample_input_paths]
                 print(f"\tFound {len(sample_input_paths)} input files for {sample} sample in the {dataset} dataset.")
                 input_paths.extend(sample_input_paths)

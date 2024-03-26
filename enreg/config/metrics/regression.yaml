@@ -10,7 +10,7 @@ regression:
       Tight: 0.975
   algorithms:
     ParticleTransformer:
-      ntuples_dir: /home/laurits/240303_hjolberg2022jet_PT_ntuples/ParticleTransformer
+      ntuples_dir: /home/laurits/ENREG/ntuples/2024013_HPS_HEPMC_ntuples/ParticleTransformer
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
       compare: True
@@ -18,7 +18,7 @@ regression:
       hatch: "//"
       color: "tab:purple"
     HPS:
-      ntuples_dir: /scratch/persistent/laurits/20240302_Initial_run/HPS
+      ntuples_dir: /home/laurits/ENREG/ntuples/2024013_HPS_HEPMC_ntuples/HPS
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
       compare: True

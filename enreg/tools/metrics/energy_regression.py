@@ -68,11 +68,6 @@ def plot_energy_regression(algorithm_info, cfg):
     json_output_path = output_path = os.path.join(cfg.output_dir, 'plotting_data.json')
     g.save_to_json(plotting_input, json_output_path)
     plot_E_gen_distribution(algorithm_info, cfg)
-    # plot_mean(plotting_input, cfg, resolution_type='IQR', variable='E')
-    # plot_mean(plotting_input, cfg, resolution_type='std', variable='E')
-    # plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='E')
-    # plot_resolution(plotting_input, cfg, resolution_type='std', variable='E')
-    # plot_distribution_bin_wise(plotting_input, cfg, variable='E')
     plot_mean(plotting_input, cfg, resolution_type='IQR', variable='pt')
     plot_mean(plotting_input, cfg, resolution_type='std', variable='pt')
     plot_resolution(plotting_input, cfg, resolution_type='std', variable='pt')
@@ -85,9 +80,19 @@ def plot_energy_regression(algorithm_info, cfg):
         plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_bin_centers"],
         plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_resolution_w_std"],
         plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_resolution_w_IQR"],
+        "ZH_Htautau",
         cfg
     )
-
+    plot_ATLAS_resolution(
+        plotting_input['HPS']['test']['Z_Ztautau']["pt_bin_centers"],
+        plotting_input['HPS']['test']['Z_Ztautau']["pt_resolution_w_std"],
+        plotting_input['HPS']['test']['Z_Ztautau']["pt_resolution_w_IQR"],
+        plotting_input['ParticleTransformer']['test']['Z_Ztautau']["pt_bin_centers"],
+        plotting_input['ParticleTransformer']['test']['Z_Ztautau']["pt_resolution_w_std"],
+        plotting_input['ParticleTransformer']['test']['Z_Ztautau']["pt_resolution_w_IQR"],
+        "Z_Ztautau",
+        cfg
+    )
 
 def plot_distribution_bin_wise(plotting_input, cfg, variable, figsize=(12,12)):
     x_label = r"$\frac{p_T^{reco}}{p_T^{gen}}$" if variable == 'pt' else r"$\frac{E_{vis}^{reco}}{E_{vis}^{gen}}$"
@@ -232,9 +237,9 @@ def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
                 gen_jet_p4s = g.reinitialize_p4(sample_data.gen_jet_p4s)
                 pred_tau_p4s = g.reinitialize_p4(sample_data.tau_p4s)
                 gen_pt_mask = gen_jet_p4s.pt > 15
-                ratio_mask = np.abs(gen_tau_p4s.pt/gen_jet_p4s.pt - 1) < 0.2
-                prediction_mask = pred_tau_p4s.pt > 1
-                sample_data = sample_data[gen_pt_mask * ratio_mask * prediction_mask]
+                # ratio_mask = np.abs(gen_tau_p4s.pt/gen_jet_p4s.pt - 1) < 0.2
+                # prediction_mask = pred_tau_p4s.pt > 1
+                sample_data = sample_data[gen_pt_mask]# * ratio_mask * prediction_mask]
                 label = f"{algorithm_name}: {sample_name}"
                 pt_ratio_means, pt_ratio_std, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
                     sample_data=sample_data, resolution_type='std', cfg=cfg)
@@ -339,7 +344,7 @@ def prepare_tau_pt_ratio_data(
 
 
 
-def plot_ATLAS_resolution(HPS_x_values, HPS_y_values_std, HPS_y_values_iqr, PT_x_values, PT_y_values_std, PT_y_values_iqr, cfg):
+def plot_ATLAS_resolution(HPS_x_values, HPS_y_values_std, HPS_y_values_iqr, PT_x_values, PT_y_values_std, PT_y_values_iqr, sample, cfg):
     fig, ax = plt.subplots(figsize=(16,9))
     ATLAS_baseline = {
         "x": [30, 50, 68, 87, 105, 125, 145, 165, 182, 203, 222, 241, 260],
@@ -365,11 +370,11 @@ def plot_ATLAS_resolution(HPS_x_values, HPS_y_values_std, HPS_y_values_iqr, PT_x
     plt.plot(PT_x_values[PT_x_values_mask], PT_y_values_iqr[PT_x_values_mask] * 100, marker="*", color='blue', ls='-', label="PT w/ IQR")
     plt.grid()
     plt.legend(prop={"size": 20})
-    plt.title("response" , fontsize=18, loc="center", fontweight="bold", style="italic", family="monospace")
+    plt.title(sample , fontsize=18, loc="center", fontweight="bold", style="italic", family="monospace")
     plt.ylabel(r"$p_T$ resolution [%]", fontsize=20)
     plt.xlabel(r"$p_T^{GEN}$ [GeV]", fontsize=20)
     plt.ylim((0, 30))
     ax.tick_params(axis="x", labelsize=30)
     ax.tick_params(axis="y", labelsize=30)
-    output_path = os.path.join(cfg.output_dir, "atlas_plot.png")
+    output_path = os.path.join(cfg.output_dir, f"{sample}_atlas_plot.png")
     plt.savefig(output_path, bbox_inches='tight')

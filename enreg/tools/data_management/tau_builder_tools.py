@@ -8,7 +8,7 @@ from enreg.tools import slurm_tools as st
 
 
 def process_single_file(input_path: str, builder, output_path: str) -> None:
-    if True:
+    if not os.path.exists(output_path):
         print("Opening file %s" % input_path)
         jets = ak.from_parquet(input_path)
         print("Processing jets...")
@@ -21,10 +21,10 @@ def process_single_file(input_path: str, builder, output_path: str) -> None:
         print(f"File [{output_path}] already processed ... Skipping")
 
 
-def multipath_slurm_tau_builder(input_paths, output_paths, batch_size=10):
+def multipath_slurm_tau_builder(input_paths, output_paths, batch_size=7):
     output_dir = st.create_tmp_run_dir()
     print(f"Temporary directory created to {output_dir}")
-    print(f"Run `bash enreg/scripts/submit_builder_batchJobs.sh {output_dir}/executables/")
+    print(f"Run `bash enreg/scripts/submit_builder_batchJobs.sh {output_dir}/executables/`")
     number_batches = int(len(input_paths) / batch_size) + 1
     input_path_chunks = list(np.array_split(input_paths, number_batches))
     output_path_chunks = list(np.array_split(output_paths, number_batches))
@@ -93,7 +93,7 @@ def prepare_job_file(
                 #SBATCH --job-name=tauBuilder
                 #SBATCH --ntasks=1
                 #SBATCH --partition=short
-                #SBATCH --time=00:10:00
+                #SBATCH --time=00:15:00
                 #SBATCH --cpus-per-task=1
                 #SBATCH -e {error_file}
                 #SBATCH -o {log_file}

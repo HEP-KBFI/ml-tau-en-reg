@@ -5,7 +5,7 @@ from enreg.tools import slurm_tools as st
 import enreg
 
 
-def multipath_slurm_tau_builder(input_paths, output_paths, batch_size=7):
+def multipath_slurm_ntupelizer(input_paths, output_paths, batch_size=7):
     tmp_dir = st.create_tmp_run_dir()
     number_batches = int(len(input_paths) / batch_size) + 1
     input_path_chunks = list(np.array_split(input_paths, number_batches))

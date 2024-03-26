@@ -301,6 +301,7 @@ def retrieve_tau_info(tau_children, n_taus):
         tau_vis_p4 = vector.awk(
             ak.zip(
                 {
+                    # "mass": [0.0],
                     "energy": [0.0],
                     "x": [0.0],
                     "y": [0.0],
@@ -312,6 +313,7 @@ def retrieve_tau_info(tau_children, n_taus):
             daughter_p4 = vector.awk(
                 ak.zip(
                     {
+                        # "mass": [tc.generated_mass],
                         "energy": [tc.momentum.e],
                         "x": [tc.momentum.px],
                         "y": [tc.momentum.py],
@@ -483,14 +485,46 @@ def load_events_from_hepmc(root_file_path: str):
     return events
 
 
+def no_tau_genjet_matching(gen_jets):
+    gen_tau_jet_info = {
+        "gen_jet_tau_vis_energy": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
+        "gen_jet_tau_decaymode": ak.values_astype(ak.Array(ak.ones_like(gen_jets) == ak.ones_like(gen_jets)), int) * -1,
+        "tau_gen_jet_charge": ak.values_astype(ak.Array(ak.ones_like(gen_jets) == ak.ones_like(gen_jets)), int) * -999,
+        "tau_gen_jet_p4s_full": ak.zeros_like(gen_jets),
+        "tau_gen_jet_p4s": ak.zeros_like(gen_jets),
+        "tau_gen_jet_DV_x": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
+        "tau_gen_jet_DV_y": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
+        "tau_gen_jet_DV_z": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
+    }
+    return gen_tau_jet_info
+
+
+def retrieve_hepmc_gen_particles(hepmc_events):
+    stable_mc_p4 = []
+    stable_mc_particles = []
+    for i, event in enumerate(hepmc_events):
+        event_stable_gen_particles = [p for p in event.particles if (p.status == 1) and (abs(p.pid) not in [12,14,16])]
+        stable_mc_particles.append([{"PDG": p.pid} for p in event_stable_gen_particles])
+        stable_mc_p4.append([vector.awk(ak.zip({
+            "energy": [gp.momentum.e],
+            "x": [gp.momentum.px],
+            "y": [gp.momentum.py],
+            "z": [gp.momentum.pz]
+        }))[0] for gp in event_stable_gen_particles])
+    stable_mc_p4 = g.reinitialize_p4(ak.Array(stable_mc_p4))
+    stable_mc_particles = ak.Array(stable_mc_particles)
+    return stable_mc_p4, stable_mc_particles
+
+
 def process_input_file(input_path: ak.Array, tree_path: str, branches: list, remove_background: bool):
     arrays = load_single_file_contents(input_path, tree_path, branches)
-    hepmc_events = load_events_from_hepmc(input_path)
-    mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrays=arrays)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrays=arrays)
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
+    hepmc_events = load_events_from_hepmc(input_path)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
-    stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
+    # mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrays=arrays)
+    # stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
+    stable_mc_p4, stable_mc_particles = retrieve_hepmc_gen_particles(hepmc_events)
     gen_jets, gen_jet_constituent_indices = cluster_jets(stable_mc_p4)
     gen_jets, gen_jet_constituent_indices = filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles)
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
@@ -500,10 +534,14 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     gen_jets = ak.from_iter([gen_jets[i][idx] for i, idx in enumerate(gen_indices)])
     gen_jets = g.reinitialize_p4(gen_jets)
     num_ptcls_per_jet = ak.num(reco_jet_constituent_indices, axis=-1)
-    gen_tau_jet_info = retrieve_hepmc_gen_tau_info(hepmc_events, gen_jets)
+    if remove_background:
+        gen_tau_jet_info = retrieve_hepmc_gen_tau_info(hepmc_events, gen_jets)
+    else:
+        gen_tau_jet_info = no_tau_genjet_matching(gen_jets)
 
-    reco_particle_genPDG = get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles)
-    jet_parton_PDGs = match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets)
+    # reco_particle_genPDG = get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles)  # Why matching mc_particles, not stable_mc_particles
+
+    # jet_parton_PDGs = match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets)  # Why matching mc_particles, not stable_mc_particles
 
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_lifetime_infos = ak.from_iter([lt.findTrackPCAs(arrays, i) for i in range(len(reco_p4))])
@@ -865,10 +903,10 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
-        "reco_jet_Z_Dparton_pdg": jet_parton_PDGs,
-        "reco_cand_genPDG": get_jet_constituent_property(
-            reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet
-        ),
+        # "reco_jet_Z_Dparton_pdg": jet_parton_PDGs,
+        # "reco_cand_genPDG": get_jet_constituent_property(
+        #     reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet
+        # ),
         "event_reco_cand_dxy": event_reco_cand_dxy,  # impact parameter in xy  for all pf in event
         "event_reco_cand_dz": event_reco_cand_dz,  # impact parameter in z for all pf in event
         "event_reco_cand_d3": event_reco_cand_d3,  # impact parameter in 3d for all pf in event

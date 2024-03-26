@@ -1,6 +1,7 @@
-use_slurm: True
+use_slurm: False
 slurm_run: False
 use_multiprocessing: False
+n_files: 100
 tree_path: events
 branches:
   - MCParticles.PDG
@@ -54,19 +55,19 @@ test_run: False
 samples_to_process:
   - Z_Ztautau
   - ZH_Htautau
-  # - QCD
+  - QCD
 samples:
   Z_Ztautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /home/laurits/ENREG/ntuples/20240308_HEPMC_ntuples/Z_Ztautau
+    output_dir: /home/laurits/ENREG/ntuples/20240326_hepmc_genjets/Z_Ztautau
     is_signal: True
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /home/laurits/ENREG/ntuples/20240308_HEPMC_ntuples/ZH_Htautau
+    output_dir: /home/laurits/ENREG/ntuples/20240326_hepmc_genjets/ZH_Htautau
     is_signal: True
   QCD:
-    input_dir: /scratch/persistent/laurits/clic_edm4hep/p8_ee_qq_ecm380/
-    output_dir: /home/laurits/tmp/test_ntuples/QCD
+    input_dir: /local/joosep/clic_edm4hep/2023/p8_ee_qq_ecm380/
+    output_dir: /home/laurits/ENREG/ntuples/20240326_hepmc_genjets/QCD
     is_signal: False
 validation:
   output_dir: $HOME/CLIC_ntuple_validation_v5

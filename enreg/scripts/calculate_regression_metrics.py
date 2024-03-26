@@ -20,7 +20,7 @@ def main(cfg: DictConfig) -> None:
                 input_dir = os.path.join(ntuples_dir, dataset, sample)
                 unmasked_data =  g.load_all_data(input_loc=input_dir, n_files=cfg.n_comparison_files) # Hiljem kui teada täpselt mis columns vaja, siis lisada see
                 wp_value = cfg.metrics.regression.classifier_WPs[cfg.metrics.regression.cls_wp]
-                mask = (unmasked_data.gen_jet_tau_vis_energy > 1) * (unmasked_data.tauClassifier > wp_value)
+                mask = (unmasked_data.gen_jet_tau_vis_energy > 1)# * (unmasked_data.tauClassifier > wp_value)
                 sample_data[sample] = unmasked_data[mask]
             dataset_info[dataset] = sample_data
         algorithm_info[algorithm] = dataset_info

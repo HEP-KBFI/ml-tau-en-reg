@@ -79,7 +79,9 @@ def train_loop(
     #     root_mean_squared_log_errors []
     #     mae_loss = nn.L1Loss()
     weights_train = []
+    print("Training model")
     model.train()
+    print("Finished training model")
     for idx_batch, (X, y, weight) in enumerate(dataloader_train):
         # Compute prediction and loss
         if transform:
@@ -89,24 +91,23 @@ def train_loop(
         mask = X["mask"].to(device=dev)
         y = y.to(device=dev)
         weight = weight.to(device=dev)
-        pred = model(x, v, mask).to(device=dev)[:,0]
 
         if is_energy_regression:
             # Predict the correction, not the full visible energy
             # jet_energy = X["reco_jet_energy"].to(device=dev)
             # pred *= jet_energy
             # pred += jet_energy
+            pred = model(x, v, mask).to(device=dev)[:,0]
             predicted_pt = torch.exp(pred) * X["reco_jet_pt"].to(device=dev)
             y_for_loss = torch.log(y / X["reco_jet_pt"].to(device=dev))
         else:
+            pred = model(x, v, mask).to(device=dev)
+            # pred = torch.softmax(pred, dim=1)
+            pred = torch.softmax(pred, dim=0)
             y_for_loss = y
-
-        loss = None
+        loss = loss_fn(pred, y_for_loss)
         if use_per_jet_weights:
-            loss = loss_fn(pred, y_for_loss)
             loss = loss * weight
-        else:
-            loss = loss_fn(pred, y_for_loss)
         loss_train += loss.sum().item()
         normalization += torch.flatten(loss).size(dim=0)
         if not is_energy_regression:
@@ -195,9 +196,9 @@ def validation_loop(
             mask = X["mask"].to(device=dev)
             y = y.to(device=dev)
             weight = weight.to(device=dev)
-            pred = model(x, v, mask).to(device=dev)[:,0]
 
             if is_energy_regression:
+                pred = model(x, v, mask).to(device=dev)[:,0]
                 # Predict the correction, not the full visible energy
                 # jet_energy = X["reco_jet_energy"].to(device=dev)
                 # pred *= jet_energy
@@ -205,13 +206,14 @@ def validation_loop(
                 predicted_pt = torch.exp(pred) * X["reco_jet_pt"].to(device=dev)
                 y_for_loss = torch.log(y / X["reco_jet_pt"].to(device=dev))
             else:
+                pred = model(x, v, mask).to(device=dev)
+                # pred = torch.softmax(pred, dim=1)
+                pred = torch.softmax(pred, dim=0)
                 y_for_loss = y
 
+            loss = loss_fn(pred, y_for_loss)
             if use_per_jet_weights:
-                loss = loss_fn(pred, y_for_loss)
                 loss = loss * weight
-            else:
-                loss = loss_fn(pred, y_for_loss).item()
             loss_validation += loss.sum().item()
             normalization += torch.flatten(loss).size(dim=0)
             if not is_energy_regression:
@@ -271,25 +273,26 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
 
     validation_paths = []
     train_paths = []
-    if is_energy_regression:
-        for sample in cfg.samples_to_use:
-            train_dir = os.path.join(cfg.PT_tauID_ntuple_dir, "train", sample)
-            train_paths.extend(glob.glob(os.path.join(train_dir, "*")))
-            validation_dir = os.path.join(cfg.PT_tauID_ntuple_dir, "validation", sample)
-            validation_paths.extend(glob.glob(os.path.join(validation_dir, "*")))
-    else:
-        for sample in cfg.samples_to_use:
-            train_paths.extend(cfg.datasets.train[sample])
-            validation_paths.extend(cfg.datasets.validation[sample])
+    # if is_energy_regression:
+    #     for sample in cfg.samples_to_use:
+    #         train_dir = os.path.join(cfg.PT_tauID_ntuple_dir, "train", sample)
+    #         train_paths.extend(glob.glob(os.path.join(train_dir, "*"))[:cfg.models.ParticleTransformer.training.max_num_files])
+    #         validation_dir = os.path.join(cfg.PT_tauID_ntuple_dir, "validation", sample)
+    #         validation_paths.extend(glob.glob(os.path.join(validation_dir, "*"))[:cfg.models.ParticleTransformer.training.max_num_files])
+    # else:
+    for sample in cfg.samples_to_use:
+        print(sample)
+        train_paths.extend(cfg.datasets.train[sample][:cfg.models.ParticleTransformer.training.max_num_files])
+        validation_paths.extend(cfg.datasets.validation[sample][:cfg.models.ParticleTransformer.training.max_num_files])
 
 
-    training_data = g.load_all_data(train_paths, n_files=cfg.models.ParticleTransformer.training.max_num_files)
+    training_data = g.load_all_data(train_paths, n_files=-1)
     dataset_train = ParticleTransformerDataset(
         data=training_data,
         cfg=cfg.models.ParticleTransformer.dataset,
         is_energy_regression=is_energy_regression
     )
-    validation_data = g.load_all_data(validation_paths, n_files=cfg.models.ParticleTransformer.training.max_num_files)
+    validation_data = g.load_all_data(validation_paths, n_files=-1)
     dataset_validation = ParticleTransformerDataset(
         data=validation_data,
         cfg=cfg.models.ParticleTransformer.dataset,
@@ -322,7 +325,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     print("Building model...")
     model = ParticleTransformer(
         input_dim=input_dim,
-        num_classes=1, 
+        num_classes=1 if is_energy_regression else 2,
         use_pre_activation_pair=False,
         for_inference=False,
         use_amp=False,
@@ -460,11 +463,11 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
         cpu_percent = process.cpu_percent(interval=1)
         print(" CPU-Util = %1.2f%%" % cpu_percent)
         print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
-        # if dev == "cuda":
-        #     print("GPU:")
-        #     run_command("nvidia-smi --id=%i" % torch.cuda.current_device())
-        # else:
-        #     print("GPU: N/A")
+        if dev == "cuda":
+            print("GPU:")
+            run_command("nvidia-smi --id=%i" % torch.cuda.current_device())
+        else:
+            print("GPU: N/A")
         # if early_stopper.early_stop(loss_validation):
         #     break
     print("Finished training.")

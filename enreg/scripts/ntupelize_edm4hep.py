@@ -61,7 +61,7 @@ def process_all_input_files(cfg: DictConfig) -> None:
                 n_files = 3
             else:
                 n_files = None
-            input_paths = glob.glob(input_wcp)
+            input_paths = glob.glob(input_wcp)[:cfg.n_files]
             file_names = [os.path.basename(input_path).replace(".root", ".parquet") for input_path in input_paths]
             output_paths = [os.path.join(output_dir, file_name) for file_name in file_names]
             all_output_paths.extend(output_paths)
@@ -70,7 +70,7 @@ def process_all_input_files(cfg: DictConfig) -> None:
             pool = multiprocessing.Pool(processes=10)
             pool.starmap(process_single_file, zip(all_input_paths, all_output_paths, repeat(cfg)))
         elif cfg.use_slurm:
-            nst.multipath_slurm_tau_builder(all_input_paths, all_output_paths)
+            nst.multipath_slurm_ntupelizer(all_input_paths, all_output_paths)
         else:
             for input_path, output_path in zip(all_input_paths, all_output_paths):
                 process_single_file(input_path, output_path, cfg)

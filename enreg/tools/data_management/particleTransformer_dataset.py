@@ -121,7 +121,7 @@ class ParticleTransformerDataset(Dataset):
             # self.y_tensors = torch.tensor(self.data.gen_jet_tau_vis_energy, dtype=torch.float32)
             self.y_tensors = torch.tensor(gen_jet_p4s.pt, dtype=torch.float32)
         else:
-            self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=int)
+            self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=torch.long)
         self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
         self.reco_jet_energy = torch.tensor(self.jet_p4s.energy, dtype=torch.float32)
 
@@ -151,7 +151,7 @@ class ParticleTransformerTauBuilder:
     def __init__(self, cfg: DictConfig, verbosity: int = 0):
         print("::: ParticleTransformer :::")
         self.verbosity = verbosity
-        self.is_energy_regression = cfg.training.type == 'regression'
+        self.is_energy_regression = cfg.builder.task == 'regression'
         self.cfg = cfg
         if self.cfg.feature_standardization.standardize_inputs:
             self.transform = f.FeatureStandardization(
@@ -178,7 +178,8 @@ class ParticleTransformerTauBuilder:
             metric=cfg.builder.metric,
             verbosity=verbosity,
         )
-        self.model.load_state_dict(torch.load(self.cfg.builder.model_path, map_location=torch.device("cpu")))
+        model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
+        self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         self.model.eval()
 
     def print_config(self):

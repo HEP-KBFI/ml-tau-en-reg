@@ -45,11 +45,11 @@ def load_all_data(input_loc: str | list, n_files: int = None, columns: list = No
         except ValueError:
             print(f"{file_path} does not exist")
     if len(input_data) > 0:
-        input_data = ak.concatenate(input_data)
+        data = ak.concatenate(input_data)
         print("Input data loaded")
     else:
         raise ValueError(f"No files found in {input_loc}")
-    return input_data
+    return data
 
 
 def load_parquet(input_path: str, columns: list = None) -> ak.Array:
@@ -65,7 +65,9 @@ def load_parquet(input_path: str, columns: list = None) -> ak.Array:
         input_data : ak.Array
             The data from the .parquet file
     """
-    return ak.Array((ak.from_parquet(input_path, columns=columns).tolist()))
+    ret = ak.from_parquet(input_path, columns=columns)
+    ret = ak.Array({k: ret[k] for k in ret.fields})
+    return ret
 
 
 def get_decaymode(pdg_ids):
