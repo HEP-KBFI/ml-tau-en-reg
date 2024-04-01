@@ -295,14 +295,14 @@ def retrieve_tau_info(tau_children, n_taus):
     tau_vis_p4s = []
     tau_full_p4s = []
     for ti in range(n_taus):
-        daughter_charges = [np.sign(tc.pid) if abs(tc.pid) not in [12, 14, 16, 111, 130] else 0 for tc in tau_children[ti]]
+        daughter_charges = [-1*np.sign(tc.pid) if abs(tc.pid) not in [12, 14, 16, 111, 130, 310, 311, 221, 223] else 0 for tc in tau_children[ti]]
         daughter_pdgs = [tc.pid for tc in tau_children[ti]]
         PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
         tau_vis_p4 = vector.awk(
             ak.zip(
                 {
-                    # "mass": [0.0],
-                    "energy": [0.0],
+                    "mass": [0.0],
+                    # "energy": [0.0],
                     "x": [0.0],
                     "y": [0.0],
                     "z": [0.0],
@@ -313,8 +313,8 @@ def retrieve_tau_info(tau_children, n_taus):
             daughter_p4 = vector.awk(
                 ak.zip(
                     {
-                        # "mass": [tc.generated_mass],
-                        "energy": [tc.momentum.e],
+                        "mass": [tc.generated_mass],
+                        # "energy": [tc.momentum.e],
                         "x": [tc.momentum.px],
                         "y": [tc.momentum.py],
                         "z": [tc.momentum.pz],
@@ -356,7 +356,7 @@ def retrieve_hepmc_gen_tau_info(hepmc_events, gen_jets):
         tau_info["tau_DV_x"].append([tau.end_vertex.position[0] for tau in taus])
         tau_info["tau_DV_y"].append([tau.end_vertex.position[1] for tau in taus])
         tau_info["tau_DV_z"].append([tau.end_vertex.position[2] for tau in taus])
-        tau_info["tau_charges"].append([np.sign(tau.pid) for tau in taus])
+        tau_info["tau_charges"].append([-1*np.sign(tau.pid) for tau in taus])
         info = retrieve_tau_info(tau_children, len(taus))
         for key, value in info.items():
             tau_info[key].append(value)
@@ -989,11 +989,11 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
         "gen_jet_tau_decay_vertex_y": gen_tau_jet_info["tau_gen_jet_DV_y"],
         "gen_jet_tau_decay_vertex_z": gen_tau_jet_info["tau_gen_jet_DV_z"],
     }
-    data = {key: ak.flatten(value, axis=1) for key, value in data.items()}
+    data = ak.Record({key: ak.flatten(value, axis=1) for key, value in data.items()})
 
     ## remove backgrounds for signal samples
-    removal_mask = data["gen_jet_tau_decaymode"] != 15
+    removal_mask = data.gen_jet_tau_decaymode != 16
     if remove_background:
-        removal_mask = (data["gen_jet_tau_decaymode"] != -1) * removal_mask
-    data = {key: value[removal_mask] for key, value in data.items()}
+        removal_mask = (data.gen_jet_tau_decaymode != -1) * removal_mask
+    data = ak.Record({key: data[key][removal_mask] for key in data.fields})
     return data
