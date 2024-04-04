@@ -1,7 +1,7 @@
 dataset:
   max_cands: 25
   use_pdgId: True
-  use_lifetime: True
+  use_lifetime: False
   # metric: eta-phi
   min_jet_theta: 0.0
   max_jet_theta: 1000

@@ -1,9 +1,9 @@
 verbosity: 1
-output_dir: /home/laurits/ENREG/training/20240314_HEPMC_based_PT_tauID/
+output_dir: /home/laurits/ENREG/training/20240403_PT_full_stats_ZH_plus_Z_regression_no_lifetme/
 samples_to_use:
   - ZH_Htautau
-  - QCD
-  # - Z_Ztautau # As there are no Z_Ztautau files in the training dataset
+  # - QCD
+  - Z_Ztautau # As there are no Z_Ztautau files in the training dataset
 defaults:
   - models: models
   - datasets: datasets

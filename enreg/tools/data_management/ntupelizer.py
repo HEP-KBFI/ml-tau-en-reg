@@ -349,7 +349,7 @@ def retrieve_hepmc_gen_tau_info(hepmc_events, gen_jets):
         taus = [p for p in event.particles if (abs(p.pid) == 15) and (p.status == 2)]
         tau_children = [p.children for p in event.particles if (abs(p.pid) == 15) and (p.status == 2)]
         tau_info["tau_full_p4s"].append([vector.awk(ak.zip({
-            "energy": [tau.momentum.e],
+            "mass": [tau.generated_mass],
             "x": [tau.momentum.px],
             "y": [tau.momentum.py],
             "z": [tau.momentum.pz]}))[0] for tau in taus])
@@ -486,12 +486,17 @@ def load_events_from_hepmc(root_file_path: str):
 
 
 def no_tau_genjet_matching(gen_jets):
+    filler = ak.zeros_like(gen_jets)
     gen_tau_jet_info = {
         "gen_jet_tau_vis_energy": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
         "gen_jet_tau_decaymode": ak.values_astype(ak.Array(ak.ones_like(gen_jets) == ak.ones_like(gen_jets)), int) * -1,
         "tau_gen_jet_charge": ak.values_astype(ak.Array(ak.ones_like(gen_jets) == ak.ones_like(gen_jets)), int) * -999,
-        "tau_gen_jet_p4s_full": ak.zeros_like(gen_jets),
-        "tau_gen_jet_p4s": ak.zeros_like(gen_jets),
+        "tau_gen_jet_p4s_full": vector.awk(
+            ak.zip({"mass": filler.mass, "px": filler.x, "py": filler.y, "pz": filler.z})
+        ),
+        "tau_gen_jet_p4s": vector.awk(
+            ak.zip({"mass": filler.mass, "px": filler.x, "py": filler.y, "pz": filler.z})
+        ),
         "tau_gen_jet_DV_x": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
         "tau_gen_jet_DV_y": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
         "tau_gen_jet_DV_z": ak.values_astype(ak.Array(ak.zeros_like(gen_jets) == ak.ones_like(gen_jets)), int),
@@ -506,7 +511,7 @@ def retrieve_hepmc_gen_particles(hepmc_events):
         event_stable_gen_particles = [p for p in event.particles if (p.status == 1) and (abs(p.pid) not in [12,14,16])]
         stable_mc_particles.append([{"PDG": p.pid} for p in event_stable_gen_particles])
         stable_mc_p4.append([vector.awk(ak.zip({
-            "energy": [gp.momentum.e],
+            "mass": [gp.generated_mass],
             "x": [gp.momentum.px],
             "y": [gp.momentum.py],
             "z": [gp.momentum.pz]
