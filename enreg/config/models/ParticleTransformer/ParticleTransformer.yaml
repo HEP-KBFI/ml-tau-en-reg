@@ -1,7 +1,7 @@
 feature_standardization:
   standardize_inputs: False
   method: "mean_rms"
-  path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_FeatureStandardization_wLifetime_2023Jun22.json
+  path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_FeatureStandardization.json
 defaults:
   - builder
   - dataset

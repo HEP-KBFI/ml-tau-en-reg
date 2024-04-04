@@ -1,5 +1,5 @@
 # list_dir: $HOME/ml-tau-en-reg/enreg/config/datasets
-list_dir: /home/laurits/tmp/datasets
+list_dir: /home/laurits/ml-tau-en-reg/enreg/config/datasets
 relative_sizes:
   train: 0.7
   test: 0.2

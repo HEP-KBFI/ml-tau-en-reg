@@ -10,7 +10,6 @@ from enreg.tools.data_management import ntupelizer as nt
 from enreg.tools.data_management import ntupelizer_slurm_tools as nst
 
 
-
 def save_record_to_file(data: dict, output_path: str) -> None:
     print(f"Saving to precessed data to {output_path}")
     ak.to_parquet(data, output_path)

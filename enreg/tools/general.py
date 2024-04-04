@@ -171,11 +171,11 @@ def reinitialize_p4(p4_obj: ak.Array):
         p4 : ak.Array
             Particle with initialized 4-momenta.
     """
-    if "t" in p4_obj.fields:
+    if "tau" in p4_obj.fields:
         p4 = vector.awk(
             ak.zip(
                 {
-                    "energy": p4_obj.t,
+                    "mass": p4_obj.tau,
                     "x": p4_obj.x,
                     "y": p4_obj.y,
                     "z": p4_obj.z,
@@ -186,7 +186,7 @@ def reinitialize_p4(p4_obj: ak.Array):
         p4 = vector.awk(
             ak.zip(
                 {
-                    "mass": p4_obj.tau,
+                    "energy": p4_obj.t,
                     "x": p4_obj.x,
                     "y": p4_obj.y,
                     "z": p4_obj.z,
