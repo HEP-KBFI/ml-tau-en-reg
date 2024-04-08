@@ -1,0 +1,15 @@
+training:
+  type: regression # Or classification
+  model_file: LorentzNet_model.pt
+  # model_config_file: LorentzNet_cfg.json
+  max_num_files: -1
+  batch_size: 128
+  num_epochs: 100
+  num_dataloader_workers: 4
+  classweight_sig: 1
+  classweight_bgr: 10
+  use_class_weights: True
+  use_per_jet_weights: True
+  use_focal_loss: True
+  focal_loss_gamma: 2.0
+  verbosity: 1

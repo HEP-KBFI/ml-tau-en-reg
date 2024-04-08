@@ -1,3 +1,4 @@
 defaults:
   - ParticleTransformer: ParticleTransformer
+  - LorentzNet: LorentzNet
   - HPS: HPS

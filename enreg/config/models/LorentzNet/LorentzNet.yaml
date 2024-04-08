@@ -1,0 +1,7 @@
+LorentzNet:
+  standardize_inputs: False
+  method: median_quantile
+  path: /home/laurits/ml-tau-en-reg/enreg/data/LorentzNet_FeatureStandardization.json
+defaults:
+  - training
+  - dataset

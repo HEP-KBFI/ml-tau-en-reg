@@ -1,6 +1,5 @@
-output_dir: /home/laurits/ENREG/metrics/20240313_HEPMC_comparison
+output_dir: /home/laurits/ENREG/metrics/20240405_ZH_only_PT
 plot_samples_separately: True
-gen_E_type: gen_vis_tau_E
 load_from_json: False
 comparison_datasets:
   - test

@@ -117,8 +117,6 @@ class ParticleTransformerDataset(Dataset):
         else:
             self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
         if self.is_energy_regression:
-            # self.y_tensors = torch.tensor(np.log(gen_jet_p4s.pt / self.jet_p4s.pt), dtype=torch.float32)
-            # self.y_tensors = torch.tensor(self.data.gen_jet_tau_vis_energy, dtype=torch.float32)
             self.y_tensors = torch.tensor(gen_jet_p4s.pt, dtype=torch.float32)
         else:
             self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=torch.long)

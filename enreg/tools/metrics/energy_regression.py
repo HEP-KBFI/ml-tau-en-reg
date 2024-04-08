@@ -74,21 +74,13 @@ def plot_energy_regression(algorithm_info, cfg):
     plot_resolution(plotting_input, cfg, resolution_type='IQR', variable='pt')
     plot_distribution_bin_wise(plotting_input, cfg, variable='pt')
     plot_ATLAS_resolution(
-        plotting_input['HPS']['test']['ZH_Htautau']["pt_bin_centers"],
-        plotting_input['HPS']['test']['ZH_Htautau']["pt_resolution_w_std"],
-        plotting_input['HPS']['test']['ZH_Htautau']["pt_resolution_w_IQR"],
         plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_bin_centers"],
-        plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_resolution_w_std"],
         plotting_input['ParticleTransformer']['test']['ZH_Htautau']["pt_resolution_w_IQR"],
         "ZH_Htautau",
         cfg
     )
     plot_ATLAS_resolution(
-        plotting_input['HPS']['test']['Z_Ztautau']["pt_bin_centers"],
-        plotting_input['HPS']['test']['Z_Ztautau']["pt_resolution_w_std"],
-        plotting_input['HPS']['test']['Z_Ztautau']["pt_resolution_w_IQR"],
         plotting_input['ParticleTransformer']['test']['Z_Ztautau']["pt_bin_centers"],
-        plotting_input['ParticleTransformer']['test']['Z_Ztautau']["pt_resolution_w_std"],
         plotting_input['ParticleTransformer']['test']['Z_Ztautau']["pt_resolution_w_IQR"],
         "Z_Ztautau",
         cfg
@@ -182,18 +174,6 @@ def plot_mean(
             plt.savefig(output_path, bbox_inches='tight')
             plt.close("all")
 
-# def prepare_violin_plot_data(
-#     sample_data: ak.Array,
-#     cfg: DictConfig
-# ):
-#     reco_gen_E_ratio = g.reinitialize_p4(sample_data.tau_p4s).energy / sample_data.gen_jet_tau_vis_energy
-#     gen_vis_tau_E = sample_data.gen_jet_tau_vis_energy
-#     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
-#     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-#     binned_gen_tau_energies = np.digitize(gen_vis_tau_E, bins=bin_edges)  # Biggest idx is overflow
-#     ratio_values = [reco_gen_E_ratio[binned_gen_tau_energies == bin_idx].to_numpy() for bin_idx in range(1, len(bin_edges))]
-#     return ratio_values, bin_centers
-
 
 def plot_ratio_violin_plot(
     x_values: np.array,
@@ -215,17 +195,6 @@ def plot_ratio_violin_plot(
     plt.savefig(output_path, bbox_inches='tight')
 
 
-# def ratio_distribution(algorithm_info: dict, cfg: DictConfig):
-#     for algorithm_name, algorithm_values in algorithm_info.items():
-#         for dataset_name, dataset_values in algorithm_values.items():
-#             for sample_name, sample_data in dataset_values.items():
-#                 label = f"{algorithm_name}: {sample_name}"
-#                 ratio_values, bin_centers = prepare_violin_plot_data(sample_data=sample_data, cfg=cfg)
-#                 plot_ratio_violin_plot(x_values=bin_centers, y_values=ratio_values, label=label, cfg=cfg)
-#                 resolutions, bin_centers = prepare_resolution_plot_data(sample_data, 'IQR', cfg)
-#                 plot_ATLAS_resolution(x_values=bin_centers, y_values=resolutions, cfg=cfg)
-
-
 def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
     algorithms = {}
     for algorithm_name, algorithm_values in algorithm_info.items():
@@ -235,7 +204,7 @@ def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
             for sample_name, sample_data in dataset_values.items():
                 gen_tau_p4s = g.reinitialize_p4(sample_data.gen_jet_tau_p4s)
                 gen_jet_p4s = g.reinitialize_p4(sample_data.gen_jet_p4s)
-                pred_tau_p4s = g.reinitialize_p4(sample_data.tau_p4s)
+                pred_tau_pts = sample_data.tau_pt
                 gen_pt_mask = gen_jet_p4s.pt > 15
                 # ratio_mask = np.abs(gen_tau_p4s.pt/gen_jet_p4s.pt - 1) < 0.2
                 # prediction_mask = pred_tau_p4s.pt > 1
@@ -306,45 +275,7 @@ def prepare_tau_pt_ratio_data(
     return ratio_means, ratio_std, bin_centers, ratio_values
 
 
-# def prepare_resolution_plot_data(
-#     sample_data: ak.Array,
-#     resolution_type: str,
-#     cfg: DictConfig
-# ):
-#     """ Prepares the data for the resolution plotting
-
-#     Args:
-#         sample_data : ak.Array
-#             The input data
-#         resolution_type : str
-#             Either 'std' or 'IQR'.
-#         cfg : DictConfig
-#             Configuration
-
-#     Returns:
-#         resolutions : np.array
-#             The resulting resolutions
-#         gen_tau_pt : np.array
-#             The bin centers for the resolutions
-#     """
-#     gen_vis_tau_pt = g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
-#     reco_gen_pt_ratio = g.reinitialize_p4(sample_data.tau_p4s).pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
-#     bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
-#     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-#     binned_gen_tau_pt = np.digitize(gen_vis_tau_pt, bins=bin_edges)
-#     ratio_values = [reco_gen_pt_ratio[binned_gen_tau_pt == bin_idx].to_numpy() for bin_idx in range(1, len(bin_edges))]
-#     if resolution_type == 'std':
-#         resolutions = np.array([np.std(ratio) / np.mean(ratio) for ratio in ratio_values])
-#     elif resolution_type == 'IQR':
-#         resolutions = np.array(
-#             [(np.quantile(ratio, 0.75) - np.quantile(ratio, 0.25)) / np.median(ratio) for ratio in ratio_values]
-#         )
-#     resolutions *= 100
-#     return resolutions, bin_centers
-
-
-
-def plot_ATLAS_resolution(HPS_x_values, HPS_y_values_std, HPS_y_values_iqr, PT_x_values, PT_y_values_std, PT_y_values_iqr, sample, cfg):
+def plot_ATLAS_resolution(PT_x_values, PT_y_values_iqr, sample, cfg):
     fig, ax = plt.subplots(figsize=(16,9))
     ATLAS_baseline = {
         "x": [30, 50, 68, 87, 105, 125, 145, 165, 182, 203, 222, 241, 260],
@@ -362,11 +293,7 @@ def plot_ATLAS_resolution(HPS_x_values, HPS_y_values_std, HPS_y_values_iqr, PT_x
     y_range = (0, 20)
     plt.plot(ATLAS_baseline["x"], ATLAS_baseline["y"], marker=ATLAS_baseline["marker"], color=ATLAS_baseline["color"], label="[ATLAS] Baseline")
     plt.plot(ATLAS_BRT["x"], ATLAS_BRT["y"], marker=ATLAS_BRT["marker"], color=ATLAS_BRT["color"], label="[ATLAS] BRT")
-    HPS_x_values_mask = HPS_x_values >= 20
     PT_x_values_mask = PT_x_values >= 20
-    plt.plot(HPS_x_values[HPS_x_values_mask], HPS_y_values_std[HPS_x_values_mask] * 100, marker="*", color='green', ls='--', label="HPS w/ STD")
-    plt.plot(HPS_x_values[HPS_x_values_mask], HPS_y_values_iqr[HPS_x_values_mask] * 100, marker="*", color='green', ls='-', label="HPS w/ IQR")
-    plt.plot(PT_x_values[PT_x_values_mask], PT_y_values_std[PT_x_values_mask] * 100, marker="*", color='blue', ls='--', label="PT w/ STD")
     plt.plot(PT_x_values[PT_x_values_mask], PT_y_values_iqr[PT_x_values_mask] * 100, marker="*", color='blue', ls='-', label="PT w/ IQR")
     plt.grid()
     plt.legend(prop={"size": 20})
