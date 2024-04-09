@@ -55,12 +55,12 @@ class LorentzNetDataset(Dataset):
         )
         if self.cfg.use_pdgId:
             cand_features = ak.Array({
-                "isElectron" : ak.values_astype(abs(self.data.reco_cand_pdg) == 11, "float64"),
-                "isMuon" : ak.values_astype(abs(self.data.reco_cand_pdg) == 13, "float64"),
-                "isPhoton" : ak.values_astype(abs(self.data.reco_cand_pdg) == 22, "float64"),
-                "isNeutralHadron" : ak.values_astype(abs(self.data.reco_cand_pdg) == 130, "float64"),
-                "isChargedHadron" : ak.values_astype(abs(self.data.reco_cand_pdg) == 211, "float64"),
-                "isProton": ak.zeros_like(self.data.reco_cand_pdg, dtype="float64"),
+                "isElectron" : ak.values_astype(abs(self.data.reco_cand_pdg) == 11, "float32"),
+                "isMuon" : ak.values_astype(abs(self.data.reco_cand_pdg) == 13, "float32"),
+                "isPhoton" : ak.values_astype(abs(self.data.reco_cand_pdg) == 22, "float32"),
+                "isNeutralHadron" : ak.values_astype(abs(self.data.reco_cand_pdg) == 130, "float32"),
+                "isChargedHadron" : ak.values_astype(abs(self.data.reco_cand_pdg) == 211, "float32"),
+                "isProton": ak.zeros_like(self.data.reco_cand_pdg, dtype="float32"),
                 "cand_charge": self.data.reco_cand_charge,
             })
         else:
@@ -96,12 +96,12 @@ class LorentzNetDataset(Dataset):
             self.x_tensors = torch.cat([x_beams, self.x_tensors], dim=1)
             if self.cfg.use_pdgId:
                 beam_features = ak.Array({
-                    "isElectron" : np.zeros((len(self.jet_p4s), 2)),
-                    "isMuon" : np.zeros((len(self.jet_p4s), 2)),
-                    "isPhoton" : np.zeros((len(self.jet_p4s), 2)),
-                    "isNeutralHadron" : np.zeros((len(self.jet_p4s), 2)),
-                    "isChargedHadron" : np.zeros((len(self.jet_p4s), 2)),
-                    "isProton": np.zeros((len(self.jet_p4s), 2)),
+                    "isElectron" : np.zeros((len(self.jet_p4s), 2), dtype=np.float32),
+                    "isMuon" : np.zeros((len(self.jet_p4s), 2), dtype=np.float32),
+                    "isPhoton" : np.zeros((len(self.jet_p4s), 2), dtype=np.float32),
+                    "isNeutralHadron" : np.zeros((len(self.jet_p4s), 2), dtype=np.float32),
+                    "isChargedHadron" : np.zeros((len(self.jet_p4s), 2), dtype=np.float32),
+                    "isProton": np.zeros((len(self.jet_p4s), 2), dtype=np.float32),
                     "cand_charge": ak.Array([[+1.0, -1.0]] * len(self.jet_p4s))
                 })
             else:
@@ -116,10 +116,13 @@ class LorentzNetDataset(Dataset):
                 ), 1, 2
             )
             scalars_beams = torch.tensor(scalars_beams)
-            self.scalars_tensors = torch.cat([scalars_beams, self.scalars_tensors], dim=1)
+            self.scalars_tensors = torch.cat([scalars_beams, self.scalars_tensors], dim=1).float()
 
             node_mask_beams = torch.tensor(np.ones((len(self.jet_p4s), 2)), dtype=torch.float32)
-            self.node_mask_tensors = torch.cat([node_mask_beams, self.node_mask_tensors], dim=1)
+            self.node_mask_tensors = torch.unsqueeze(
+                torch.cat([node_mask_beams, self.node_mask_tensors], dim=1),
+                dim=2
+            )
 
         if not "weight" in self.data.fields:
             self.weight_tensors = torch.tensor(ak.ones_like(self.data.gen_jet_tau_decaymode), dtype=torch.float32)
@@ -129,6 +132,8 @@ class LorentzNetDataset(Dataset):
             self.y_tensors = torch.tensor(gen_jet_p4s.pt, dtype=torch.float32)
         else:
             self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=torch.long)
+        self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
+        self.reco_jet_energy = torch.tensor(self.jet_p4s.energy, dtype=torch.float32)
 
     def __len__(self):
         return self.num_jets
@@ -142,6 +147,7 @@ class LorentzNetDataset(Dataset):
                     "scalars": self.scalars_tensors[idx],
                     "scalars_is_one_hot_encoded": self.scalars_is_one_hot_encoded,
                     "mask": self.node_mask_tensors[idx],
+                    "reco_jet_pt": self.reco_jet_pt[idx],
                 },
                 self.y_tensors[idx],
                 self.weight_tensors[idx],
@@ -185,20 +191,20 @@ class LorentzNetTauBuilder:
     def process_jets(self, data: ak.Array):
         print("::: Starting to process jets ::: ")
         dataset = ParticleTransformerDataset(data, self.cfg.dataset, self.is_energy_regression)
-        if self.cfg.feature_standardization.standardize_inputs:
-            X = {
-                "x": dataset.x_tensors,
-                "v": dataset.v_tensors,
-                "mask": dataset.node_mask_tensors,
-            }
-            X_transformed = self.transform(X)
-            x_tensor = X_transformed["x"]
-            v_tensor = X_transformed["v"]
-            node_mask_tensor = X_transformed["mask"]
-        else:
-            x_tensor = dataset.x_tensors
-            v_tensor = dataset.v_tensors
-            node_mask_tensor = dataset.node_mask_tensors
+        # if self.cfg.feature_standardization.standardize_inputs:
+        #     X = {
+        #         "x": dataset.x_tensors,
+        #         "v": dataset.v_tensors,
+        #         "mask": dataset.node_mask_tensors,
+        #     }
+        #     X_transformed = self.transform(X)
+        #     x_tensor = X_transformed["x"]
+        #     v_tensor = X_transformed["v"]
+        #     node_mask_tensor = X_transformed["mask"]
+        # else:
+        #     x_tensor = dataset.x_tensors
+        #     v_tensor = dataset.v_tensors
+        #     node_mask_tensor = dataset.node_mask_tensors
         with torch.no_grad():
             pred = self.model(x_tensor, v_tensor, node_mask_tensor)
         if self.is_energy_regression:

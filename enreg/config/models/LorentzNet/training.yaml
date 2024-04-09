@@ -1,10 +1,13 @@
 training:
   type: regression # Or classification
   model_file: LorentzNet_model.pt
-  # model_config_file: LorentzNet_cfg.json
-  max_num_files: -1
+  # n_class: 2
+  num_epochs: 350
+  n_hidden: 72
+  dropout: 0.2
+  n_layers: 6
+  c_weight: 0.005
   batch_size: 128
-  num_epochs: 100
   num_dataloader_workers: 4
   classweight_sig: 1
   classweight_bgr: 10

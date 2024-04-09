@@ -5,11 +5,6 @@ dataset:
   max_jet_theta: 1.0e+3
   min_jet_pt: 0.0
   max_jet_pt: 1.0e+3
-  # n_class: 2
-  n_hidden: 72
-  dropout: 0.2
-  n_layers: 6
-  c_weight: 0.005
   beams:
     add: True
     mass: 1.0

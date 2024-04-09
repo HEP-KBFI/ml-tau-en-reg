@@ -136,7 +136,6 @@ class ParticleTransformerDataset(Dataset):
                     "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
                     "mask": self.node_mask_tensors[idx],
                     "reco_jet_pt": self.reco_jet_pt[idx],
-                    # "reco_jet_energy": self.reco_jet_energy[idx],
                 },
                 self.y_tensors[idx],
                 self.weight_tensors[idx],
