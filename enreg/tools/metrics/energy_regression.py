@@ -74,6 +74,8 @@ def plot_energy_regression(algorithm_info, cfg):
     json_output_path = output_path = os.path.join(cfg.output_dir, 'plotting_data.json')
     g.save_to_json(plotting_input, json_output_path)
     plot_median_and_iqr(plotting_input, cfg)
+    plot_bins(plotting_input, cfg)
+    
 
 
 def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
@@ -121,25 +123,19 @@ def prepare_tau_pt_ratio_data(
     return ratio_medians, ratio_iqr, bin_centers, ratio_values
 
 
-def plot_distribution_bin_wise(plotting_input, cfg, variable, figsize=(12,12)):
-    x_label = r"$\frac{p_T^{reco}}{p_T^{gen}}$" if variable == 'pt' else r"$\frac{E_{vis}^{reco}}{E_{vis}^{gen}}$"
-    y_label = "Entries"
-    for sample in cfg.comparison_samples:
-            for dataset in cfg.comparison_datasets:
-                for algorithm in plotting_input.keys():
-                    output_dir = os.path.join(cfg.output_dir, sample, dataset, algorithm)
-                    os.makedirs(output_dir, exist_ok=True)
-                    bin_contents = plotting_input[algorithm][dataset][sample][f"{variable}_ratio_values"]
-                    bin_centers = plotting_input[algorithm][dataset][sample][f"{variable}_bin_centers"]
-                    for bin_content, bin_center in zip(bin_contents, bin_centers):
-                        output_path = os.path.join(output_dir, f"{variable}_bin_{bin_center}.png")
-                        fig, ax = plt.subplots(figsize=figsize)
-                        hist, bin_edges = np.histogram(bin_content, bins=24)
-                        hep.histplot(hist, bin_edges)
-                        plt.xlabel(x_label, fontdict={"size": 20})
-                        plt.ylabel(y_label, fontdict={"size": 20})
-                        plt.grid(True, which="both")
-                        plt.title(f"Bin @ {bin_center}", loc="left")
-                        # plt.legend()
-                        plt.savefig(output_path, bbox_inches='tight')
-                        plt.close("all")
+def plot_bins(plotting_input, cfg):
+    fig, rows = plt.subplots(nrows=3, ncols=4, sharex='col', figsize=(16,9))
+    i = 0
+    bins = np.linspace(0.5, 1.5, 25)
+    bin_edges = cfg.metrics.regression.ratio_plot.bin_edges
+    bin_titles = [f"[{bin_edges[i]}, {bin_edges[i+1]}]" for i in range(len(bin_edges) - 1)]
+    for row in rows:
+        for ax in row:
+            plot_data = plotting_input['ParticleTransformer']['test']['ZH_Htautau']['pt_ratio_values'][i]
+            histo = hep.histplot(to_bh(plot_data, bins=bins), ax=ax, density=True)
+            ax.set_title(bin_titles[i], fontsize=12)
+            ax.set_xlim(0.5, 1.5)
+            print(ax)
+            i += 1
+    output_path = os.path.join(cfg.output_dir, f"bin_contents.png")
+    plt.savefig(output_path, bbox_inches='tight')

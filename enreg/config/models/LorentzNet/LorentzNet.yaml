@@ -6,3 +6,4 @@ defaults:
   - training
   - dataset
   - lrfinder
+  - builder

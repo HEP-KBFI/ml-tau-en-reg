@@ -282,17 +282,17 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     # else:
     for sample in cfg.samples_to_use:
         print(sample)
-        train_paths.extend(cfg.datasets.train[sample][:cfg.models.ParticleTransformer.training.max_num_files])
-        validation_paths.extend(cfg.datasets.validation[sample][:cfg.models.ParticleTransformer.training.max_num_files])
+        train_paths.extend(cfg.datasets.train[sample])
+        validation_paths.extend(cfg.datasets.validation[sample])
 
 
-    training_data = g.load_all_data(train_paths, n_files=-1)
+    training_data = g.load_all_data(train_paths, n_files=cfg.n_files)
     dataset_train = ParticleTransformerDataset(
         data=training_data,
         cfg=cfg.models.ParticleTransformer.dataset,
         is_energy_regression=is_energy_regression
     )
-    validation_data = g.load_all_data(validation_paths, n_files=-1)
+    validation_data = g.load_all_data(validation_paths, n_files=cfg.n_files)
     dataset_validation = ParticleTransformerDataset(
         data=validation_data,
         cfg=cfg.models.ParticleTransformer.dataset,

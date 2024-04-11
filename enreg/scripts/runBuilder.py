@@ -6,6 +6,7 @@ import multiprocessing
 from itertools import repeat
 from omegaconf import DictConfig
 from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerTauBuilder
+from enreg.tools.data_management.lorentzNet_dataset import LorentzNetTauBuilder
 from enreg.tools.models.HPS import HPSTauBuilder
 from enreg.tools.data_management import tau_builder_tools as tbt
 
@@ -22,6 +23,8 @@ def build_taus(cfg: DictConfig) -> None:
     algo_output_dir = os.path.join(os.path.expandvars(cfg.output_dir), cfg.builder)
     if cfg.builder == "ParticleTransformer":
         builder = ParticleTransformerTauBuilder(cfg=cfg.models.ParticleTransformer)
+    elif cfg.builder == "LorentzNet":
+        builder = LorentzNetTauBuilder(cfg=cfg.models.LorentzNet)
     elif cfg.builder == "HPS":
         builder = HPSTauBuilder(cfg=cfg.models.HPS)
     else:

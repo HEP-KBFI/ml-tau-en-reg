@@ -2,11 +2,13 @@ import math
 import vector
 import awkward as ak
 from torch.utils.data import Dataset
-from enreg.tools.models.LorentzNet import psi
+from enreg.tools.models.LorentzNet import psi, LorentzNet
 from sklearn.preprocessing import OneHotEncoder
 from omegaconf import DictConfig
+from omegaconf import OmegaConf
 from enreg.tools import general as g
 import numpy as np
+import json
 import torch
 
 
@@ -164,20 +166,20 @@ class LorentzNetTauBuilder:
         if self.cfg.feature_standardization.standardize_inputs:
             self.transform = f.FeatureStandardization(
                 method=self.cfg.feature_standardization.method,
-                features=["x", "v"],
+                features=["x", "scalars"],
                 feature_dim=1,
                 verbosity=self.verbosity,
             )
             self.transform.load_params(self.cfg.feature_standardization.path)
-        self.n_scalar = 7 if self.use_pdgId else 2
+        self.n_scalar = 7 if cfg.dataset.use_pdgId else 2
         self.num_classes = 1 if self.is_energy_regression else 2
         self.model = LorentzNet(
             n_scalar=self.n_scalar,
-            n_hidden=cfg.n_hidden,
+            n_hidden=cfg.training.n_hidden,
             n_class=self.num_classes,
-            n_layers=cfg.n_layers,
-            c_weight=cfg.c_weight,
-            dropout=cfg.dropout,
+            n_layers=cfg.training.n_layers,
+            c_weight=cfg.training.c_weight,
+            dropout=cfg.training.dropout,
             verbosity=self.verbosity
         )
         model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
@@ -190,25 +192,25 @@ class LorentzNetTauBuilder:
 
     def process_jets(self, data: ak.Array):
         print("::: Starting to process jets ::: ")
-        dataset = ParticleTransformerDataset(data, self.cfg.dataset, self.is_energy_regression)
-        # if self.cfg.feature_standardization.standardize_inputs:
-        #     X = {
-        #         "x": dataset.x_tensors,
-        #         "v": dataset.v_tensors,
-        #         "mask": dataset.node_mask_tensors,
-        #     }
-        #     X_transformed = self.transform(X)
-        #     x_tensor = X_transformed["x"]
-        #     v_tensor = X_transformed["v"]
-        #     node_mask_tensor = X_transformed["mask"]
-        # else:
-        #     x_tensor = dataset.x_tensors
-        #     v_tensor = dataset.v_tensors
-        #     node_mask_tensor = dataset.node_mask_tensors
+        dataset = LorentzNetDataset(data, self.cfg.dataset, self.is_energy_regression)
+        if self.cfg.feature_standardization.standardize_inputs:
+            X = {
+                "x": dataset.x_tensors,
+                "scalars": dataset.scalars_tensors,
+                "mask": dataset.node_mask_tensors,
+            }
+            X_transformed = self.transform(X)
+            x_tensor = X_transformed["x"]
+            scalars_tensor = X_transformed["scalars"]
+            node_mask_tensor = X_transformed["mask"]
+        else:
+            x_tensor = dataset.x_tensors
+            scalars_tensors = dataset.scalars_tensors
+            node_mask_tensor = dataset.node_mask_tensors
         with torch.no_grad():
-            pred = self.model(x_tensor, v_tensor, node_mask_tensor)
+            pred = self.model(x_tensor, scalars_tensors, node_mask_tensor)
         if self.is_energy_regression:
-            return {"tau_pt" : pred}
+            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
         else:
             pred = torch.softmax(pred, dim=1)
             tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones
