@@ -2,3 +2,4 @@ defaults:
   - ParticleTransformer: ParticleTransformer
   - LorentzNet: LorentzNet
   - HPS: HPS
+  - SimpleDNN: SimpleDNN
