@@ -22,7 +22,15 @@ regression:
       compare: True
       marker: "v"
       hatch: "//"
-      color: "tab:purple"
+      color: "tab:green"
+    SimpleDNN:
+      ntuples_dir: /home/laurits/ENREG/ntuples/20240415_SimpleDNN/SimpleDNN
+      json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "v"
+      hatch: "//"
+      color: "black"
     HPS:
       ntuples_dir: /home/laurits/ENREG/ntuples/2024013_HPS_HEPMC_ntuples/HPS
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
@@ -31,5 +39,6 @@ regression:
       marker: "o"
       hatch: '\\\\'
       color: "tab:blue"
+
 defaults:
   - _self_

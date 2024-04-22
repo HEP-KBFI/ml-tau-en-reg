@@ -1,9 +1,35 @@
+import json
 import torch
 import numpy as np
 import awkward as ak
 import enreg.tools.general as g
+from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+from enreg.tools.models.SimpleDNN import DeepSet
+
+
+#given multiple jets with a variable number of PF candidates per jet, create 3d-padded arrays
+#in the shape [Njets, Npfs_max, Nfeat]
+def pad_collate(jets):
+    pfs = [jet.pfs for jet in jets]
+    pfs_mask = [jet.pfs_mask for jet in jets]
+    gen_tau_label = [jet.gen_tau_label for jet in jets]
+    gen_tau_pt = [jet.gen_tau_pt for jet in jets]
+    reco_jet_pt = [jet.reco_jet_pt for jet in jets]
+    pfs = torch.nn.utils.rnn.pad_sequence(pfs, batch_first=True)
+    pfs_mask = torch.nn.utils.rnn.pad_sequence(pfs_mask, batch_first=True)
+    gen_tau_label = torch.concatenate(gen_tau_label, axis=0)
+    gen_tau_pt = torch.concatenate(gen_tau_pt, axis=0)
+    reco_jet_pt = torch.concatenate(reco_jet_pt, axis=0)
+    return Jet(
+        pfs=pfs,
+        pfs_mask=pfs_mask,
+        reco_jet_pt=reco_jet_pt,
+        gen_tau_label=gen_tau_label,
+        gen_tau_pt=gen_tau_pt
+    )
 
 
 class Jet:
@@ -69,5 +95,37 @@ class TauDataset(Dataset):
         )
 
 
-# class SimpleDNNTauBuilder:
-#     def __init__(self, cfg: DictConfig, verbosity: int = 0):
+class DeepSetTauBuilder:
+    def __init__(self, cfg: DictConfig, verbosity: int = 0):
+        self.verbosity = verbosity
+        self.is_energy_regression = cfg.builder.task == 'regression'
+        self.cfg = cfg
+        #  TODO: check this out if needs a change?
+        self.model = DeepSet(1)
+        model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
+        self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
+        self.model.eval()
+
+    def print_config(self):
+        primitive_cfg = OmegaConf.to_container(self.cfg)
+        print(json.dumps(primitive_cfg, indent=4))
+
+    def process_jets(self, data: ak.Array):
+        print("::: Starting to process jets ::: ")
+        dataset = TauDataset(data)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=500,
+            num_workers=6,
+            prefetch_factor=20,
+            shuffle=False,
+            collate_fn=pad_collate
+        )
+        # dataloader = dataloader[0]
+        for ibatch, batched_jets in enumerate(dataloader):
+            pfs = batched_jets.pfs
+            pfs_mask = batched_jets.pfs_mask
+            reco_jet_pt = batched_jets.reco_jet_pt
+            with torch.no_grad():
+                pred = self.model(pfs, pfs_mask)
+        return {"tau_pt" : torch.exp(pred)[0] * reco_jet_pt}

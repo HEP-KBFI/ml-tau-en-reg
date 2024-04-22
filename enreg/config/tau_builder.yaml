@@ -1,6 +1,6 @@
-builder: LorentzNet #HPS
+builder: SimpleDNN #HPS
 builder_task: regression #classification #regression  # or classification
-output_dir: /home/laurits/ENREG/ntuples/20240409_LorentzNet/
+output_dir: /home/laurits/ENREG/ntuples/20240415_SimpleDNN/
 PT_tauID_ntuple_dir: /scratch/persistent/laurits/PT_tauID_ntuples
 n_files: -1
 slurm_run: False

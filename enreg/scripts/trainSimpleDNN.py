@@ -10,7 +10,7 @@ from enreg.tools import general as g
 from torch.utils.data import DataLoader
 from enreg.tools.models.SimpleDNN import DeepSet
 from torch.utils.tensorboard import SummaryWriter
-from enreg.tools.data_management.simpleDNN_dataset import TauDataset, Jet
+from enreg.tools.data_management.simpleDNN_dataset import TauDataset, Jet, pad_collate
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_regression
 
 
@@ -19,30 +19,10 @@ cls_loss = nn.CrossEntropyLoss(reduction="none")
 reg_loss = nn.HuberLoss(reduction='mean', delta=1.0)
 dm_loss = nn.CrossEntropyLoss(reduction="none")
 
-#given multiple jets with a variable number of PF candidates per jet, create 3d-padded arrays
-#in the shape [Njets, Npfs_max, Nfeat]
-def pad_collate(jets):
-    pfs = [jet.pfs for jet in jets]
-    pfs_mask = [jet.pfs_mask for jet in jets]
-    gen_tau_label = [jet.gen_tau_label for jet in jets]
-    gen_tau_pt = [jet.gen_tau_pt for jet in jets]
-    reco_jet_pt = [jet.reco_jet_pt for jet in jets]
-    pfs = torch.nn.utils.rnn.pad_sequence(pfs, batch_first=True)
-    pfs_mask = torch.nn.utils.rnn.pad_sequence(pfs_mask, batch_first=True)
-    gen_tau_label = torch.concatenate(gen_tau_label, axis=0)
-    gen_tau_pt = torch.concatenate(gen_tau_pt, axis=0)
-    reco_jet_pt = torch.concatenate(reco_jet_pt, axis=0)
-    return Jet(
-        pfs=pfs,
-        pfs_mask=pfs_mask,
-        reco_jet_pt=reco_jet_pt,
-        gen_tau_label=gen_tau_label,
-        gen_tau_pt=gen_tau_pt
-    )
-
 
 def model_loop(model, tensorboard, idx_epoch, optimizer, ds_loader, dev, is_train=True, kind="ptreg"):
     loss_tot = 0.0
+    normalization = 0.0
     pred_vals = []
     true_vals = []
     ratios = []
@@ -55,40 +35,27 @@ def model_loop(model, tensorboard, idx_epoch, optimizer, ds_loader, dev, is_trai
 
         pred = model(pfs, pfs_mask)
 
-        if kind == "binary":
-            assert(pred.shape[1] == 2)
-            pred_vals.append(pred[:, 1].detach().cpu())
-            true_vals.append(true_istau.cpu())
-            loss = cls_loss(pred, true_istau.long()).mean()
-        elif kind == "ptreg":
-            #pred = log(ptgen/ptreco) -> ptgen = exp(pred)*ptreco
-            assert(pred.shape[1] == 1)
-            pred = torch.squeeze(pred, dim=-1)
-            gen_tau_pt = batched_jets.gen_tau_pt.to(dev, non_blocking=True)
-            reco_jet_pt = batched_jets.reco_jet_pt.to(dev, non_blocking=True)
-            target = torch.log(gen_tau_pt/reco_jet_pt)
-            pred_pt = torch.exp(pred) * reco_jet_pt
-            pred_vals.append(pred_pt[gen_tau_label!=-1].detach().cpu())
-            true_vals.append(gen_tau_pt[gen_tau_label!=-1].cpu())
-            ratios.extend((pred_pt[gen_tau_label!=-1].detach().cpu()/gen_tau_pt[gen_tau_label!=-1].cpu()).detach().cpu().numpy())
-            loss = reg_loss(pred[true_istau], target[true_istau])
-            loss = torch.sum(loss) / torch.sum(true_istau)
-        elif kind == "dm_multiclass":
-            assert(pred.shape[1] == 16)
-            pred_vals.append(torch.argmax(pred[true_istau], axis=-1).detach().cpu())
-            true_vals.append(gen_tau_label[true_istau].cpu())
-            target_onehot = torch.nn.functional.one_hot(gen_tau_label[true_istau].long(), 16).float()
-            loss = dm_loss(pred[true_istau], target_onehot)
-            loss = torch.sum(loss) / torch.sum(true_istau)
-        else:
-            raise Exception("Unknown kind={}".format(kind))
+        #pred = log(ptgen/ptreco) -> ptgen = exp(pred)*ptreco
+        assert(pred.shape[1] == 1)
+        pred = torch.squeeze(pred, dim=-1)
+        gen_tau_pt = batched_jets.gen_tau_pt.to(dev, non_blocking=True)
+        reco_jet_pt = batched_jets.reco_jet_pt.to(dev, non_blocking=True)
+        target = torch.log(gen_tau_pt/reco_jet_pt)
+        pred_pt = torch.exp(pred) * reco_jet_pt
+        pred_vals.append(pred_pt[gen_tau_label!=-1].detach().cpu())
+        true_vals.append(gen_tau_pt[gen_tau_label!=-1].cpu())
+        ratios.extend((pred_pt.detach().cpu()/gen_tau_pt.cpu()).detach().cpu().numpy())
+        loss = reg_loss(pred, target)
+        normalization += torch.flatten(loss).size(dim=0)
+        # loss = torch.sum(loss).item()
 
         if is_train:
             optimizer.zero_grad()
-            loss.backward()
+            loss.mean().backward()
             optimizer.step()
             # lr_scheduler.step() ##
-        loss_tot += loss.detach().cpu().item()
+        loss_tot += loss.detach().cpu().sum().item()
+    loss_tot /= normalization
     mean_reco_gen_ratio = np.mean(np.abs(ratios))
     median_reco_gen_ratio = np.median(np.abs(ratios))
     stdev_reco_gen_ratio = np.std(np.abs(ratios))
