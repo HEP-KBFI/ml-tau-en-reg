@@ -1,6 +1,6 @@
 verbosity: 1
 n_files: -1
-output_dir: /home/laurits/ENREG/training/20240422_SDNN_training_w_pxyz/
+output_dir: /home/laurits/ENREG/training/20240422_SDNN_training_w_more_vars
 samples_to_use:
   - ZH_Htautau
   - Z_Ztautau
