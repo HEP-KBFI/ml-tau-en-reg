@@ -7,10 +7,9 @@ git clone git@github.com:Laurits7/ml-tau-en-reg.git
 
 # Running
 
-One needs to run the python modules with ```python -m [XYZ]``` in order to allow for relative imports without having the package installed:
-
+All the necessary packages are installed to the singularity image used in the ```run.sh``` script. In order to run the scripts do:
 ```bash
-./scripts/run-env.sh python -m [XYZ]
+./run.sh python [XYZ]
 ```
 
 

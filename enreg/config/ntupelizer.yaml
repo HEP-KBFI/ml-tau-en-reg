@@ -1,7 +1,7 @@
 use_slurm: True
 slurm_run: False
 use_multiprocessing: False
-n_files: -1
+n_files: 100
 tree_path: events
 branches:
   - MCParticles.PDG
@@ -53,13 +53,13 @@ branches:
   - SiTracks_Refitted_1.covMatrix[21]
 test_run: False
 samples_to_process:
-  # - Z_Ztautau
+  - Z_Ztautau
   # - ZH_Htautau
-  - QCD
+  # - QCD
 samples:
   Z_Ztautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /home/laurits/ENREG/ntuples/20240402_full_stats/Z_Ztautau
+    output_dir: /home/laurits/ENREG/ntuples/20240423_PV_test/Z_Ztautau
     is_signal: True
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/

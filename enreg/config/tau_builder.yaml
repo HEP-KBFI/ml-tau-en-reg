@@ -1,6 +1,6 @@
-builder: ParticleTransformer #HPS
+builder: SimpleDNN #HPS
 builder_task: regression #classification #regression  # or classification
-output_dir: /home/laurits/ENREG/ntuples/2024013_HPS_HEPMC_ntuples
+output_dir: /home/laurits/ENREG/ntuples/20240415_SimpleDNN/
 PT_tauID_ntuple_dir: /scratch/persistent/laurits/PT_tauID_ntuples
 n_files: -1
 slurm_run: False
@@ -9,8 +9,8 @@ use_multiprocessing: False
 use_slurm: True
 datasets_to_process:
   - test
-  - train
-  - validation
+  # - train
+  # - validation
 samples_to_process:
   - ZH_Htautau
   - Z_Ztautau

@@ -348,14 +348,17 @@ def retrieve_hepmc_gen_tau_info(hepmc_events, gen_jets):
     for i, event in enumerate(hepmc_events):
         taus = [p for p in event.particles if (abs(p.pid) == 15) and (p.status == 2)]
         tau_children = [p.children for p in event.particles if (abs(p.pid) == 15) and (p.status == 2)]
+        PV_x = event.particles[0].end_vertex.position[0]
+        PV_y = event.particles[0].end_vertex.position[1]
+        PV_z = event.particles[0].end_vertex.position[2]
         tau_info["tau_full_p4s"].append([vector.awk(ak.zip({
             "mass": [tau.generated_mass],
             "x": [tau.momentum.px],
             "y": [tau.momentum.py],
             "z": [tau.momentum.pz]}))[0] for tau in taus])
-        tau_info["tau_DV_x"].append([tau.end_vertex.position[0] for tau in taus])
-        tau_info["tau_DV_y"].append([tau.end_vertex.position[1] for tau in taus])
-        tau_info["tau_DV_z"].append([tau.end_vertex.position[2] for tau in taus])
+        tau_info["tau_DV_x"].append([tau.end_vertex.position[0] - PV_x for tau in taus])
+        tau_info["tau_DV_y"].append([tau.end_vertex.position[1] - PV_y for tau in taus])
+        tau_info["tau_DV_z"].append([tau.end_vertex.position[2] - PV_z for tau in taus])
         tau_info["tau_charges"].append([-1*np.sign(tau.pid) for tau in taus])
         info = retrieve_tau_info(tau_children, len(taus))
         for key, value in info.items():

@@ -1,0 +1,6 @@
+training:
+  batch_size: 2048
+  model_file: SimpleDNN_model.pt  # sync with builder
+  num_dataloader_workers: 8
+  prefetch_factor: 20
+  num_epochs: 350

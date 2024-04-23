@@ -1,7 +1,8 @@
 builder:
-  task: "classification"
+  task: "regression"
   metric: "theta-phi" # dataset.yaml sees kas see - kus ja miks vaja kasutada
   regression:
-    model_path: /home/laurits/ENREG/training/20240312_HEPMC_based_regression/ParticleTransformer_model_best.pt  # regression
+    model_path: /home/laurits/ENREG/training/20240403_PT_full_stats_ZH_plus_Z_regression_no_lifetme/ParticleTransformer_model_best.pt  # regression
+    # model_path: /home/laurits/ENREG/training/20240403_PT_full_stats_ZH_regression_no_lifetme/ParticleTransformer_model_best.pt  # regression
   classification:
     model_path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_model_wLifetime_2023Jun22.pt #  PT classifier

@@ -21,9 +21,9 @@ from enreg.tools import general as g
 from enreg.tools.losses.FocalLoss import FocalLoss
 from enreg.tools.models.Lookahead import Lookahead
 from enreg.tools.losses.initWeights import initWeights
-from enreg.tools.models.ParticleTransformer import ParticleTransformer
+from enreg.tools.models.LorentzNet import LorentzNet
 from enreg.tools.data_management.features import FeatureStandardization
-from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerDataset
+from enreg.tools.data_management.lorentzNet_dataset import LorentzNetDataset
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
 
 import time
@@ -87,7 +87,7 @@ def train_loop(
         if transform:
             X = transform(X)
         x = X["x"].to(device=dev)
-        v = X["v"].to(device=dev)
+        scalars = X["scalars"].to(device=dev)
         mask = X["mask"].to(device=dev)
         y = y.to(device=dev)
         weight = weight.to(device=dev)
@@ -97,11 +97,11 @@ def train_loop(
             # jet_energy = X["reco_jet_energy"].to(device=dev)
             # pred *= jet_energy
             # pred += jet_energy
-            pred = model(x, v, mask).to(device=dev)[:,0]
+            pred = model(x, scalars, mask).to(device=dev)[:,0]
             predicted_pt = torch.exp(pred) * X["reco_jet_pt"].to(device=dev)
             y_for_loss = torch.log(y / X["reco_jet_pt"].to(device=dev))
         else:
-            pred = model(x, v, mask).to(device=dev)
+            pred = model(x, scalars, mask).to(device=dev)
             # pred = torch.softmax(pred, dim=1)
             pred = torch.softmax(pred, dim=0)
             y_for_loss = y
@@ -192,13 +192,13 @@ def validation_loop(
             if transform:
                 X = transform(X)
             x = X["x"].to(device=dev)
-            v = X["v"].to(device=dev)
+            scalars = X["scalars"].to(device=dev)
             mask = X["mask"].to(device=dev)
             y = y.to(device=dev)
             weight = weight.to(device=dev)
 
             if is_energy_regression:
-                pred = model(x, v, mask).to(device=dev)[:,0]
+                pred = model(x, scalars, mask).to(device=dev)[:,0]
                 # Predict the correction, not the full visible energy
                 # jet_energy = X["reco_jet_energy"].to(device=dev)
                 # pred *= jet_energy
@@ -206,7 +206,7 @@ def validation_loop(
                 predicted_pt = torch.exp(pred) * X["reco_jet_pt"].to(device=dev)
                 y_for_loss = torch.log(y / X["reco_jet_pt"].to(device=dev))
             else:
-                pred = model(x, v, mask).to(device=dev)
+                pred = model(x, scalars, mask).to(device=dev)
                 # pred = torch.softmax(pred, dim=1)
                 pred = torch.softmax(pred, dim=0)
                 y_for_loss = y
@@ -267,35 +267,34 @@ def run_command(cmd):
 
 
 @hydra.main(config_path="../config", config_name="model_training", version_base=None)
-def trainParticleTransformer(cfg: DictConfig) -> None:
-    print("<trainParticleTransformer>:")
-    is_energy_regression = cfg.models.ParticleTransformer.training.type == 'regression'
+def trainLorentzNet(cfg: DictConfig) -> None:
+    print("<trainLorentzNet>:")
+    is_energy_regression = cfg.models.LorentzNet.training.type == 'regression'
 
     validation_paths = []
     train_paths = []
     # if is_energy_regression:
     #     for sample in cfg.samples_to_use:
     #         train_dir = os.path.join(cfg.PT_tauID_ntuple_dir, "train", sample)
-    #         train_paths.extend(glob.glob(os.path.join(train_dir, "*"))[:cfg.models.ParticleTransformer.training.max_num_files])
+    #         train_paths.extend(glob.glob(os.path.join(train_dir, "*"))[:cfg.models.LorentzNet.training.max_num_files])
     #         validation_dir = os.path.join(cfg.PT_tauID_ntuple_dir, "validation", sample)
-    #         validation_paths.extend(glob.glob(os.path.join(validation_dir, "*"))[:cfg.models.ParticleTransformer.training.max_num_files])
+    #         validation_paths.extend(glob.glob(os.path.join(validation_dir, "*"))[:cfg.models.LorentzNet.training.max_num_files])
     # else:
     for sample in cfg.samples_to_use:
-        print(sample)
         train_paths.extend(cfg.datasets.train[sample])
         validation_paths.extend(cfg.datasets.validation[sample])
 
 
     training_data = g.load_all_data(train_paths, n_files=cfg.n_files)
-    dataset_train = ParticleTransformerDataset(
+    dataset_train = LorentzNetDataset(
         data=training_data,
-        cfg=cfg.models.ParticleTransformer.dataset,
+        cfg=cfg.models.LorentzNet.dataset,
         is_energy_regression=is_energy_regression
     )
     validation_data = g.load_all_data(validation_paths, n_files=cfg.n_files)
-    dataset_validation = ParticleTransformerDataset(
+    dataset_validation = LorentzNetDataset(
         data=validation_data,
-        cfg=cfg.models.ParticleTransformer.dataset,
+        cfg=cfg.models.LorentzNet.dataset,
         is_energy_regression=is_energy_regression
     )
 
@@ -316,21 +315,22 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device: %s" % dev)
 
-    input_dim = 7
-    if cfg.models.ParticleTransformer.dataset.use_pdgId:
-        input_dim += 6
-    if cfg.models.ParticleTransformer.dataset.use_lifetime:
-        input_dim += 4
+    # input_dim = 7
+    # if cfg.models.LorentzNet.dataset.use_pdgId:
+    #     input_dim += 6
+    # if cfg.models.LorentzNet.dataset.use_lifetime:
+    #     input_dim += 4
 
+    n_scalar = 7 if cfg.models.LorentzNet.dataset.use_pdgId else 2
     print("Building model...")
-    model = ParticleTransformer(
-        input_dim=input_dim,
-        num_classes=1 if is_energy_regression else 2,
-        use_pre_activation_pair=False,
-        for_inference=False,
-        use_amp=False,
-        metric='eta-phi', # TODO: Check this later
-        verbosity=cfg.verbosity,
+    model = LorentzNet(
+        n_scalar=n_scalar,
+        n_hidden=cfg.models.LorentzNet.training.n_hidden,
+        n_class=1 if is_energy_regression else 2,
+        dropout=cfg.models.LorentzNet.training.dropout,
+        n_layers=cfg.models.LorentzNet.training.n_layers,
+        c_weight=cfg.models.LorentzNet.training.c_weight,
+        verbosity=cfg.models.LorentzNet.training.verbosity,
     ).to(device=dev)
     initWeights(model)
     print("Finished building model:")
@@ -341,39 +341,39 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
 
     dataloader_train = DataLoader(
         dataset_train,
-        batch_size=cfg.models.ParticleTransformer.training.batch_size,
-        num_workers=cfg.models.ParticleTransformer.training.num_dataloader_workers,
+        batch_size=cfg.models.LorentzNet.training.batch_size,
+        num_workers=cfg.models.LorentzNet.training.num_dataloader_workers,
         shuffle=True
     )
     dataloader_validation = DataLoader(
         dataset_validation,
-        batch_size=cfg.models.ParticleTransformer.training.batch_size,
-        num_workers=cfg.models.ParticleTransformer.training.num_dataloader_workers,
+        batch_size=cfg.models.LorentzNet.training.batch_size,
+        num_workers=cfg.models.LorentzNet.training.num_dataloader_workers,
         shuffle=True
     )
 
     transform = None
-    if cfg.models.ParticleTransformer.feature_standardization.standardize_inputs:
+    if cfg.models.LorentzNet.feature_standardization.standardize_inputs:
         transform = FeatureStandardization(
-            method=cfg.models.ParticleTransformer.feature_standardization.method,
+            method=cfg.models.LorentzNet.feature_standardization.method,
             features=["x", "v"],
             feature_dim=1,
             verbosity=cfg.verbosity,
         )
         transform.compute_params(dataloader_train)
-        transform.save_params(cfg.models.ParticleTransformer.feature_standardization.path)
+        transform.save_params(cfg.models.LorentzNet.feature_standardization.path)
 
     # Actually in regression I think this is not needed, maybe only for different samples differently
-    if cfg.models.ParticleTransformer.lrfinder.use_class_weights:
-        classweight_bgr = cfg.models.ParticleTransformer.lrfinder.classweight_bgr
-        classweight_sig = cfg.models.ParticleTransformer.lrfinder.classweight_sig
+    if cfg.models.LorentzNet.lrfinder.use_class_weights:
+        classweight_bgr = cfg.models.LorentzNet.lrfinder.classweight_bgr
+        classweight_sig = cfg.models.LorentzNet.lrfinder.classweight_sig
     classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
     # loss_fn = None
     if not is_energy_regression:
-        if cfg.models.ParticleTransformer.training.use_focal_loss:
+        if cfg.models.LorentzNet.training.use_focal_loss:
             print("Using FocalLoss.")
             loss_fn = FocalLoss(
-                gamma=cfg.models.ParticleTransformer.training.focal_loss_gamma,
+                gamma=cfg.models.LorentzNet.training.focal_loss_gamma,
                 alpha=classweight_tensor,
                 reduction="none"
             )
@@ -383,30 +383,33 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     else:
         loss_fn = nn.HuberLoss(reduction='mean', delta=1.0)
 
-    # base_optimizer = None
-    # TODO: Do we event want to change the optimizer?
-    if cfg.models.ParticleTransformer.training.fast_optimizer == "AdamW":
-        base_optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
-    elif cfg.models.ParticleTransformer.training.fast_optimizer == "RAdam":
-        base_optimizer = torch.optim.RAdam(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
-    else:
-        raise RuntimeError("Invalid configuration parameter 'fast_optimizer' !!")
-    if cfg.models.ParticleTransformer.training.slow_optimizer == "Lookahead":
-        print("Using %s optimizer with Lookahead." % cfg.models.ParticleTransformer.training.fast_optimizer)
-        optimizer = Lookahead(base_optimizer=base_optimizer, k=10, alpha=0.5)
-    elif cfg.models.ParticleTransformer.training.slow_optimizer == "None":
-        print("Using %s optimizer." % cfg.models.ParticleTransformer.training.fast_optimizer)
-        optimizer = base_optimizer
-    else:
-        raise RuntimeError("Invalid configuration parameter 'slow_optimizer' !!")
+    base_optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    optimizer = base_optimizer
+
+    # # base_optimizer = None
+    # # TODO: Do we event want to change the optimizer?
+    # if cfg.models.LorentzNet.training.fast_optimizer == "AdamW":
+    #     base_optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    # elif cfg.models.LorentzNet.training.fast_optimizer == "RAdam":
+    #     base_optimizer = torch.optim.RAdam(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+    # else:
+    #     raise RuntimeError("Invalid configuration parameter 'fast_optimizer' !!")
+    # if cfg.models.LorentzNet.training.slow_optimizer == "Lookahead":
+    #     print("Using %s optimizer with Lookahead." % cfg.models.LorentzNet.training.fast_optimizer)
+    #     optimizer = Lookahead(base_optimizer=base_optimizer, k=10, alpha=0.5)
+    # elif cfg.models.LorentzNet.training.slow_optimizer == "None":
+    #     print("Using %s optimizer." % cfg.models.LorentzNet.training.fast_optimizer)
+    #     optimizer = base_optimizer
+    # else:
+    #     raise RuntimeError("Invalid configuration parameter 'slow_optimizer' !!")
 
     num_batches_train = len(dataloader_train)
-    print("Training for %i epochs." % cfg.models.ParticleTransformer.training.num_epochs)
+    print("Training for %i epochs." % cfg.models.LorentzNet.training.num_epochs)
     print("#batches(train) = %i" % num_batches_train)
     lr_scheduler = OneCycleLR(
         base_optimizer,
         max_lr=1.0e-3,
-        epochs=cfg.models.ParticleTransformer.training.num_epochs,
+        epochs=cfg.models.LorentzNet.training.num_epochs,
         steps_per_epoch=num_batches_train,
         anneal_strategy="cos"
     )
@@ -416,7 +419,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     tensorboard = SummaryWriter(os.path.join(cfg.output_dir, f"tensorboard_{datetime.datetime.now()}"))
     min_loss_validation = -1.0
     # early_stopper = EarlyStopper(patience=100, min_delta=0.01)
-    for idx_epoch in range(cfg.models.ParticleTransformer.training.num_epochs):
+    for idx_epoch in range(cfg.models.LorentzNet.training.num_epochs):
         print("Processing epoch #%i" % idx_epoch)
         print(" current time:", datetime.datetime.now())
 
@@ -427,7 +430,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             model,
             dev,
             loss_fn,
-            cfg.models.ParticleTransformer.training.use_per_jet_weights,
+            cfg.models.LorentzNet.training.use_per_jet_weights,
             optimizer,
             lr_scheduler,
             tensorboard,
@@ -444,7 +447,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             model,
             dev,
             loss_fn,
-            cfg.models.ParticleTransformer.training.use_per_jet_weights,
+            cfg.models.LorentzNet.training.use_per_jet_weights,
             tensorboard,
             is_energy_regression
         )
@@ -452,7 +455,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
 
         if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
             print("Found new best model :)")
-            best_model_file = cfg.models.ParticleTransformer.training.model_file.replace(".pt", "_best.pt")
+            best_model_file = cfg.models.LorentzNet.training.model_file.replace(".pt", "_best.pt")
             print("Saving best model to file %s" % best_model_file)
             best_model_output_path = os.path.join(cfg.output_dir, best_model_file)
             torch.save(model.state_dict(), best_model_output_path)
@@ -473,7 +476,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     print("Finished training.")
     print("Current time:", datetime.datetime.now())
 
-    model_output_path = os.path.join(cfg.output_dir, cfg.models.ParticleTransformer.training.model_file)
+    model_output_path = os.path.join(cfg.output_dir, cfg.models.LorentzNet.training.model_file)
     print("Saving model to file %s" % model_output_path)
     torch.save(model.state_dict(), model_output_path)
     print("Done.")
@@ -482,4 +485,4 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    trainParticleTransformer()
+    trainLorentzNet()

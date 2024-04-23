@@ -1,9 +1,10 @@
 verbosity: 1
-output_dir: /home/laurits/ENREG/training/20240403_PT_full_stats_ZH_plus_Z_regression_no_lifetme/
+n_files: -1
+output_dir: /home/laurits/ENREG/training/20240422_SDNN_training_w_pxyz/
 samples_to_use:
   - ZH_Htautau
+  - Z_Ztautau
   # - QCD
-  - Z_Ztautau # As there are no Z_Ztautau files in the training dataset
 defaults:
   - models: models
   - datasets: datasets

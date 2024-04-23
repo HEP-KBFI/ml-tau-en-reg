@@ -1,7 +1,6 @@
 training:
   type: regression # Or classification
   model_file: ParticleTransformer_model.pt  # sync with builder
-  max_num_files: -1
   batch_size: 512
   num_epochs: 300
   num_dataloader_workers: 6
