@@ -57,6 +57,9 @@ class TauDataset(Dataset):
         self.pf_startidx = np.cumsum(self.pf_lengths)
         self.pf_startidx -= self.pf_lengths
         #per PF candidate observables
+        self.pf_px = torch.unsqueeze(torch.tensor(ak.to_numpy(ak.flatten(pf_p4s.px))), axis=-1).to(torch.float32)
+        self.pf_py = torch.unsqueeze(torch.tensor(ak.to_numpy(ak.flatten(pf_p4s.py))), axis=-1).to(torch.float32)
+        self.pf_pz = torch.unsqueeze(torch.tensor(ak.to_numpy(ak.flatten(pf_p4s.pz))), axis=-1).to(torch.float32)
         self.pf_pt = torch.unsqueeze(torch.tensor(ak.to_numpy(ak.flatten(pf_p4s.pt))), axis=-1).to(torch.float32)
         self.pf_eta = torch.unsqueeze(torch.tensor(ak.to_numpy(ak.flatten(pf_p4s.eta))), axis=-1).to(torch.float32)
         self.pf_phi = torch.unsqueeze(torch.tensor(ak.to_numpy(ak.flatten(pf_p4s.phi))), axis=-1).to(torch.float32)
@@ -79,13 +82,17 @@ class TauDataset(Dataset):
 
         #get the indices of the PF candidates of the jet at 'idx'
         pf_range = range(self.pf_startidx[idx], self.pf_startidx[idx] + self.pf_lengths[idx])
+        pf_px = self.pf_px[pf_range]
+        pf_py = self.pf_py[pf_range]
+        pf_pz = self.pf_pz[pf_range]
         pf_pt = self.pf_pt[pf_range]
         pf_eta = self.pf_eta[pf_range]
         pf_phi = self.pf_phi[pf_range]
         pf_energy = self.pf_energy[pf_range]
         pf_pdg = self.pf_pdg[pf_range] #FIXME: this could be better as a one-hot encoded value, rather than a floating-point PDGID value
         pf_charge = self.pf_charge[pf_range]
-        pfs = torch.concatenate([pf_pt, pf_eta, torch.sin(pf_phi), torch.cos(pf_phi), pf_energy, pf_pdg, pf_charge], axis=-1)
+        pfs = torch.concatenate([pf_px, pf_py, pf_pz, pf_energy, pf_pdg, pf_charge], axis=-1)
+        # pfs = torch.concatenate([pf_pt, pf_eta, torch.sin(pf_phi), torch.cos(pf_phi), pf_energy, pf_pdg, pf_charge], axis=-1)
         return Jet(
             pfs=pfs,
             pfs_mask=torch.ones(pfs.shape[0], dtype=torch.float32),

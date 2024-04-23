@@ -15,7 +15,8 @@ def ffn(input_dim, output_dim, width, act, dropout):
         nn.Dropout(dropout),
         nn.Linear(width, output_dim),
     )
-    
+
+
 class DeepSet(nn.Module):
     def __init__(self, num_outputs):
         super(DeepSet, self).__init__()
@@ -26,8 +27,8 @@ class DeepSet(nn.Module):
         self.width = 64
         self.embedding_dim = 64
 
-        #number of inputs
-        self.num_pf_features = 7
+        # number of inputs
+        self.num_pf_features = 6
 
         self.nn_pf_embedding = ffn(self.num_pf_features, self.embedding_dim, self.width, self.act, self.dropout)
         self.nn_pred = ffn(self.embedding_dim, num_outputs, self.width, self.act, self.dropout)

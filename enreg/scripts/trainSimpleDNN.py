@@ -155,6 +155,7 @@ def trainSimpleDNN(cfg: DictConfig) -> None:
     print("Done.")
     tensorboard.close()
 
+# TODO: Add OneCycleLR
 
 if __name__ == '__main__':
     trainSimpleDNN()
