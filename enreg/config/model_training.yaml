@@ -1,9 +1,9 @@
 verbosity: 1
-n_files: -1
-output_dir: /home/laurits/ENREG/training/20240422_SDNN_training_w_pxyz/
+n_files: 10
+output_dir: /home/norman/ENREG/training/240507_PT_test
 samples_to_use:
   - ZH_Htautau
-  - Z_Ztautau
+  # - Z_Ztautau
   # - QCD
 defaults:
   - models: models

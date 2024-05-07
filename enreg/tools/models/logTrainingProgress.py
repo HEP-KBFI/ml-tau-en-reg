@@ -56,3 +56,13 @@ def logTrainingProgress_regression(
     tensorboard.add_scalar("Median ratio/%s" % mode, median_reco_gen_ratio, global_step=idx_epoch)
     tensorboard.add_scalar("Stdev ratio/%s" % mode, stdev_reco_gen_ratio, global_step=idx_epoch)
     tensorboard.add_scalar("IQR ratio/%s" % mode, iqr_reco_gen_ratio, global_step=idx_epoch)
+
+
+def logTrainingProgress_decaymode(
+    tensorboard,
+    idx_epoch,
+    mode,
+    loss,
+    weights
+):
+    tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)

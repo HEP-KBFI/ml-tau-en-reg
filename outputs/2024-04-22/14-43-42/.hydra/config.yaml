@@ -1,0 +1,74 @@
+use_slurm: true
+slurm_run: false
+use_multiprocessing: false
+n_files: 10
+tree_path: events
+branches:
+- MCParticles.PDG
+- MCParticles.generatorStatus
+- MCParticles.charge
+- MCParticles.mass
+- MCParticles.vertex.x
+- MCParticles.vertex.y
+- MCParticles.vertex.z
+- MCParticles.momentum.x
+- MCParticles.momentum.y
+- MCParticles.momentum.z
+- MCParticles.parents_begin
+- MCParticles.parents_end
+- MCParticles.daughters_begin
+- MCParticles.daughters_end
+- MergedRecoParticles.type
+- MergedRecoParticles.energy
+- MergedRecoParticles.momentum.x
+- MergedRecoParticles.momentum.y
+- MergedRecoParticles.momentum.z
+- MergedRecoParticles.referencePoint.x
+- MergedRecoParticles.referencePoint.y
+- MergedRecoParticles.referencePoint.z
+- MergedRecoParticles.charge
+- MergedRecoParticles.mass
+- MergedRecoParticles.goodnessOfPID
+- MergedRecoParticles.covMatrix[10]
+- MergedRecoParticles.clusters_begin
+- MergedRecoParticles.clusters_end
+- MergedRecoParticles.tracks_begin
+- MergedRecoParticles.tracks_end
+- MergedRecoParticles.particles_begin
+- MergedRecoParticles.particles_end
+- MergedRecoParticles.particleIDs_begin
+- MergedRecoParticles.particleIDs_end
+- PrimaryVertices.position.x
+- PrimaryVertices.position.y
+- PrimaryVertices.position.z
+- SiTracks_Refitted_1.location
+- SiTracks_Refitted_1.referencePoint.x
+- SiTracks_Refitted_1.referencePoint.y
+- SiTracks_Refitted_1.referencePoint.z
+- SiTracks_Refitted_1.D0
+- SiTracks_Refitted_1.Z0
+- SiTracks_Refitted_1.phi
+- SiTracks_Refitted_1.tanLambda
+- SiTracks_Refitted_1.omega
+- SiTracks_Refitted_1.covMatrix[21]
+test_run: false
+samples_to_process:
+- ZH_Htautau
+samples:
+  Z_Ztautau:
+    input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
+    output_dir: /home/norman/tmp/ENREG/ntuples/20240402_full_stats/Z_Ztautau
+    is_signal: true
+  ZH_Htautau:
+    input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
+    output_dir: /home/norman/tmp/ZH_Htautau
+    is_signal: true
+  QCD:
+    input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_qq_ecm380/
+    output_dir: /home/laurits/ENREG/ntuples/20240402_full_stats/QCD
+    is_signal: false
+validation:
+  output_dir: $HOME/CLIC_ntuple_validation_v5
+  validation_samples:
+  - Z_Ztautau
+  - ZH_Htautau

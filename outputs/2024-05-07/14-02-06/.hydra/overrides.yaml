@@ -1,0 +1,3 @@
+- slurm_run=True
+- +input_file=/home/norman/tmp/63WHSQKM9S/input_paths_60.txt
+- +output_file=/home/norman/tmp/63WHSQKM9S/output_paths_60.txt

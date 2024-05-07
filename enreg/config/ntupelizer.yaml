@@ -1,7 +1,7 @@
 use_slurm: True
 slurm_run: False
 use_multiprocessing: False
-n_files: -1
+n_files: 10
 tree_path: events
 branches:
   - MCParticles.PDG
@@ -54,16 +54,16 @@ branches:
 test_run: False
 samples_to_process:
   # - Z_Ztautau
-  # - ZH_Htautau
-  - QCD
+  - ZH_Htautau
+  # - QCD
 samples:
   Z_Ztautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /home/laurits/ENREG/ntuples/20240402_full_stats/Z_Ztautau
+    output_dir: /home/norman/tmp/ENREG/ntuples/20240402_full_stats/Z_Ztautau
     is_signal: True
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /home/laurits/ENREG/ntuples/20240402_full_stats/ZH_Htautau
+    output_dir: /home/norman/tmp/ZH_Htautau
     is_signal: True
   QCD:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_qq_ecm380/

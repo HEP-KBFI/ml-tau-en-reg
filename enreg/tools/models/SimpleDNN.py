@@ -28,7 +28,8 @@ class DeepSet(nn.Module):
         self.embedding_dim = 64
 
         # number of inputs
-        self.num_pf_features = 6
+        # self.num_pf_features = 6
+        self.num_pf_features = 7
 
         self.nn_pf_embedding = ffn(self.num_pf_features, self.embedding_dim, self.width, self.act, self.dropout)
         self.nn_pred = ffn(self.embedding_dim, num_outputs, self.width, self.act, self.dropout)

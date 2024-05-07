@@ -6,14 +6,15 @@ import enreg.tools.general as g
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
+from torch import nn
 import enreg.tools.data_management.features as f
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
 
 class ParticleTransformerDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig, is_energy_regression: bool = False):
+    def __init__(self, data: ak.Array, cfg: DictConfig, kind: "is_energy_regression"):
         self.data = data
-        self.is_energy_regression = is_energy_regression
+        self.kind = kind
         self.cfg = cfg
         self.preselection()
         self.num_jets = len(self.data.reco_jet_p4s)
@@ -34,6 +35,7 @@ class ParticleTransformerDataset(Dataset):
     def build_tensors(self):
         jet_constituent_p4s = g.reinitialize_p4(self.data.reco_cand_p4s)
         gen_jet_p4s = g.reinitialize_p4(self.data.gen_jet_p4s)
+        gen_dm = self.data.gen_jet_tau_decaymode
         self.jet_p4s = g.reinitialize_p4(self.data.reco_jet_p4s)
         cand_features = ak.Array({
             "cand_deta": f.deltaEta(jet_constituent_p4s.eta, self.jet_p4s.eta),  # Could also use dTheta
@@ -116,8 +118,10 @@ class ParticleTransformerDataset(Dataset):
             self.weight_tensors = torch.tensor(ak.ones_like(self.data.gen_jet_tau_decaymode), dtype=torch.float32)
         else:
             self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
-        if self.is_energy_regression:
+        if self.kind == "is_energy_regression":
             self.y_tensors = torch.tensor(gen_jet_p4s.pt, dtype=torch.float32)
+        elif self.kind == "is_dm_multiclass":
+            self.y_tensors = torch.nn.functional.one_hot(torch.tensor(self.data.gen_jet_tau_decaymode, dtype=torch.long), 16).float()
         else:
             self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=torch.long)
         self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
@@ -148,7 +152,10 @@ class ParticleTransformerTauBuilder:
     def __init__(self, cfg: DictConfig, verbosity: int = 0):
         print("::: ParticleTransformer :::")
         self.verbosity = verbosity
-        self.is_energy_regression = cfg.builder.task == 'regression'
+        if cfg.builder.task == 'regression':
+            self.kind = "is_energy_regression"
+        elif cfg.builder.task == 'dm_multiclass':
+            self.kind = "is_dm_multiclass"
         self.cfg = cfg
         if self.cfg.feature_standardization.standardize_inputs:
             self.transform = f.FeatureStandardization(
@@ -164,7 +171,12 @@ class ParticleTransformerTauBuilder:
             input_dim += 6
         if self.cfg.dataset.use_lifetime:
             input_dim += 4
-        num_classes = 1 if self.is_energy_regression else 2
+        if self.kind == "is_energy_regression":
+            num_classes = 1
+        elif self.kind == "is_dm_multiclass":
+            num_classes = 16
+        else:
+            num_classes = 2
         #  TODO: check this out if needs a change?
         self.model = ParticleTransformer(
             input_dim=input_dim,
@@ -175,7 +187,12 @@ class ParticleTransformerTauBuilder:
             metric=cfg.builder.metric,
             verbosity=verbosity,
         )
-        model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
+        if self.kind == "is_energy_regression":
+            model_path = self.cfg.builder.regression.model_path
+        if self.kind == "is_dm_multiclass":
+            model_path = self.cfg.builder.dm_multiclass.model_path
+        else:
+            self.cfg.builder.classification.model_path
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         self.model.eval()
 
@@ -185,7 +202,7 @@ class ParticleTransformerTauBuilder:
 
     def process_jets(self, data: ak.Array):
         print("::: Starting to process jets ::: ")
-        dataset = ParticleTransformerDataset(data, self.cfg.dataset, self.is_energy_regression)
+        dataset = ParticleTransformerDataset(data, self.cfg.dataset, self.kind)
         if self.cfg.feature_standardization.standardize_inputs:
             X = {
                 "x": dataset.x_tensors,
@@ -202,8 +219,10 @@ class ParticleTransformerTauBuilder:
             node_mask_tensor = dataset.node_mask_tensors
         with torch.no_grad():
             pred = self.model(x_tensor, v_tensor, node_mask_tensor)
-        if self.is_energy_regression:
+        if self.kind == "is_energy_regression":
             return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
+        elif self.kind == "is_dm_multiclass":
+            return {"tau_dm": torch.argmax(pred, axis=-1)}
         else:
             pred = torch.softmax(pred, dim=1)
             tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones

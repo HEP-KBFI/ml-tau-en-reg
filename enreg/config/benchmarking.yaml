@@ -1,4 +1,4 @@
-output_dir: /home/laurits/ENREG/metrics/20240416_PT_LN_SDNN
+output_dir: /home/norman/ENREG/metrics/240424_PT_LN_SDNN
 plot_samples_separately: True
 load_from_json: False
 comparison_datasets:

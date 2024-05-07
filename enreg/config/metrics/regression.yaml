@@ -8,7 +8,7 @@ regression:
       Tight: 0.975
   algorithms:
     ParticleTransformer:
-      ntuples_dir: /home/laurits/ENREG/training/20240403_PT_full_stats_ZH_plus_Z_regression_no_lifetme/ParticleTransformer
+      ntuples_dir: /home/norman/ENREG/ntuples/240424_PT/ParticleTransformer
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
       compare: True
@@ -16,7 +16,7 @@ regression:
       hatch: "//"
       color: "tab:purple"
     LorentzNet:
-      ntuples_dir: /home/laurits/ENREG/ntuples/20240409_LorentzNet/LorentzNet
+      ntuples_dir: /home/norman/ENREG/ntuples/240424_LN/LorentzNet
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
       compare: True
@@ -24,7 +24,7 @@ regression:
       hatch: "//"
       color: "tab:green"
     SimpleDNN:
-      ntuples_dir: /home/laurits/ENREG/ntuples/20240415_SimpleDNN/SimpleDNN
+      ntuples_dir: /home/norman/ENREG/ntuples/240424_SDNN/SimpleDNN
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
       compare: True
