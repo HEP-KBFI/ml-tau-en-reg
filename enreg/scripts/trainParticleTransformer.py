@@ -423,7 +423,6 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     elif kind == "is_energy_regression":
         loss_fn = nn.HuberLoss(reduction='mean', delta=1.0)
     elif kind == "is_dm_multiclass":
-        #=========================================================================================== LOSS FN =========================================================================
         loss_fn = nn.CrossEntropyLoss(reduction="none")
     # base_optimizer = None
     # TODO: Do we event want to change the optimizer?

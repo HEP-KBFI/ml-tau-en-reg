@@ -10,12 +10,13 @@ from enreg.tools import general as g
 import numpy as np
 import json
 import torch
+from torch import nn
 
 
 class LorentzNetDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig, is_energy_regression: bool = False):
+    def __init__(self, data: ak.Array, cfg: DictConfig, kind: "is_energy_regression"):
         self.data = data
-        self.is_energy_regression = is_energy_regression
+        self.kind = kind
         self.cfg = cfg
         self.preselection()
         self.num_jets = len(self.data.reco_jet_p4s)
@@ -130,8 +131,10 @@ class LorentzNetDataset(Dataset):
             self.weight_tensors = torch.tensor(ak.ones_like(self.data.gen_jet_tau_decaymode), dtype=torch.float32)
         else:
             self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
-        if self.is_energy_regression:
+        if self.kind == "is_energy_regression":
             self.y_tensors = torch.tensor(gen_jet_p4s.pt, dtype=torch.float32)
+        elif self.kind == "is_dm_multiclass":
+            self.y_tensors = torch.nn.functional.one_hot(torch.tensor(self.data.gen_jet_tau_decaymode, dtype=torch.long), 16).float()
         else:
             self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=torch.long)
         self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
@@ -161,7 +164,10 @@ class LorentzNetDataset(Dataset):
 class LorentzNetTauBuilder:
     def __init__(self, cfg: DictConfig, verbosity: int = 0):
         self.verbosity = verbosity
-        self.is_energy_regression = cfg.builder.task == 'regression'
+        if cfg.builder.task == 'regression':
+            self.kind = "is_energy_regression"
+        elif cfg.builder.task == 'dm_multiclass':
+            self.kind = "is_dm_multiclass"
         self.cfg = cfg
         if self.cfg.feature_standardization.standardize_inputs:
             self.transform = f.FeatureStandardization(
@@ -172,7 +178,12 @@ class LorentzNetTauBuilder:
             )
             self.transform.load_params(self.cfg.feature_standardization.path)
         self.n_scalar = 7 if cfg.dataset.use_pdgId else 2
-        self.num_classes = 1 if self.is_energy_regression else 2
+        if self.kind == "is_energy_regression":
+            self.num_classes = 1
+        elif self.kind == "is_dm_multiclass":
+            self.num_classes = 16
+        else:
+            self.num_classes = 2
         self.model = LorentzNet(
             n_scalar=self.n_scalar,
             n_hidden=cfg.training.n_hidden,
@@ -182,7 +193,12 @@ class LorentzNetTauBuilder:
             dropout=cfg.training.dropout,
             verbosity=self.verbosity
         )
-        model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
+        if self.kind == "is_energy_regression":
+            model_path = self.cfg.builder.regression.model_path
+        if self.kind == "is_dm_multiclass":
+            model_path = self.cfg.builder.dm_multiclass.model_path
+        else:
+            self.cfg.builder.classification.model_path
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         self.model.eval()
 
@@ -192,7 +208,7 @@ class LorentzNetTauBuilder:
 
     def process_jets(self, data: ak.Array):
         print("::: Starting to process jets ::: ")
-        dataset = LorentzNetDataset(data, self.cfg.dataset, self.is_energy_regression)
+        dataset = LorentzNetDataset(data, self.cfg.dataset, self.kind)
         if self.cfg.feature_standardization.standardize_inputs:
             X = {
                 "x": dataset.x_tensors,
@@ -209,8 +225,10 @@ class LorentzNetTauBuilder:
             node_mask_tensor = dataset.node_mask_tensors
         with torch.no_grad():
             pred = self.model(x_tensor, scalars_tensors, node_mask_tensor)
-        if self.is_energy_regression:
+        if self.kind == "is_energy_regression":
             return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
+        elif self.kind == "is_dm_multiclass":
+            return {"tau_dm": torch.argmax(pred, axis=-1)}
         else:
             pred = torch.softmax(pred, dim=1)
             tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones

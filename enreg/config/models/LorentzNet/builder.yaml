@@ -1,5 +1,7 @@
 builder:
-  task: "regression"
+  task: "dm_multiclass"
   metric: "theta-phi" # dataset.yaml sees kas see - kus ja miks vaja kasutada
   regression:
     model_path: /home/norman/ENREG/training/240424_LN/LorentzNet_model_best.pt
+  dm_multiclass:
+    model_path: /home/norman/ENREG/training/240508_LN_DM/LorentzNet_model_best.pt

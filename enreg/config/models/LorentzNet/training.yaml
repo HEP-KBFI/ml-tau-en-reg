@@ -1,5 +1,5 @@
 training:
-  type: regression # Or classification
+  type: dm_multiclass #regression # Or classification
   model_file: LorentzNet_model.pt
   # n_class: 2
   num_epochs: 350

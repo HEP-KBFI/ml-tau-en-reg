@@ -1,6 +1,6 @@
-builder: ParticleTransformer #HPS
+builder: LorentzNet #ParticleTransformer #HPS
 builder_task: dm_multiclass #regression
-output_dir: /home/norman/ENREG/ntuples/240507_PT_test
+output_dir: /home/norman/ENREG/ntuples/240508_LN_DM
 PT_tauID_ntuple_dir: /scratch/persistent/laurits/PT_tauID_ntuples
 n_files: -1
 slurm_run: False

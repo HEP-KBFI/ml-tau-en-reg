@@ -1,6 +1,6 @@
 verbosity: 1
-n_files: 10
-output_dir: /home/norman/ENREG/training/240507_PT_test
+n_files: -1
+output_dir: /home/norman/ENREG/training/240508_LN_DM
 samples_to_use:
   - ZH_Htautau
   # - Z_Ztautau
