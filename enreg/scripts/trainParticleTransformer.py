@@ -284,10 +284,6 @@ def validation_loop(
             np.array(weights_validation),
         )
     elif kind == "is_dm_multiclass":
-        # mean_reco_gen_ratio = np.mean(np.abs(ratios))
-        # median_reco_gen_ratio = np.median(np.abs(ratios))
-        # stdev_reco_gen_ratio = np.std(np.abs(ratios))
-        # iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
         logTrainingProgress_decaymode(
             tensorboard,
             idx_epoch,
