@@ -132,7 +132,16 @@ def trainSimpleDNN(cfg: DictConfig) -> None:
         shuffle=True,
         collate_fn=pad_collate
     )
-    model = DeepSet(16).to(device)
+
+    if cfg.models.SimpleDNN.training.type == 'regression':
+        kind = "ptreg"
+    elif cfg.models.SimpleDNN.training.type == 'dm_multiclass':
+        kind = "dm_multiclass"
+
+    if kind == "ptreg":
+        model = DeepSet(1).to(device)
+    elif kind == "dm_multiclass":
+        model = DeepSet(16).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 
     # lr_scheduler = OneCycleLR(
@@ -154,7 +163,7 @@ def trainSimpleDNN(cfg: DictConfig) -> None:
             dataloader_train,
             device,
             is_train=True,
-            kind="dm_multiclass"
+            kind=kind
         )
         loss_val, pred_val_reg, true_val_reg = model_loop(
             model,
@@ -164,7 +173,7 @@ def trainSimpleDNN(cfg: DictConfig) -> None:
             dataloader_validation,
             device,
             is_train=False,
-            kind="dm_multiclass"
+            kind=kind
         )
         if min_loss_validation == -1.0 or loss_val < min_loss_validation:
             print("Found new best model :)")

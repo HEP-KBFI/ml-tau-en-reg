@@ -124,14 +124,24 @@ class TauDataset(Dataset):
 class DeepSetTauBuilder:
     def __init__(self, cfg: DictConfig, verbosity: int = 0):
         self.verbosity = verbosity
-        # self.is_energy_regression = cfg.builder.task == 'regression'
+        self.is_energy_regression = cfg.builder.task == 'regression'
         self.is_dm_multiclass = cfg.builder.task == 'dm_multiclass'
         self.cfg = cfg
         #  TODO: check this out if needs a change?
         # self.model = DeepSet(1)
-        self.model = DeepSet(16)
-        # model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
-        model_path = self.cfg.builder.dm_multiclass.model_path if self.is_dm_multiclass else self.cfg.builder.classification.model_path
+        # self.model = DeepSet(16)
+        # # model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
+        # model_path = self.cfg.builder.dm_multiclass.model_path if self.is_dm_multiclass else self.cfg.builder.classification.model_path
+
+        if self.is_energy_regression:
+            self.model = DeepSet(1)
+            model_path = self.cfg.builder.regression.model_path
+        elif self.is_dm_multiclass:
+            self.model = DeepSet(16)
+            model_path = self.cfg.builder.dm_multiclass.model_path
+        else:
+            model_path = self.cfg.builder.classification.model_path
+
         self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
         self.model.eval()
 
@@ -166,7 +176,7 @@ class DeepSetTauBuilder:
         #     with torch.no_grad():
         #         pred = self.model(pfs, pfs_mask)
         # return {"tau_dm" : torch.exp(pred)[0]}
-        # if self.is_energy_regression:
-        #     return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
+        if self.is_energy_regression:
+            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
         if self.is_dm_multiclass:
             return {"tau_dm": torch.argmax(pred, axis=-1)}
