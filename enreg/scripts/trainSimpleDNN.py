@@ -4,6 +4,7 @@ import torch
 import hydra
 import datetime
 import numpy as np
+import tqdm
 from torch import nn
 from omegaconf import DictConfig
 from enreg.tools import general as g
@@ -26,14 +27,15 @@ def model_loop(model, tensorboard, idx_epoch, optimizer, ds_loader, dev, is_trai
     pred_vals = []
     true_vals = []
     ratios = []
-    for ibatch, batched_jets in enumerate(ds_loader):
+    for ibatch, batched_jets in tqdm.tqdm(enumerate(ds_loader), total=len(ds_loader)):
 
         pfs = batched_jets.pfs.to(dev, non_blocking=True)
         pfs_mask = batched_jets.pfs_mask.to(dev, non_blocking=True)
+        jets = batched_jets.jets.to(dev, non_blocking=True)
         gen_tau_label = batched_jets.gen_tau_label.to(dev, non_blocking=True)
         true_istau = gen_tau_label!=-1
 
-        pred = model(pfs, pfs_mask)
+        pred = model(pfs, pfs_mask, jets)
 
         if kind == "ptreg":
             #pred = log(ptgen/ptreco) -> ptgen = exp(pred)*ptreco

@@ -1,6 +1,6 @@
 verbosity: 1
 n_files: -1
-output_dir: /home/norman/ENREG/training/240508_LN_DM
+output_dir: /home/joosep/ENREG/training/240514_SDNN_DM_improved
 samples_to_use:
   - ZH_Htautau
   # - Z_Ztautau
