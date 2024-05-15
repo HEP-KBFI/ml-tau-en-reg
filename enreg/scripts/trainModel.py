@@ -329,14 +329,14 @@ def trainModel(cfg: DictConfig) -> None:
         dataset_train,
         batch_size=model_config.training.batch_size,
         num_workers=model_config.training.num_dataloader_workers,
-        prefetch_factor=10,
+        prefetch_factor=100,
         shuffle=True
     )
     dataloader_validation = DataLoader(
         dataset_validation,
         batch_size=model_config.training.batch_size,
         num_workers=model_config.training.num_dataloader_workers,
-        prefetch_factor=10,
+        prefetch_factor=100,
         shuffle=True
     )
 
@@ -476,7 +476,7 @@ def trainModel(cfg: DictConfig) -> None:
             dataset_full,
             batch_size=model_config.training.batch_size,
             num_workers=model_config.training.num_dataloader_workers,
-            prefetch_factor=10,
+            prefetch_factor=100,
             shuffle=False
         )
         preds = []

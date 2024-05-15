@@ -7,7 +7,7 @@ training:
   n_layers: 6
   c_weight: 0.005
   batch_size: 256
-  num_dataloader_workers: 4
+  num_dataloader_workers: 2
   classweight_sig: 1
   classweight_bgr: 10
   use_class_weights: True
