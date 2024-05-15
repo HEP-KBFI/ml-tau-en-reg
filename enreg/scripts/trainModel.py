@@ -245,7 +245,7 @@ def trainModel(cfg: DictConfig) -> None:
         str(datetime.datetime.now()).replace(" ", "_")
     )
 
-    data = g.load_all_data([os.path.join(cfg.data_path, p) for samp in cfg.samples_to_use])
+    data = g.load_all_data([os.path.join(cfg.data_path, samp) for samp in cfg.samples_to_use])
 
     #shuffle data
     perm = np.random.permutation(len(data))
@@ -327,13 +327,15 @@ def trainModel(cfg: DictConfig) -> None:
     dataloader_train = DataLoader(
         dataset_train,
         batch_size=model_config.training.batch_size,
-        # num_workers=model_config.training.num_dataloader_workers,
+        num_workers=model_config.training.num_dataloader_workers,
+        prefetch_factor=10,
         shuffle=True
     )
     dataloader_validation = DataLoader(
         dataset_validation,
         batch_size=model_config.training.batch_size,
-        # num_workers=model_config.training.num_dataloader_workers,
+        num_workers=model_config.training.num_dataloader_workers,
+        prefetch_factor=10,
         shuffle=True
     )
 
