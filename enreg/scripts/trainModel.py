@@ -470,6 +470,7 @@ def trainModel(cfg: DictConfig) -> None:
         dataset_full = DatasetClass(
             data=data,
             cfg=model_config.dataset,
+            do_preselection=False #for evaluation, ensure we do no selection
         )
         dataloader_full = DataLoader(
             dataset_full,
@@ -479,8 +480,10 @@ def trainModel(cfg: DictConfig) -> None:
             shuffle=False
         )
         preds = []
+        targets = []
         for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
             model_inputs = dataset_unpackers[cfg.model_type](X, dev)
+            y_for_loss = y[kind]
             if kind == "jet_regression":
                 pred = model(*model_inputs)[:, 0]
             elif kind == "dm_multiclass":
@@ -489,8 +492,10 @@ def trainModel(cfg: DictConfig) -> None:
             elif kind == "binary_classification":
                 pred = model(*model_inputs)[:, 1]
             preds.extend(pred.detach().cpu().numpy())
+            targets.extend(y_for_loss.detach().cpu().numpy())
         preds = np.array(preds)
-        ak.to_parquet(ak.Record({kind: preds}), os.path.join(model_output_path, test_sample))
+        targets = np.array(targets)
+        ak.to_parquet(ak.Record({kind: {"pred": preds, "target": targets}}), os.path.join(model_output_path, test_sample))
 
 
 if __name__ == "__main__":

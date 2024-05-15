@@ -14,10 +14,11 @@ from torch import nn
 
 
 class LorentzNetDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig):
+    def __init__(self, data: ak.Array, cfg: DictConfig, do_preselection=True):
         self.data = data
         self.cfg = cfg
-        self.preselection()
+        if do_preselection:
+            self.preselection()
         self.num_jets = len(self.data.reco_jet_p4s)
         self.build_tensors()
 
@@ -159,88 +160,3 @@ class LorentzNetDataset(Dataset):
             )
         else:
             raise RuntimeError("Invalid idx = %i (num_jets = %i) !!" % (idx, self.num_jets))
-
-
-class LorentzNetTauBuilder:
-    def __init__(self, cfg: DictConfig, verbosity: int = 0):
-        self.verbosity = verbosity
-        if cfg.builder.task == 'regression':
-            self.kind = "is_energy_regression"
-        elif cfg.builder.task == 'dm_multiclass':
-            self.kind = "is_dm_multiclass"
-        self.cfg = cfg
-        if self.cfg.feature_standardization.standardize_inputs:
-            self.transform = f.FeatureStandardization(
-                method=self.cfg.feature_standardization.method,
-                features=["x", "scalars"],
-                feature_dim=1,
-                verbosity=self.verbosity,
-            )
-            self.transform.load_params(self.cfg.feature_standardization.path)
-        self.n_scalar = 7 if cfg.dataset.use_pdgId else 2
-        if self.kind == "is_energy_regression":
-            self.num_classes = 1
-        elif self.kind == "is_dm_multiclass":
-            self.num_classes = 16
-        else:
-            self.num_classes = 2
-        self.model = LorentzNet(
-            n_scalar=self.n_scalar,
-            n_hidden=cfg.training.n_hidden,
-            n_class=self.num_classes,
-            n_layers=cfg.training.n_layers,
-            c_weight=cfg.training.c_weight,
-            dropout=cfg.training.dropout,
-            verbosity=self.verbosity
-        )
-        if self.kind == "is_energy_regression":
-            model_path = self.cfg.builder.regression.model_path
-        if self.kind == "is_dm_multiclass":
-            model_path = self.cfg.builder.dm_multiclass.model_path
-        else:
-            self.cfg.builder.classification.model_path
-        self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
-        self.model.eval()
-
-    def print_config(self):
-        primitive_cfg = OmegaConf.to_container(self.cfg)
-        print(json.dumps(primitive_cfg, indent=4))
-
-    def process_jets(self, data: ak.Array):
-        print("::: Starting to process jets ::: ")
-        dataset = LorentzNetDataset(data, self.cfg.dataset, self.kind)
-        if self.cfg.feature_standardization.standardize_inputs:
-            X = {
-                "x": dataset.x_tensors,
-                "scalars": dataset.scalars_tensors,
-                "mask": dataset.node_mask_tensors,
-            }
-            X_transformed = self.transform(X)
-            x_tensor = X_transformed["x"]
-            scalars_tensor = X_transformed["scalars"]
-            node_mask_tensor = X_transformed["mask"]
-        else:
-            x_tensor = dataset.x_tensors
-            scalars_tensors = dataset.scalars_tensors
-            node_mask_tensor = dataset.node_mask_tensors
-        with torch.no_grad():
-            pred = self.model(x_tensor, scalars_tensors, node_mask_tensor)
-        if self.kind == "is_energy_regression":
-            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
-        elif self.kind == "is_dm_multiclass":
-            return {"tau_dm": torch.argmax(pred, axis=-1)}
-        else:
-            pred = torch.softmax(pred, dim=1)
-            tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones
-            tauClassifier = list(tauClassifier.detach().numpy())
-            tau_p4s = g.reinitialize_p4(data["reco_jet_p4s"])
-            tauSigCand_p4s = data["reco_cand_p4s"]
-            tauCharges = np.zeros(len(dataset))
-            tau_decaymode = np.zeros(len(dataset))
-            return {
-                "tau_p4s": tau_p4s,
-                "tauSigCand_p4s": tauSigCand_p4s,
-                "tauClassifier": tauClassifier,
-                "tau_charge": tauCharges,
-                "tau_decaymode": tau_decaymode,
-            }

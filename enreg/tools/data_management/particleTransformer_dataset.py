@@ -12,10 +12,11 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
 
 class ParticleTransformerDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig):
+    def __init__(self, data: ak.Array, cfg: DictConfig, do_preselection=True):
         self.data = data
         self.cfg = cfg
-        self.preselection()
+        if do_preselection:
+            self.preselection()
         self.num_jets = len(self.data.reco_jet_p4s)
         self.build_tensors()
 
@@ -145,93 +146,3 @@ class ParticleTransformerDataset(Dataset):
             )
         else:
             raise RuntimeError("Invalid idx = %i (num_jets = %i) !!" % (idx, self.num_jets))
-
-
-class ParticleTransformerTauBuilder:
-    def __init__(self, cfg: DictConfig, verbosity: int = 0):
-        print("::: ParticleTransformer :::")
-        self.verbosity = verbosity
-
-        self.kind = cfg.builder.task
-        self.cfg = cfg
-        if self.cfg.feature_standardization.standardize_inputs:
-            self.transform = f.FeatureStandardization(
-                method=self.cfg.feature_standardization.method,
-                features=["x", "v"],
-                feature_dim=1,
-                verbosity=self.verbosity,
-            )
-            self.transform.load_params(self.cfg.feature_standardization.path)
-
-        input_dim = 7
-        if self.cfg.dataset.use_pdgId:
-            input_dim += 6
-        if self.cfg.dataset.use_lifetime:
-            input_dim += 4
-        if self.kind == "is_energy_regression":
-            num_classes = 1
-        elif self.kind == "is_dm_multiclass":
-            num_classes = 16
-        else:
-            num_classes = 2
-        #  TODO: check this out if needs a change?
-        self.model = ParticleTransformer(
-            input_dim=input_dim,
-            num_classes=num_classes,
-            use_pre_activation_pair=False,
-            for_inference=False,  # CV: keep same as for training and apply softmax function on NN output manually
-            use_amp=False,
-            metric=cfg.builder.metric,
-            verbosity=verbosity,
-        )
-        if self.kind == "is_energy_regression":
-            model_path = self.cfg.builder.regression.model_path
-        if self.kind == "is_dm_multiclass":
-            model_path = self.cfg.builder.dm_multiclass.model_path
-        else:
-            self.cfg.builder.classification.model_path
-        self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
-        self.model.eval()
-
-    def print_config(self):
-        primitive_cfg = OmegaConf.to_container(self.cfg)
-        print(json.dumps(primitive_cfg, indent=4))
-
-    def process_jets(self, data: ak.Array):
-        print("::: Starting to process jets ::: ")
-        dataset = ParticleTransformerDataset(data, self.cfg.dataset, self.kind)
-        if self.cfg.feature_standardization.standardize_inputs:
-            X = {
-                "x": dataset.x_tensors,
-                "v": dataset.v_tensors,
-                "mask": dataset.node_mask_tensors,
-            }
-            X_transformed = self.transform(X)
-            x_tensor = X_transformed["x"]
-            v_tensor = X_transformed["v"]
-            node_mask_tensor = X_transformed["mask"]
-        else:
-            x_tensor = dataset.x_tensors
-            v_tensor = dataset.v_tensors
-            node_mask_tensor = dataset.node_mask_tensors
-        with torch.no_grad():
-            pred = self.model(x_tensor, v_tensor, node_mask_tensor)
-        if self.kind == "is_energy_regression":
-            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
-        elif self.kind == "is_dm_multiclass":
-            return {"tau_dm": torch.argmax(pred, axis=-1)}
-        else:
-            pred = torch.softmax(pred, dim=1)
-            tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones
-            tauClassifier = list(tauClassifier.detach().numpy())
-            tau_p4s = g.reinitialize_p4(data["reco_jet_p4s"])
-            tauSigCand_p4s = data["reco_cand_p4s"]
-            tauCharges = np.zeros(len(dataset))
-            tau_decaymode = np.zeros(len(dataset))
-            return {
-                "tau_p4s": tau_p4s,
-                "tauSigCand_p4s": tauSigCand_p4s,
-                "tauClassifier": tauClassifier,
-                "tau_charge": tauCharges,
-                "tau_decaymode": tau_decaymode,
-            }
