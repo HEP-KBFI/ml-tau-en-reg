@@ -1,29 +1,35 @@
 verbosity: 1
 
 #everything that the user should modify is here
+#override these using command line args
 output_dir: /home/joosep/ml-tau-en-reg/training-outputs/240515_fullstats/
 data_path: /home/joosep/ml-tau-en-reg/data/20240402_full_stats_merged/
 
+#override this using command line args
 training_type: dm_multiclass
 # training_type: energy_regression
 # training_type: binary_classification
 
+#override this using command line args
 model_type: ParticleTransformer
 # model_type: LorentzNet
 # model_type: SimpleDNN
 
+#these samples can be used for training and validation
+#qq is added back using command line flags for the binary classification task
 training_samples:
   - zh_train.parquet
 #  - qq_train.parquet
 
+#these are never used in the training code, only for the final evaluation
 test_samples:
   - zh_test.parquet
   - z_test.parquet
 #  - qq_test.parquet
 
-#the training sample will be further subdividied as follows
-fraction_train: 0.05
-fraction_valid: 0.05
+#the training sample will be further subdividied as follows to train and valid
+fraction_train: 0.8
+fraction_valid: 0.2
 
 defaults:
   - models: models
