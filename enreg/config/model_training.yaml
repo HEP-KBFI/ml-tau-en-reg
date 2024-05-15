@@ -1,19 +1,27 @@
 verbosity: 1
-n_files: -1
-output_dir: /home/joosep/ENREG/training/240514_tests
+
+#everything that the user should modify is here
+output_dir: /home/joosep/ml-tau-en-reg/training/240515_fullstats
+data_path: /home/joosep/ml-tau-en-regdata/20240402_full_stats_merged/
+
 training_type: dm_multiclass
 # training_type: energy_regression
 # training_type: binary_classification
+
 model_type: ParticleTransformer
-data_path: /home/joosep/ml-tau-en-reg/data/
+# model_type: LorentzNet
+# model_type: SimpleDNN
 
 samples_to_use:
-  - ZH_Htautau
-  # - Z_Ztautau
-  # - QCD
+  - qq.parquet
+  - zh.parquet
+  - z.parquet
+
+train_split: 0.05
+validation_split: 0.05
+
 defaults:
   - models: models
-  - datasets: datasets
   - tau_builder
   - ntupelizer
   - _self_

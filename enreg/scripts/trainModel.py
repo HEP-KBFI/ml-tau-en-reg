@@ -183,11 +183,6 @@ def train_loop(
             optimizer.step()
             lr_scheduler.step()
 
-        batchsize = pred.size(dim=0)
-        num_jets_processed = min((idx_batch + 1) * batchsize, num_jets_train)
-        if (idx_batch % 100) == 0 or num_jets_processed >= (num_jets_train - batchsize):
-            print(" Running loss: {:.6f}  [{}/{}]".format(loss.mean().item(), num_jets_processed, num_jets_train))
-
     loss_train /= normalization
     if kind == "binary_classification":
         accuracy_train /= accuracy_normalization_train
@@ -250,20 +245,23 @@ def trainModel(cfg: DictConfig) -> None:
         str(datetime.datetime.now()).replace(" ", "_")
     )
 
-    validation_paths = []
-    train_paths = []
+    data = g.load_all_data([os.path.join(cfg.data_path, p) for samp in cfg.samples_to_use])
 
-    for sample in cfg.samples_to_use:
-        print(sample)
-        train_paths.extend(cfg.datasets.train[sample])
-        validation_paths.extend(cfg.datasets.validation[sample])
+    #shuffle data
+    perm = np.random.permutation(len(data))
+    data = data[perm]
 
-    training_data = g.load_all_data([cfg.data_path + p for p in train_paths], n_files=cfg.n_files)
+    #take train and validation split
+    ntrain = int(len(data) * cfg.train_split)
+    nvalid = int(len(data) * cfg.validation_split)
+    training_data = data[:ntrain]
+    validation_data = data[ntrain:ntrain+nvalid]
+    print("train={} validation={}".format(ntrain, nvalid))
+    
     dataset_train = DatasetClass(
         data=training_data,
         cfg=model_config.dataset,
     )
-    validation_data = g.load_all_data([cfg.data_path + p for p in validation_paths], n_files=cfg.n_files)
     dataset_validation = DatasetClass(
         data=validation_data,
         cfg=model_config.dataset,
