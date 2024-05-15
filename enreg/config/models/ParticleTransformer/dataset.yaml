@@ -1,4 +1,7 @@
 dataset:
+  features:
+    - x
+    - v
   max_cands: 25
   use_pdgId: True
   use_lifetime: False

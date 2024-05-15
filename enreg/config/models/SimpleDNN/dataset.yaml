@@ -1,0 +1,4 @@
+dataset:
+  features:
+    - pfs
+  max_cands: 25

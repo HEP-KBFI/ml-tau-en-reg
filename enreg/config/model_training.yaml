@@ -1,6 +1,12 @@
 verbosity: 1
 n_files: -1
-output_dir: /home/norman/ENREG/training/240508_LN_DM
+output_dir: /home/joosep/ENREG/training/240514_tests
+training_type: dm_multiclass
+# training_type: energy_regression
+# training_type: binary_classification
+model_type: ParticleTransformer
+data_path: /home/joosep/ml-tau-en-reg/data/
+
 samples_to_use:
   - ZH_Htautau
   # - Z_Ztautau
