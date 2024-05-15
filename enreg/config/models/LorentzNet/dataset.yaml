@@ -1,4 +1,7 @@
 dataset:
+  features:
+    - x
+    - scalars
   max_cands: 25
   use_pdgId: True
   min_jet_theta: 0.0

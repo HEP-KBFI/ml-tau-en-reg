@@ -1,7 +1,10 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, ConfusionMatrixDisplay
 
-
-def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true, class_pred, weights):
+def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true, pred_probas, weights):
+    class_pred = np.argmax(pred_probas, axis=-1)
+    signal_proba = pred_probas[:, 1]
     assert len(class_true) == len(class_pred) and len(class_true) == len(weights)
     weights_sum = weights.sum()
     true_positive_rate = (np.logical_and(class_true == 1, class_pred == 1) * weights).sum() / weights_sum
@@ -30,15 +33,24 @@ def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true
 
     tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)
     tensorboard.add_scalar("Accuracy/%s" % mode, 100 * accuracy, global_step=idx_epoch)
-    tensorboard.add_pr_curve("ROC_curve/%s" % mode, np.array(class_true), np.array(class_pred), global_step=idx_epoch)
+    tensorboard.add_pr_curve("ROC_curve/%s" % mode, np.array(class_true), signal_proba, global_step=idx_epoch)
     tensorboard.add_scalar("false_positives/%s" % mode, false_positive_rate, global_step=idx_epoch)
     tensorboard.add_scalar("false_negatives/%s" % mode, false_negative_rate, global_step=idx_epoch)
     tensorboard.add_scalar("precision/%s" % mode, precision, global_step=idx_epoch)
     tensorboard.add_scalar("recall/%s" % mode, recall, global_step=idx_epoch)
     tensorboard.add_scalar("F1_score/%s" % mode, F1_score, global_step=idx_epoch)
-    tensorboard.add_histogram("tauClassifier_sig/%s" % mode, class_pred[class_true == 1], global_step=idx_epoch)
-    tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, class_pred[class_true == 0], global_step=idx_epoch)
+    tensorboard.add_histogram("tauClassifier_sig/%s" % mode, signal_proba[class_true == 1], global_step=idx_epoch)
+    tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, signal_proba[class_true == 0], global_step=idx_epoch)
 
+    fpr, tpr, _ = roc_curve(class_true, signal_proba)
+    fig = plt.figure(figsize=(5,5))
+    plt.plot(tpr, fpr)
+    plt.xlim(0,1)
+    plt.ylim(1e-5, 1)
+    plt.yscale("log")
+    plt.xlabel("TPR")
+    plt.ylabel("FPR")
+    tensorboard.add_figure("roc/{}".format(mode), fig, global_step=idx_epoch)
 
 def logTrainingProgress_regression(
     tensorboard,
@@ -49,13 +61,21 @@ def logTrainingProgress_regression(
     median_reco_gen_ratio,
     stdev_reco_gen_ratio,
     iqr_reco_gen_ratio,
-    weights
+    weights,
+    ratios
 ):
     tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)
     tensorboard.add_scalar("Mean ratio/%s" % mode, mean_reco_gen_ratio, global_step=idx_epoch)
     tensorboard.add_scalar("Median ratio/%s" % mode, median_reco_gen_ratio, global_step=idx_epoch)
     tensorboard.add_scalar("Stdev ratio/%s" % mode, stdev_reco_gen_ratio, global_step=idx_epoch)
     tensorboard.add_scalar("IQR ratio/%s" % mode, iqr_reco_gen_ratio, global_step=idx_epoch)
+    tensorboard.add_scalar("IQR ratio/%s" % mode, iqr_reco_gen_ratio, global_step=idx_epoch)
+
+    fig = plt.figure(figsize=(5,5))
+    plt.hist(ratios, bins=np.linspace(0.5, 1.5, 100), histtype="step", lw=2)
+    plt.xlabel("reco pt / gen tau pt")
+    plt.ylabel("number of jets / bin")
+    tensorboard.add_figure("ratio/{}".format(mode), fig, global_step=idx_epoch)
 
 
 def logTrainingProgress_decaymode(
@@ -63,6 +83,12 @@ def logTrainingProgress_decaymode(
     idx_epoch,
     mode,
     loss,
-    weights
+    weights,
+    confusion_matrix
 ):
     tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)
+
+    confusion_matrix_norm = confusion_matrix/np.sum(confusion_matrix)
+    disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_norm, display_labels=range(confusion_matrix.shape[0]))
+    disp.plot(values_format=".2f", cmap="Blues", text_kw={"fontsize": 6})
+    tensorboard.add_figure("confusion_matrix/{}".format(mode), disp.figure_, global_step=idx_epoch)

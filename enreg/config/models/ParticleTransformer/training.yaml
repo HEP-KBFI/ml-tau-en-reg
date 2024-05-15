@@ -1,8 +1,7 @@
 training:
-  type: dm_multiclass #regression # Or classification
   model_file: ParticleTransformer_model.pt  # sync with builder
   batch_size: 512
-  num_epochs: 300
+  num_epochs: 10
   num_dataloader_workers: 6
   classweight_sig: 1
   classweight_bgr: 10

@@ -10,52 +10,10 @@ from torch.utils.data import DataLoader
 from enreg.tools.models.SimpleDNN import DeepSet
 import enreg.tools.data_management.features as f
 
+class DeepSetDataset(Dataset):
+    def __init__(self, data: ak.Array, cfg: DictConfig):
 
-#given multiple jets with a variable number of PF candidates per jet, create 3d-padded arrays
-#in the shape [Njets, Npfs_max, Nfeat]
-def pad_collate(jets):
-    pfs = [jet.pfs for jet in jets]
-    pfs_mask = [jet.pfs_mask for jet in jets]
-    jet_feats = [jet.jets for jet in jets]
-    gen_tau_label = [jet.gen_tau_label for jet in jets]
-    gen_tau_pt = [jet.gen_tau_pt for jet in jets]
-    reco_jet_pt = [jet.reco_jet_pt for jet in jets]
-    pfs = torch.nn.utils.rnn.pad_sequence(pfs, batch_first=True)
-    pfs_mask = torch.nn.utils.rnn.pad_sequence(pfs_mask, batch_first=True)
-    gen_tau_label = torch.concatenate(gen_tau_label, axis=0)
-    gen_tau_pt = torch.concatenate(gen_tau_pt, axis=0)
-    reco_jet_pt = torch.concatenate(reco_jet_pt, axis=0)
-    jet_feats = torch.concatenate(jet_feats, axis=0)
-    return Jet(
-        pfs=pfs,
-        pfs_mask=pfs_mask,
-        jets=jet_feats,
-        reco_jet_pt=reco_jet_pt,
-        gen_tau_label=gen_tau_label,
-        gen_tau_pt=gen_tau_pt
-    )
-
-
-class Jet:
-    def __init__(
-        self,
-        pfs: torch.Tensor,
-        pfs_mask: torch.Tensor,
-        jets: torch.Tensor,
-        reco_jet_pt: torch.Tensor,
-        gen_tau_label: torch.Tensor,
-        gen_tau_pt: torch.Tensor
-    ):
-        self.pfs = pfs
-        self.pfs_mask = pfs_mask
-        self.jets = jets
-        self.reco_jet_pt = reco_jet_pt
-        self.gen_tau_label = gen_tau_label
-        self.gen_tau_pt = gen_tau_pt
-
-
-class TauDataset(Dataset):
-    def __init__(self, data: ak.Array):
+        self.cfg = cfg
 
         #jet p4        
         reco_jet_p4s = g.reinitialize_p4(data["reco_jet_p4s"])
@@ -96,9 +54,14 @@ class TauDataset(Dataset):
         self.reco_jet_nptcl = torch.unsqueeze(torch.tensor(ak.to_numpy(ak.num(pf_p4s.px))), axis=-1).to(torch.float32)
 
         #per-jet targets
-        gen_jet_p4s = g.reinitialize_p4(data["gen_jet_tau_p4s"])
-        self.gen_tau_labels = torch.unsqueeze(torch.tensor(ak.to_numpy(data["gen_jet_tau_decaymode"])), axis=-1).to(torch.float32)
-        self.gen_tau_pts = torch.unsqueeze(torch.tensor(ak.to_numpy(gen_jet_p4s.pt)), axis=-1).to(torch.float32)
+        self.gen_jet_tau_p4s = g.reinitialize_p4(data["gen_jet_tau_p4s"])
+        self.gen_jet_tau_decaymode = torch.tensor(ak.to_numpy(data["gen_jet_tau_decaymode"]), dtype=torch.long)
+        self.gen_jet_tau_pt = torch.unsqueeze(torch.tensor(ak.to_numpy(self.gen_jet_tau_p4s.pt)), axis=-1).to(torch.float32)
+
+        if not "weight" in data.fields:
+            self.weight_tensors = torch.tensor(ak.ones_like(data.gen_jet_tau_decaymode), dtype=torch.float32)
+        else:
+            self.weight_tensors = torch.tensor(data.weight.to_list(), dtype=torch.float32)
 
     def __len__(self):
         return len(self.pf_lengths)
@@ -124,21 +87,36 @@ class TauDataset(Dataset):
         pf_ischhad = pf_pdg == 211
         pf_isnhad = pf_pdg == 130
 
-        # PF features (Npf x 13)
+        # PF features (max_cands x 13)
         pfs = torch.concatenate([pf_deta, pf_dphi, pf_logptrel, pf_logpt, pf_logerel, pf_loge, pf_deltaR, pf_charge, pf_isele, pf_ismu, pf_isphoton, pf_ischhad, pf_isnhad], axis=-1)
+        pfs_mask = torch.ones(pfs.shape[0], dtype=torch.float32)
+
         pfs[torch.isnan(pfs)] = 0
         pfs[torch.isinf(pfs)] = 0
+        pfs = pfs[:self.cfg.max_cands]
+        pfs = torch.nn.functional.pad(pfs, (0, 0, 0, self.cfg.max_cands - pfs.shape[0]))
 
-        # jet features (1 x 4)
-        jets = torch.unsqueeze(torch.concatenate([self.reco_jet_pt[idx], self.reco_jet_eta[idx], self.reco_jet_mass[idx], self.reco_jet_nptcl[idx]], axis=-1), axis=0)
-        return Jet(
-            pfs=pfs,
-            pfs_mask=torch.ones(pfs.shape[0], dtype=torch.float32),
-            jets=jets,
-            reco_jet_pt=self.reco_jet_pt[idx],
-            gen_tau_label=self.gen_tau_labels[idx],
-            gen_tau_pt=self.gen_tau_pts[idx]
+        pfs_mask = pfs_mask[:self.cfg.max_cands]
+        pfs_mask = torch.nn.functional.pad(pfs_mask, (0, self.cfg.max_cands - pfs_mask.shape[0]))
+
+        # jet features (4)
+        jets = torch.concatenate([self.reco_jet_pt[idx], self.reco_jet_eta[idx], self.reco_jet_mass[idx], self.reco_jet_nptcl[idx]], axis=-1)
+        return (
+            {
+                "pfs": pfs,
+                "pfs_mask": pfs_mask,
+                "jets": jets,
+            },
+            {
+                "reco_jet_pt": self.reco_jet_pt[idx],
+                "gen_tau_pt": self.gen_jet_tau_pt[idx],
+                "jet_regression": torch.log(self.gen_jet_tau_pt[idx]/self.reco_jet_pt[idx]).float(),
+                "binary_classification": (self.gen_jet_tau_decaymode[idx] != -1).long(),
+                "dm_multiclass": self.gen_jet_tau_decaymode[idx]
+            },
+            self.weight_tensors[idx],
         )
+
 
 
 class DeepSetTauBuilder:
