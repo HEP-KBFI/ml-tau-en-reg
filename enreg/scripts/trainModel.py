@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 import tqdm
 import sklearn
 import sklearn.metrics
+import awkward as ak
 
 import torch
 from torch import nn
@@ -242,21 +243,21 @@ def trainModel(cfg: DictConfig) -> None:
         cfg.output_dir,
         cfg.training_type,
         cfg.model_type,
-        str(datetime.datetime.now()).replace(" ", "_")
+        str(datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     )
 
-    data = g.load_all_data([os.path.join(cfg.data_path, samp) for samp in cfg.samples_to_use])
+    data = g.load_all_data([os.path.join(cfg.data_path, samp) for samp in cfg.training_samples])
 
-    #shuffle data
+    #shuffle input samples
     perm = np.random.permutation(len(data))
-    data = data[perm]
+    data_reshuf = data[perm]
 
     #take train and validation split
-    ntrain = int(len(data) * cfg.train_split)
-    nvalid = int(len(data) * cfg.validation_split)
-    training_data = data[:ntrain]
-    validation_data = data[ntrain:ntrain+nvalid]
-    print("train={} validation={}".format(ntrain, nvalid))
+    ntrain = int(len(data_reshuf)*cfg.fraction_train)
+    nvalid = int(len(data_reshuf)*cfg.fraction_valid)
+    training_data = data_reshuf[:ntrain]
+    validation_data = data_reshuf[ntrain:ntrain+nvalid]
+    print("train={} validation={}".format(len(training_data), len(validation_data)))
     
     dataset_train = DatasetClass(
         data=training_data,
@@ -402,6 +403,7 @@ def trainModel(cfg: DictConfig) -> None:
     tensorboard = SummaryWriter(os.path.join(model_output_path,"tensorboard_logs"))
     min_loss_validation = -1.0
     # early_stopper = EarlyStopper(patience=100, min_delta=0.01)
+    best_model_output_path = None
     for idx_epoch in tqdm.tqdm(range(model_config.training.num_epochs), total=model_config.training.num_epochs):
         print("Processing epoch #%i" % idx_epoch)
         print(" current time:", datetime.datetime.now())
@@ -455,11 +457,40 @@ def trainModel(cfg: DictConfig) -> None:
     print("Finished training.")
     print("Current time:", datetime.datetime.now())
 
-    model_output_file = os.path.join(model_output_path, model_config.training.model_file)
-    print("Saving model to file {}".format(model_output_file))
-    torch.save(model.state_dict(), model_output_file)
-
     tensorboard.close()
+
+    print("Loading best state from {}".format(best_model_output_path))
+    model.load_state_dict(torch.load(best_model_output_path))
+    model.eval()
+
+    print("Evaluating on test samples")
+    for test_sample in cfg.test_samples:
+        print("Evaluating on {}".format(test_sample))
+        data = g.load_all_data([str(os.path.join(cfg.data_path, test_sample))])
+        dataset_full = DatasetClass(
+            data=data,
+            cfg=model_config.dataset,
+        )
+        dataloader_full = DataLoader(
+            dataset_full,
+            batch_size=model_config.training.batch_size,
+            num_workers=model_config.training.num_dataloader_workers,
+            prefetch_factor=10,
+            shuffle=False
+        )
+        preds = []
+        for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
+            model_inputs = dataset_unpackers[cfg.model_type](X, dev)
+            if kind == "jet_regression":
+                pred = model(*model_inputs)[:, 0]
+            elif kind == "dm_multiclass":
+                pred = model(*model_inputs)
+                pred = torch.argmax(pred, axis=-1)
+            elif kind == "binary_classification":
+                pred = model(*model_inputs)[:, 1]
+            preds.extend(pred.detach().cpu().numpy())
+        preds = np.array(preds)
+        ak.to_parquet(ak.Record({kind: preds}), os.path.join(model_output_path, test_sample))
 
 
 if __name__ == "__main__":
