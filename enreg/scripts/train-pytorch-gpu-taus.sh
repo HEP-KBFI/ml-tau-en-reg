@@ -13,16 +13,16 @@ export KERAS_BACKEND=torch
 OUTPUT_DIR=/home/$USER/ml-tau-en-reg/training-outputs/240515_fullstats/
 
 #shared input folder, should be no need to modify
-DATA_PATH=/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged
+# DATA_PATH=/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged
 
 #local input folder
-# DATA_PATH=/home/$USER/ml-tau-en-reg/data/20240402_full_stats_merged/
+DATA_PATH=/home/$USER/ml-tau-en-reg/data/20240402_full_stats_merged/
 
 #on manivald
-export RUNCMD="singularity exec -B /scratch/persistent --env PYTHONPATH=`pwd` --nv /home/software/singularity/pytorch.simg:2024-04-30 "
+# export RUNCMD="singularity exec -B /scratch/persistent --env PYTHONPATH=`pwd` --nv /home/software/singularity/pytorch.simg:2024-04-30 "
 
 #on local system
-# export RUNCMD="singularity exec --env PYTHONPATH=`pwd` --nv /home/joosep/HEP-KBFI/singularity/pytorch.simg "
+export RUNCMD="singularity exec --env PYTHONPATH=`pwd` --nv /home/joosep/HEP-KBFI/singularity/pytorch.simg "
 
 #samples for decaymode and jet regression, only taus
 TRAIN_SAMPS=zh_train.parquet

@@ -15,6 +15,8 @@ import sklearn
 import sklearn.metrics
 import awkward as ak
 
+import matplotlib.pyplot as plt
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -41,29 +43,32 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 import time
 
-dataset_classes = {
-    "ParticleTransformerDataset": ParticleTransformerDataset,
-    "LorentzNetDataset": LorentzNetDataset,
-    "SimpleDNNDataset": DeepSetDataset,    
-}
-
 def unpack_ParticleTransformer_data(X, dev):
-    x = X["x"].to(device=dev)
-    v = X["v"].to(device=dev)
+    cand_features = X["cand_features"].to(device=dev)
+    cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev)
-    return x, v, mask
+    return cand_features, cand_kinematics, mask
 
 def unpack_LorentzNet_data(X, dev):
-    x = X["x"].to(device=dev)
-    scalars = X["scalars"].to(device=dev)
-    mask = X["mask"].to(device=dev)
-    return x, scalars, mask
+    cand_kinematics = X["cand_kinematics"].to(device=dev)
+    beam_kinematics = X["beam_kinematics"].to(device=dev)
+    kinematics = torch.swapaxes(torch.concatenate([beam_kinematics, cand_kinematics], axis=-1), 1, 2)
+
+    cand_features = X["cand_features"].to(device=dev)
+    beam_features = X["beam_features"].to(device=dev)
+    scalars = torch.swapaxes(torch.concatenate([beam_features, cand_features], axis=-1), 1, 2)
+
+    cand_mask = X["mask"].to(device=dev)
+    beam_mask = X["beam_mask"].to(device=dev)
+    mask = torch.swapaxes(torch.concatenate([beam_mask, cand_mask], axis=-1), 1, 2)
+    return kinematics, scalars, mask
 
 def unpack_SimpleDNN_data(X, dev):
-    pfs = X["pfs"].to(device=dev)
-    pfs_mask = X["pfs_mask"].to(device=dev)
-    jets = X["jets"].to(device=dev)
-    return pfs, pfs_mask, jets
+    cand_kinematics = torch.swapaxes(X["cand_kinematics"].to(device=dev), 1, 2)
+    cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2)
+    cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2)
+    pfs = torch.concatenate([cand_kinematics, cand_features], axis=-1)
+    return pfs, cand_mask
 
 dataset_unpackers = {
     "ParticleTransformer": unpack_ParticleTransformer_data,
@@ -234,10 +239,11 @@ def run_command(cmd):
 
 @hydra.main(config_path="../config", config_name="model_training", version_base=None)
 def trainModel(cfg: DictConfig) -> None:
+    plt.switch_backend('agg')
     print("<trainModel>:")
     kind = cfg.training_type
     model_config = cfg.models[cfg.model_type]
-    DatasetClass = dataset_classes[model_config.dataset_class]
+    DatasetClass = ParticleTransformerDataset
 
     model_output_path = os.path.join(
         cfg.output_dir,
@@ -261,11 +267,11 @@ def trainModel(cfg: DictConfig) -> None:
     
     dataset_train = DatasetClass(
         data=training_data,
-        cfg=model_config.dataset,
+        cfg=cfg.dataset,
     )
     dataset_validation = DatasetClass(
         data=validation_data,
-        cfg=model_config.dataset,
+        cfg=cfg.dataset,
     )
 
     if kind == "binary_classification":
@@ -286,14 +292,11 @@ def trainModel(cfg: DictConfig) -> None:
     print("Using device: {}".format(dev))
 
     print("Building model...")
+    input_dim = model_config.input_dim
+    if cfg.dataset.use_lifetime:
+        input_dim += 4
+    num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
-        input_dim = model_config.input_dim
-        if model_config.dataset.use_pdgId:
-            input_dim += 6
-        if model_config.dataset.use_lifetime:
-            input_dim += 4
-        
-        num_classes = cfg.models.ParticleTransformer.num_classes[kind]
         model = ParticleTransformer(
             input_dim=input_dim,
             num_classes=num_classes,
@@ -304,19 +307,17 @@ def trainModel(cfg: DictConfig) -> None:
             verbosity=cfg.verbosity,
         ).to(device=dev)
     elif cfg.model_type == "LorentzNet":
-        num_classes = cfg.models.LorentzNet.num_classes[kind]
         model = LorentzNet(
-            n_scalar=7 if cfg.models.LorentzNet.dataset.use_pdgId else 2,
-            n_hidden=cfg.models.LorentzNet.training.n_hidden,
+            n_scalar=input_dim,
+            n_hidden=cfg.models.LorentzNet.hyperparameters.n_hidden,
             n_class=num_classes,
-            dropout=cfg.models.LorentzNet.training.dropout,
-            n_layers=cfg.models.LorentzNet.training.n_layers,
-            c_weight=cfg.models.LorentzNet.training.c_weight,
-            verbosity=cfg.models.LorentzNet.training.verbosity,
+            dropout=cfg.models.LorentzNet.hyperparameters.dropout,
+            n_layers=cfg.models.LorentzNet.hyperparameters.n_layers,
+            c_weight=cfg.models.LorentzNet.hyperparameters.c_weight,
+            verbosity=cfg.models.LorentzNet.hyperparameters.verbosity,
         ).to(device=dev)
     elif cfg.model_type == "SimpleDNN":
-        num_classes = cfg.models.SimpleDNN.num_classes[kind]
-        model = DeepSet(num_classes).to(device=dev)
+        model = DeepSet(input_dim, num_classes).to(device=dev)
 
     initWeights(model)
     print("Finished building model:")
@@ -327,16 +328,16 @@ def trainModel(cfg: DictConfig) -> None:
 
     dataloader_train = DataLoader(
         dataset_train,
-        batch_size=model_config.training.batch_size,
-        num_workers=model_config.training.num_dataloader_workers,
-        prefetch_factor=100,
+        batch_size=cfg.training.batch_size,
+        num_workers=cfg.training.num_dataloader_workers,
+        prefetch_factor=10,
         shuffle=True
     )
     dataloader_validation = DataLoader(
         dataset_validation,
-        batch_size=model_config.training.batch_size,
-        num_workers=model_config.training.num_dataloader_workers,
-        prefetch_factor=100,
+        batch_size=cfg.training.batch_size,
+        num_workers=cfg.training.num_dataloader_workers,
+        prefetch_factor=10,
         shuffle=True
     )
 
@@ -344,12 +345,12 @@ def trainModel(cfg: DictConfig) -> None:
     if model_config.feature_standardization.standardize_inputs:
         transform = FeatureStandardization(
             method=model_config.feature_standardization.method,
-            features=model_config.dataset.features,
+            features=cfg.dataset.features,
             feature_dim=1,
             verbosity=cfg.verbosity,
         )
         transform.compute_params(dataloader_train)
-        transform.save_params(model_config.feature_standardization.path)
+        transform.save_params(os.path.join(model_output_path, "feature_transform.json"))
 
     if kind == "binary_classification":
         if model_config.lrfinder.use_class_weights:
@@ -357,10 +358,10 @@ def trainModel(cfg: DictConfig) -> None:
             classweight_sig = model_config.lrfinder.classweight_sig
         classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
 
-        if model_config.training.use_focal_loss:
+        if cfg.training.use_focal_loss:
             print("Using FocalLoss.")
             loss_fn = FocalLoss(
-                gamma=model_config.training.focal_loss_gamma,
+                gamma=cfg.training.focal_loss_gamma,
                 alpha=classweight_tensor,
                 reduction="none"
             )
@@ -372,28 +373,28 @@ def trainModel(cfg: DictConfig) -> None:
     elif kind == "dm_multiclass":
         loss_fn = nn.CrossEntropyLoss(reduction="none")
 
-    if model_config.training.fast_optimizer == "AdamW":
+    if cfg.training.fast_optimizer == "AdamW":
         base_optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
-    elif model_config.training.fast_optimizer == "RAdam":
+    elif cfg.training.fast_optimizer == "RAdam":
         base_optimizer = torch.optim.RAdam(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
     else:
         raise RuntimeError("Invalid configuration parameter 'fast_optimizer' !!")
-    if model_config.training.slow_optimizer == "Lookahead":
-        print("Using {} optimizer with Lookahead.".format(model_config.training.fast_optimizer))
+    if cfg.training.slow_optimizer == "Lookahead":
+        print("Using {} optimizer with Lookahead.".format(cfg.training.fast_optimizer))
         optimizer = Lookahead(base_optimizer=base_optimizer, k=10, alpha=0.5)
-    elif model_config.training.slow_optimizer == "None":
-        print("Using {} optimizer.".format(model_config.training.fast_optimizer))
+    elif cfg.training.slow_optimizer == "None":
+        print("Using {} optimizer.".format(cfg.training.fast_optimizer))
         optimizer = base_optimizer
     else:
         raise RuntimeError("Invalid configuration parameter 'slow_optimizer' !!")
 
     num_batches_train = len(dataloader_train)
-    print("Training for {} epochs.".format(model_config.training.num_epochs))
+    print("Training for {} epochs.".format(cfg.training.num_epochs))
     print("#batches(train) = {}".format(num_batches_train))
     lr_scheduler = OneCycleLR(
         base_optimizer,
         max_lr=1.0e-3,
-        epochs=model_config.training.num_epochs,
+        epochs=cfg.training.num_epochs,
         steps_per_epoch=num_batches_train,
         anneal_strategy="cos"
     )
@@ -404,7 +405,7 @@ def trainModel(cfg: DictConfig) -> None:
     min_loss_validation = -1.0
     # early_stopper = EarlyStopper(patience=100, min_delta=0.01)
     best_model_output_path = None
-    for idx_epoch in tqdm.tqdm(range(model_config.training.num_epochs), total=model_config.training.num_epochs):
+    for idx_epoch in tqdm.tqdm(range(cfg.training.num_epochs), total=cfg.training.num_epochs):
         print("Processing epoch #%i" % idx_epoch)
         print(" current time:", datetime.datetime.now())
 
@@ -415,7 +416,7 @@ def trainModel(cfg: DictConfig) -> None:
             model,
             dev,
             loss_fn,
-            model_config.training.use_per_jet_weights,
+            cfg.training.use_per_jet_weights,
             optimizer,
             lr_scheduler,
             tensorboard,
@@ -433,7 +434,7 @@ def trainModel(cfg: DictConfig) -> None:
             model,
             dev,
             loss_fn,
-            model_config.training.use_per_jet_weights,
+            cfg.training.use_per_jet_weights,
             None,
             None,
             tensorboard,
@@ -444,7 +445,7 @@ def trainModel(cfg: DictConfig) -> None:
         )
 
         if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
-            best_model_file = model_config.training.model_file.replace(".pt", "_best.pt")
+            best_model_file = "model_best.pt"
             print("Saving best model to file {}".format(best_model_file))
             best_model_output_path = os.path.join(model_output_path, best_model_file)
             torch.save(model.state_dict(), best_model_output_path)
@@ -469,13 +470,13 @@ def trainModel(cfg: DictConfig) -> None:
         data = g.load_all_data([str(os.path.join(cfg.data_path, test_sample))])
         dataset_full = DatasetClass(
             data=data,
-            cfg=model_config.dataset,
+            cfg=cfg.dataset,
             do_preselection=False #for evaluation, ensure we do no selection
         )
         dataloader_full = DataLoader(
             dataset_full,
-            batch_size=model_config.training.batch_size,
-            num_workers=model_config.training.num_dataloader_workers,
+            batch_size=cfg.training.batch_size,
+            num_workers=cfg.training.num_dataloader_workers,
             prefetch_factor=100,
             shuffle=False
         )

@@ -28,8 +28,49 @@ test_samples:
 #  - qq_test.parquet
 
 #the training sample will be further subdividied as follows to train and valid
-fraction_train: 0.8
-fraction_valid: 0.2
+fraction_train: 0.1
+fraction_valid: 0.1
+
+dataset:
+  #for normalization (not used)
+  features:
+    - cand_features
+    - cand_kinematics
+  max_cands: 25
+  use_lifetime: False
+  min_jet_theta: 0.0
+  max_jet_theta: 1000
+  min_jet_pt: 0
+  max_jet_pt: 1000
+
+  #for LorentzNet
+  beams:
+    add: True
+    mass: 1.0
+
+#number of output classes for different tasks
+num_classes:
+  dm_multiclass: 16
+  jet_regression: 1
+  binary_classification: 2
+
+training:
+  num_epochs: 1
+  batch_size: 256
+  num_dataloader_workers: 2
+  classweight_sig: 1
+  classweight_bgr: 10
+  use_class_weights: True
+  use_per_jet_weights: True
+  use_focal_loss: True
+  focal_loss_gamma: 2.0
+  fast_optimizer: AdamW
+  slow_optimizer: None
+  verbosity: 1
+
+feature_standardization:
+  standardize_inputs: False
+  method: "mean_rms"
 
 defaults:
   - models: models

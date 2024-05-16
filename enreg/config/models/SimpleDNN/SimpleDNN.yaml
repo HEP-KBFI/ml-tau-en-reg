@@ -1,14 +1,1 @@
-dataset_class: SimpleDNNDataset
-num_classes:
-  dm_multiclass: 16
-  jet_regression: 1
-  binary_classification: 2
-feature_standardization:
-  standardize_inputs: False
-  method: "mean_rms"
-  path: /home/laurits/ml-tau-en-reg/enreg/data/ParticleTransformer_FeatureStandardization.json
-defaults:
-  - builder
-  - dataset
-  - lrfinder
-  - training
+input_dim: 17

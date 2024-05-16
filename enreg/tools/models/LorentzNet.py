@@ -212,6 +212,8 @@ class LorentzNet(nn.Module):
         self.verbosity = verbosity
 
     def forward(self, x: torch.Tensor, scalars: torch.Tensor, node_mask: torch.Tensor) -> torch.Tensor:
+
+        #embed the per-particle non Lorentz invariant quantities (scalars)
         h = self.embedding(scalars)
         n_particles = x.size(dim=1)
         edges = torch.ones(n_particles, n_particles, dtype=torch.long, device=h.device)

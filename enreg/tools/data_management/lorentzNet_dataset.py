@@ -109,7 +109,7 @@ class LorentzNetDataset(Dataset):
                 })
             else:
                 beam_features = ak.Array({
-                    "mass_psi": psi(torch.tensor(ak.Array([[beam_mass, beam_mass]] * len(self.jet_p4s)), dtype=torch.float32)),
+                    "mass_psi": psi(torch.tensor(ak.Array([[self.cfg.beams.mass, self.cfg.beams.mass]] * len(self.jet_p4s)), dtype=torch.float32)),
                     "pad": ak.Array([[0.0, 0.0]] * len(self.jet_p4s))
                 })
             scalars_beams = np.swapaxes(

@@ -1,7 +1,7 @@
 training:
   model_file: ParticleTransformer_model.pt  # sync with builder
   batch_size: 512
-  num_epochs: 100
+  num_epochs: 2
   num_dataloader_workers: 2
   classweight_sig: 1
   classweight_bgr: 10
