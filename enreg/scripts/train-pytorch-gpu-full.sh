@@ -2,7 +2,7 @@
 #SBATCH -p gpu
 #SBATCH --gres gpu:rtx:1
 #SBATCH --mem-per-gpu=10G
-#SBATCH -o slurm-$1-$2-%x-%j-%N.out
+#SBATCH -o slurm-%x-%j-%N.out
 
 #get commandline arguments
 TRAINING_TYPE=$1
