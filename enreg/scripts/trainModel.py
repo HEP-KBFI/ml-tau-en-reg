@@ -355,8 +355,8 @@ def trainModel(cfg: DictConfig) -> None:
 
     if kind == "binary_classification":
         if cfg.training.use_class_weights:
-            classweight_bgr = model_config.training.classweight_bgr
-            classweight_sig = model_config.training.classweight_sig
+            classweight_bgr = cfg.training.classweight_bgr
+            classweight_sig = cfg.training.classweight_sig
         classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
 
         if cfg.training.use_focal_loss:
