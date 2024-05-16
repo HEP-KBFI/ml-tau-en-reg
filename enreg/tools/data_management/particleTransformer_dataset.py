@@ -1,5 +1,6 @@
 import torch
 import json
+import math
 import numpy as np
 import awkward as ak
 import enreg.tools.general as g
@@ -10,16 +11,27 @@ from torch import nn
 import enreg.tools.data_management.features as f
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
+def stack_and_pad_features(cand_features, max_cands):
+    cand_features_tensors = np.stack([ak.pad_none(cand_features[feat], max_cands, clip=True) for feat in cand_features.fields], axis=-1)
+    cand_features_tensors = ak.to_numpy(ak.fill_none(cand_features_tensors, 0))
+    # Swapping the axes such that it has the shape of (nJets, nFeatures, nParticles)
+    cand_features_tensors = np.swapaxes(cand_features_tensors, 1, 2)
+
+    cand_features_tensors[np.isnan(cand_features_tensors)] = 0
+    cand_features_tensors[np.isinf(cand_features_tensors)] = 0
+    return cand_features_tensors
 
 class ParticleTransformerDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig):
+    def __init__(self, data: ak.Array, cfg: DictConfig, do_preselection=True):
         self.data = data
         self.cfg = cfg
-        self.preselection()
+        if do_preselection:
+            self.preselection()
         self.num_jets = len(self.data.reco_jet_p4s)
         self.build_tensors()
 
     def preselection(self):
+        print("ParticleTransformer.preselection")
         """Chooses jets based on preselection criteria specified in the configuration"""
         jet_constituent_p4s = g.reinitialize_p4(self.data.reco_cand_p4s)
         jet_p4s = g.reinitialize_p4(self.data.reco_jet_p4s)
@@ -29,13 +41,22 @@ class ParticleTransformerDataset(Dataset):
         min_jet_pt_mask = no_mask if self.cfg.min_jet_pt == -1 else jet_p4s.pt >= self.cfg.min_jet_pt
         max_jet_pt_mask = no_mask if self.cfg.max_jet_pt == -1 else jet_p4s.pt <= self.cfg.max_jet_pt
         preselection_mask = min_jet_theta_mask * max_jet_theta_mask * min_jet_pt_mask * max_jet_pt_mask
+        print("mask: {}/{}".format(np.sum(preselection_mask), len(preselection_mask)))
         self.data = ak.Array({field: self.data[field] for field in self.data.fields})[preselection_mask]
 
     def build_tensors(self):
+        print("ParticleTransformer.build_tensors")
         jet_constituent_p4s = g.reinitialize_p4(self.data.reco_cand_p4s)
         self.gen_jet_tau_p4s = g.reinitialize_p4(self.data.gen_jet_tau_p4s)
         self.jet_p4s = g.reinitialize_p4(self.data.reco_jet_p4s)
+
         cand_features = ak.Array({
+            "cand_charge": self.data.reco_cand_charge,
+            "isElectron": ak.values_astype(abs(self.data.reco_cand_pdg) == 11, np.float32),
+            "isMuon": ak.values_astype(abs(self.data.reco_cand_pdg) == 13, np.float32),
+            "isPhoton": ak.values_astype(abs(self.data.reco_cand_pdg) == 22, np.float32),
+            "isChargedHadron": ak.values_astype(abs(self.data.reco_cand_pdg) == 211, np.float32),
+            "isNeutralHadron": ak.values_astype(abs(self.data.reco_cand_pdg) == 130, np.float32),
             "cand_deta": f.deltaEta(jet_constituent_p4s.eta, self.jet_p4s.eta),  # Could also use dTheta
             "cand_dphi": f.deltaPhi(jet_constituent_p4s.phi, self.jet_p4s.phi),
             "cand_logpt": np.log(jet_constituent_p4s.pt),
@@ -45,18 +66,13 @@ class ParticleTransformerDataset(Dataset):
             "cand_deltaR": f.deltaR_etaPhi(
                 jet_constituent_p4s.eta, jet_constituent_p4s.phi, self.jet_p4s.eta, self.jet_p4s.phi), #angle3d
         })
-        if self.cfg.use_pdgId:
-            cand_features["cand_charge"] = self.data.reco_cand_charge
-            cand_features["isElectron"] = ak.values_astype(abs(self.data.reco_cand_pdg) == 11, "float64")
-            cand_features["isMuon"] = ak.values_astype(abs(self.data.reco_cand_pdg) == 13, "float64")
-            cand_features["isPhoton"] = ak.values_astype(abs(self.data.reco_cand_pdg) == 22, "float64")
-            cand_features["isChargedHadron"] = ak.values_astype(abs(self.data.reco_cand_pdg) == 211, "float64")
-            cand_features["isNeutralHadron"] = ak.values_astype(abs(self.data.reco_cand_pdg) == 130, "float64")
+
         if self.cfg.use_lifetime:
+            print("use_lifetime")
             # There is some problem with the lifetime variables as they do no exactly match the ones on CV implementation
-            charge_mask = ak.values_astype(np.abs(self.data.reco_cand_charge) == 1, "int64")
-            d0_mask = ak.values_astype(np.abs(self.data.reco_cand_d0) > -99, "int64")
-            dz_mask = ak.values_astype(np.abs(self.data.reco_cand_dz) > -99, "int64")
+            charge_mask = ak.values_astype(np.abs(self.data.reco_cand_charge) == 1, np.int64)
+            d0_mask = ak.values_astype(np.abs(self.data.reco_cand_d0) > -99, np.int64)
+            dz_mask = ak.values_astype(np.abs(self.data.reco_cand_dz) > -99, np.int64)
             total_mask = charge_mask * d0_mask * dz_mask
             cand_features["cand_d0"] = (np.tanh(self.data.reco_cand_d0)) * total_mask
             cand_features["cand_d0_err"] = (
@@ -74,51 +90,69 @@ class ParticleTransformerDataset(Dataset):
                     axis=0,
                 )
             ) * total_mask
-        for cand_feature in cand_features.fields:
-            cand_features[cand_feature] = ak.fill_none(
-                ak.pad_none(cand_features[cand_feature], self.cfg.max_cands, clip=True),
-                0,
-            )
+
         cand_kinematics = ak.Array({
             "cand_px": jet_constituent_p4s.px,
             "cand_py": jet_constituent_p4s.py,
             "cand_pz": jet_constituent_p4s.pz,
             "cand_en": jet_constituent_p4s.energy,
         })
-        for cand_property in cand_kinematics.fields:
-            cand_kinematics[cand_property] = ak.fill_none(
-                ak.pad_none(cand_kinematics[cand_property], self.cfg.max_cands, clip=True),
-                0,
-            )
-        # Swpping the axes such that it has the shape of (nJets, nFeatures, nParticles)
-        x_tensor_full = np.swapaxes(np.array([cand_features[feature].to_list() for feature in cand_features.fields]), 0, 1)
-        v_tensor_full = np.swapaxes(
-                np.array([cand_kinematics[feature].to_list() for feature in cand_kinematics.fields]), 0, 1)
-        # Splitting the full_tensor nJets subtensors:
-        self.x_tensors = torch.tensor(x_tensor_full, dtype=torch.float32)
-        self.v_tensors = torch.tensor(v_tensor_full, dtype=torch.float32)
+
+        print("creating padded tensors")
+        cand_features_tensors = stack_and_pad_features(cand_features, self.cfg.max_cands)
+        cand_kinematics_tensors = stack_and_pad_features(cand_kinematics, self.cfg.max_cands)
+
+        self.cand_features_tensors = torch.tensor(cand_features_tensors, dtype=torch.float32)
+        self.cand_kinematics_tensors = torch.tensor(cand_kinematics_tensors, dtype=torch.float32)
+        print("cand_features_tensors={} cand_kinematics_tensors={}".format(self.cand_features_tensors.shape, self.cand_kinematics_tensors.shape))
+
+        #for LorentzNet, add two additional fake particles (i.e. beams)
+        #these are the Lorentz-invariant quantities and will be stacked with cand_kinematics in the network
+        beam1_p4 = [math.sqrt(1 + self.cfg.beams.mass**2), 0.0, 0.0, +1.0]
+        beam2_p4 = [math.sqrt(1 + self.cfg.beams.mass**2), 0.0, 0.0, -1.0]
+        self.beams_kinematics_tensor = torch.tensor([[beam1_p4, beam2_p4]] * len(self.jet_p4s), dtype=torch.float32)
+        self.beams_kinematics_tensor = torch.swapaxes(self.beams_kinematics_tensor, 1, 2)
+
+        #these are the various non-Lorentz-invariant quantities
+        #these will be stacked with cand_features in the network
+        beams_features = ak.Array({
+            "cand_charge": ak.Array([[+1.0, -1.0]] * len(self.jet_p4s)),
+        })
+        for field in cand_features.fields:
+            if field == "cand_charge":
+                continue
+            beams_features[field] = ak.Array([[0.0, 0.0]] * len(self.jet_p4s))
+
+        beams_features = stack_and_pad_features(beams_features, 2)
+        self.beams_features_tensor = torch.tensor(beams_features).float()
+
+        self.beams_mask_tensor = torch.tensor(np.ones((len(self.jet_p4s), 1, 2)), dtype=torch.float32)
+
+        print("creating mask")
         self.node_mask_tensors = torch.unsqueeze(
             torch.tensor(
-                ak.fill_none(ak.pad_none(ak.ones_like(self.data.reco_cand_pdg), self.cfg.max_cands, clip=True), 0,),
+                ak.to_numpy(ak.fill_none(ak.pad_none(ak.ones_like(self.data.reco_cand_pdg), self.cfg.max_cands, clip=True), 0,)),
                 dtype=torch.float32
             ),
             dim=1
         )
-        self.x_is_one_hot_encoded = torch.tensor(
-            [[self.cfg.one_hot_encoding[feature] for feature in cand_features.fields]] * len(self.jet_p4s),
-            dtype=torch.bool
-        )
-        self.v_is_one_hot_encoded = torch.tensor(
-            [[self.cfg.one_hot_encoding[feature] for feature in cand_kinematics.fields]] * len(self.jet_p4s),
-            dtype=torch.bool
-        )
+        print("node_mask_tensors={}".format(self.node_mask_tensors.shape))
+
+        print("creating weights")
         if not "weight" in self.data.fields:
             self.weight_tensors = torch.tensor(ak.ones_like(self.data.gen_jet_tau_decaymode), dtype=torch.float32)
         else:
-            self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
+            self.weight_tensors = torch.tensor(ak.to_numpy(self.data.weight), dtype=torch.float32)
+        print("weight_tensors={}".format(self.weight_tensors))
+        print("weight_tensors values: {}".format(self.weight_tensors[:10]))
 
-        self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
-        self.reco_jet_energy = torch.tensor(self.jet_p4s.energy, dtype=torch.float32)
+        self.reco_jet_pt = torch.tensor(ak.to_numpy(self.jet_p4s.pt), dtype=torch.float32)
+        self.reco_jet_energy = torch.tensor(ak.to_numpy(self.jet_p4s.energy), dtype=torch.float32)
+
+        self.jet_regression_target = torch.log(torch.tensor(ak.to_numpy(self.gen_jet_tau_p4s.pt/self.reco_jet_pt), dtype=torch.float32))
+        self.gen_jet_tau_decaymode = torch.tensor(ak.to_numpy(self.data.gen_jet_tau_decaymode)).long()
+        self.gen_jet_tau_decaymode_exists = (self.gen_jet_tau_decaymode != -1).long()
+        print("ParticleTransformer.build_tensors done")
 
     def __len__(self):
         return self.num_jets
@@ -127,111 +161,26 @@ class ParticleTransformerDataset(Dataset):
         if idx < self.num_jets:
             return (
                 {
-                    "v": self.v_tensors[idx],
-                    "v_is_one_hot_encoded": self.v_is_one_hot_encoded,
-                    "x": self.x_tensors[idx],
-                    "x_is_one_hot_encoded": self.x_is_one_hot_encoded,
+                    "cand_kinematics": self.cand_kinematics_tensors[idx],
+                    "cand_features": self.cand_features_tensors[idx],
+
+                    #for LorentzNet
+                    "beam_kinematics": self.beams_kinematics_tensor[idx],
+                    "beam_features": self.beams_features_tensor[idx],
+                    "beam_mask": self.beams_mask_tensor[idx],
+
                     "mask": self.node_mask_tensors[idx],
+
                     "reco_jet_pt": self.reco_jet_pt[idx],
                 },
                 {
                     "reco_jet_pt": self.reco_jet_pt[idx],
                     "gen_tau_pt": self.gen_jet_tau_p4s[idx].pt,
-                    "jet_regression": torch.log(self.gen_jet_tau_p4s[idx].pt/self.reco_jet_pt[idx]).to(torch.float),
-                    "binary_classification": torch.tensor(self.data.gen_jet_tau_decaymode[idx] != -1, dtype=torch.long),
-                    "dm_multiclass": torch.tensor(self.data.gen_jet_tau_decaymode[idx], dtype=torch.long)
+                    "jet_regression": self.jet_regression_target[idx],
+                    "binary_classification": self.gen_jet_tau_decaymode_exists[idx],
+                    "dm_multiclass": self.gen_jet_tau_decaymode[idx]
                 },
                 self.weight_tensors[idx],
             )
         else:
             raise RuntimeError("Invalid idx = %i (num_jets = %i) !!" % (idx, self.num_jets))
-
-
-class ParticleTransformerTauBuilder:
-    def __init__(self, cfg: DictConfig, verbosity: int = 0):
-        print("::: ParticleTransformer :::")
-        self.verbosity = verbosity
-
-        self.kind = cfg.builder.task
-        self.cfg = cfg
-        if self.cfg.feature_standardization.standardize_inputs:
-            self.transform = f.FeatureStandardization(
-                method=self.cfg.feature_standardization.method,
-                features=["x", "v"],
-                feature_dim=1,
-                verbosity=self.verbosity,
-            )
-            self.transform.load_params(self.cfg.feature_standardization.path)
-
-        input_dim = 7
-        if self.cfg.dataset.use_pdgId:
-            input_dim += 6
-        if self.cfg.dataset.use_lifetime:
-            input_dim += 4
-        if self.kind == "is_energy_regression":
-            num_classes = 1
-        elif self.kind == "is_dm_multiclass":
-            num_classes = 16
-        else:
-            num_classes = 2
-        #  TODO: check this out if needs a change?
-        self.model = ParticleTransformer(
-            input_dim=input_dim,
-            num_classes=num_classes,
-            use_pre_activation_pair=False,
-            for_inference=False,  # CV: keep same as for training and apply softmax function on NN output manually
-            use_amp=False,
-            metric=cfg.builder.metric,
-            verbosity=verbosity,
-        )
-        if self.kind == "is_energy_regression":
-            model_path = self.cfg.builder.regression.model_path
-        if self.kind == "is_dm_multiclass":
-            model_path = self.cfg.builder.dm_multiclass.model_path
-        else:
-            self.cfg.builder.classification.model_path
-        self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
-        self.model.eval()
-
-    def print_config(self):
-        primitive_cfg = OmegaConf.to_container(self.cfg)
-        print(json.dumps(primitive_cfg, indent=4))
-
-    def process_jets(self, data: ak.Array):
-        print("::: Starting to process jets ::: ")
-        dataset = ParticleTransformerDataset(data, self.cfg.dataset, self.kind)
-        if self.cfg.feature_standardization.standardize_inputs:
-            X = {
-                "x": dataset.x_tensors,
-                "v": dataset.v_tensors,
-                "mask": dataset.node_mask_tensors,
-            }
-            X_transformed = self.transform(X)
-            x_tensor = X_transformed["x"]
-            v_tensor = X_transformed["v"]
-            node_mask_tensor = X_transformed["mask"]
-        else:
-            x_tensor = dataset.x_tensors
-            v_tensor = dataset.v_tensors
-            node_mask_tensor = dataset.node_mask_tensors
-        with torch.no_grad():
-            pred = self.model(x_tensor, v_tensor, node_mask_tensor)
-        if self.kind == "is_energy_regression":
-            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
-        elif self.kind == "is_dm_multiclass":
-            return {"tau_dm": torch.argmax(pred, axis=-1)}
-        else:
-            pred = torch.softmax(pred, dim=1)
-            tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones
-            tauClassifier = list(tauClassifier.detach().numpy())
-            tau_p4s = g.reinitialize_p4(data["reco_jet_p4s"])
-            tauSigCand_p4s = data["reco_cand_p4s"]
-            tauCharges = np.zeros(len(dataset))
-            tau_decaymode = np.zeros(len(dataset))
-            return {
-                "tau_p4s": tau_p4s,
-                "tauSigCand_p4s": tauSigCand_p4s,
-                "tauClassifier": tauClassifier,
-                "tau_charge": tauCharges,
-                "tau_decaymode": tau_decaymode,
-            }

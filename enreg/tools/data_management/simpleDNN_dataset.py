@@ -11,7 +11,7 @@ from enreg.tools.models.SimpleDNN import DeepSet
 import enreg.tools.data_management.features as f
 
 class DeepSetDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig):
+    def __init__(self, data: ak.Array, cfg: DictConfig, do_preselection=True):
 
         self.cfg = cfg
 
@@ -116,44 +116,3 @@ class DeepSetDataset(Dataset):
             },
             self.weight_tensors[idx],
         )
-
-
-
-class DeepSetTauBuilder:
-    def __init__(self, cfg: DictConfig, verbosity: int = 0):
-        self.verbosity = verbosity
-        self.is_energy_regression = cfg.builder.task == 'regression'
-        self.is_dm_multiclass = cfg.builder.task == 'dm_multiclass'
-        self.cfg = cfg
-
-        if self.is_energy_regression:
-            self.model = DeepSet(1)
-            model_path = self.cfg.builder.regression.model_path
-        elif self.is_dm_multiclass:
-            self.model = DeepSet(16)
-            model_path = self.cfg.builder.dm_multiclass.model_path
-        else:
-            model_path = self.cfg.builder.classification.model_path
-
-        self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
-        self.model.eval()
-
-    def print_config(self):
-        primitive_cfg = OmegaConf.to_container(self.cfg)
-        print(json.dumps(primitive_cfg, indent=4))
-
-    def process_jets(self, data: ak.Array):
-        print("::: Starting to process jets ::: ")
-        dataset = TauDataset(data)
-
-        jets = [dataset[i] for i in range(len(dataset))]
-        jet_pfs = [jet.pfs for jet in jets]
-        jet_pfs_mask = [jet.pfs_mask for jet in jets]
-        jet_pfs_padded = torch.nn.utils.rnn.pad_sequence(jet_pfs, batch_first=True)
-        jet_pfs_mask_padded = torch.nn.utils.rnn.pad_sequence(jet_pfs_mask, batch_first=True)
-        pred = self.model(jet_pfs_padded, jet_pfs_mask_padded)
-
-        if self.is_energy_regression:
-            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
-        if self.is_dm_multiclass:
-            return {"tau_dm": torch.argmax(pred, axis=-1)}

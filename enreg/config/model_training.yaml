@@ -1,19 +1,79 @@
 verbosity: 1
-n_files: -1
-output_dir: /home/joosep/ENREG/training/240514_tests
+
+#everything that the user should modify is here
+#override these using command line args
+output_dir: /home/joosep/ml-tau-en-reg/training-outputs/240515_fullstats/
+data_path: /home/joosep/ml-tau-en-reg/data/20240402_full_stats_merged/
+
+#override this using command line args
 training_type: dm_multiclass
 # training_type: energy_regression
 # training_type: binary_classification
-model_type: ParticleTransformer
-data_path: /home/joosep/ml-tau-en-reg/data/
 
-samples_to_use:
-  - ZH_Htautau
-  # - Z_Ztautau
-  # - QCD
+#override this using command line args
+model_type: ParticleTransformer
+# model_type: LorentzNet
+# model_type: SimpleDNN
+
+#these samples can be used for training and validation
+#qq is added back using command line flags for the binary classification task
+training_samples:
+  - zh_train.parquet
+#  - qq_train.parquet
+
+#these are never used in the training code, only for the final evaluation
+test_samples:
+  - zh_test.parquet
+  - z_test.parquet
+#  - qq_test.parquet
+
+#the training sample will be further subdividied as follows to train and valid
+fraction_train: 0.2
+fraction_valid: 0.2
+
+dataset:
+  max_cands: 25
+  use_lifetime: False
+  min_jet_theta: 0.0
+  max_jet_theta: 1000
+  min_jet_pt: 0
+  max_jet_pt: 1000
+
+  #for LorentzNet
+  beams:
+    add: True
+    mass: 1.0
+
+#number of output classes for different tasks
+num_classes:
+  dm_multiclass: 16
+  jet_regression: 1
+  binary_classification: 2
+
+training:
+  num_epochs: 10
+  batch_size: 512
+  num_dataloader_workers: 2
+  classweight_sig: 1
+  classweight_bgr: 10
+  use_class_weights: True
+  use_per_jet_weights: True
+  use_focal_loss: True
+  focal_loss_gamma: 2.0
+  fast_optimizer: AdamW
+  slow_optimizer: None
+  verbosity: 1
+
+#This has not been tested!
+feature_standardization:
+  standardize_inputs: False
+  method: "mean_rms"
+  features:
+    - cand_features
+    - cand_kinematics
+
 defaults:
   - models: models
-  - datasets: datasets
   - tau_builder
   - ntupelizer
   - _self_
