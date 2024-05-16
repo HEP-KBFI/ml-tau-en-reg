@@ -215,6 +215,8 @@ class LorentzNet(nn.Module):
 
         #embed the per-particle non Lorentz invariant quantities (scalars)
         h = self.embedding(scalars)
+
+        #create particle-to-particle "edges" within each jet with all-to-all connections
         n_particles = x.size(dim=1)
         edges = torch.ones(n_particles, n_particles, dtype=torch.long, device=h.device)
         edges_above_diag = torch.triu(edges, diagonal=1)

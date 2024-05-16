@@ -229,6 +229,7 @@ def train_loop(
             confusion_matrix
         )
     tensorboard.flush()
+    print("Loss = {}".format(loss_train))
     return loss_train
 
 
@@ -314,7 +315,7 @@ def trainModel(cfg: DictConfig) -> None:
             dropout=cfg.models.LorentzNet.hyperparameters.dropout,
             n_layers=cfg.models.LorentzNet.hyperparameters.n_layers,
             c_weight=cfg.models.LorentzNet.hyperparameters.c_weight,
-            verbosity=cfg.models.LorentzNet.hyperparameters.verbosity,
+            verbosity=cfg.verbosity,
         ).to(device=dev)
     elif cfg.model_type == "SimpleDNN":
         model = DeepSet(input_dim, num_classes).to(device=dev)
@@ -342,10 +343,10 @@ def trainModel(cfg: DictConfig) -> None:
     )
 
     transform = None
-    if model_config.feature_standardization.standardize_inputs:
+    if cfg.feature_standardization.standardize_inputs:
         transform = FeatureStandardization(
-            method=model_config.feature_standardization.method,
-            features=cfg.dataset.features,
+            method=cfg.feature_standardization.method,
+            features=ccfg.feature_standardization.features,
             feature_dim=1,
             verbosity=cfg.verbosity,
         )
@@ -353,9 +354,9 @@ def trainModel(cfg: DictConfig) -> None:
         transform.save_params(os.path.join(model_output_path, "feature_transform.json"))
 
     if kind == "binary_classification":
-        if model_config.lrfinder.use_class_weights:
-            classweight_bgr = model_config.lrfinder.classweight_bgr
-            classweight_sig = model_config.lrfinder.classweight_sig
+        if cfg.training.use_class_weights:
+            classweight_bgr = model_config.training.classweight_bgr
+            classweight_sig = model_config.training.classweight_sig
         classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
 
         if cfg.training.use_focal_loss:
@@ -405,7 +406,7 @@ def trainModel(cfg: DictConfig) -> None:
     min_loss_validation = -1.0
     # early_stopper = EarlyStopper(patience=100, min_delta=0.01)
     best_model_output_path = None
-    for idx_epoch in tqdm.tqdm(range(cfg.training.num_epochs), total=cfg.training.num_epochs):
+    for idx_epoch in range(cfg.training.num_epochs):
         print("Processing epoch #%i" % idx_epoch)
         print(" current time:", datetime.datetime.now())
 
@@ -424,25 +425,26 @@ def trainModel(cfg: DictConfig) -> None:
             num_classes,
             kind=kind
         )
-        print(" lr = {:.3f}".format(lr_scheduler.get_last_lr()[0]))
+        print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
         tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
-        loss_validation = train_loop(
-            idx_epoch,
-            dataloader_validation,
-            transform,
-            model,
-            dev,
-            loss_fn,
-            cfg.training.use_per_jet_weights,
-            None,
-            None,
-            tensorboard,
-            dataset_unpackers[cfg.model_type],
-            num_classes,
-            kind=kind,
-            train=False
-        )
+        with torch.no_grad():
+            loss_validation = train_loop(
+                idx_epoch,
+                dataloader_validation,
+                transform,
+                model,
+                dev,
+                loss_fn,
+                cfg.training.use_per_jet_weights,
+                None,
+                None,
+                tensorboard,
+                dataset_unpackers[cfg.model_type],
+                num_classes,
+                kind=kind,
+                train=False
+            )
 
         if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
             best_model_file = "model_best.pt"
@@ -450,7 +452,6 @@ def trainModel(cfg: DictConfig) -> None:
             best_model_output_path = os.path.join(model_output_path, best_model_file)
             torch.save(model.state_dict(), best_model_output_path)
             min_loss_validation = loss_validation
-        print("System utilization:")
         process = psutil.Process(os.getpid())
         print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
         # if early_stopper.early_stop(loss_validation):
@@ -485,13 +486,14 @@ def trainModel(cfg: DictConfig) -> None:
         for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
             model_inputs = dataset_unpackers[cfg.model_type](X, dev)
             y_for_loss = y[kind]
-            if kind == "jet_regression":
-                pred = model(*model_inputs)[:, 0]
-            elif kind == "dm_multiclass":
-                pred = model(*model_inputs)
-                pred = torch.argmax(pred, axis=-1)
-            elif kind == "binary_classification":
-                pred = model(*model_inputs)[:, 1]
+            with torch.no_grad():
+                if kind == "jet_regression":
+                    pred = model(*model_inputs)[:, 0]
+                elif kind == "dm_multiclass":
+                    pred = model(*model_inputs)
+                    pred = torch.argmax(pred, axis=-1)
+                elif kind == "binary_classification":
+                    pred = model(*model_inputs)[:, 1]
             preds.extend(pred.detach().cpu().numpy())
             targets.extend(y_for_loss.detach().cpu().numpy())
         preds = np.array(preds)

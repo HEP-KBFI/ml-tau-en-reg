@@ -28,14 +28,10 @@ test_samples:
 #  - qq_test.parquet
 
 #the training sample will be further subdividied as follows to train and valid
-fraction_train: 0.1
-fraction_valid: 0.1
+fraction_train: 0.2
+fraction_valid: 0.2
 
 dataset:
-  #for normalization (not used)
-  features:
-    - cand_features
-    - cand_kinematics
   max_cands: 25
   use_lifetime: False
   min_jet_theta: 0.0
@@ -55,8 +51,8 @@ num_classes:
   binary_classification: 2
 
 training:
-  num_epochs: 1
-  batch_size: 256
+  num_epochs: 10
+  batch_size: 512
   num_dataloader_workers: 2
   classweight_sig: 1
   classweight_bgr: 10
@@ -68,9 +64,13 @@ training:
   slow_optimizer: None
   verbosity: 1
 
+#This has not been tested!
 feature_standardization:
   standardize_inputs: False
   method: "mean_rms"
+  features:
+    - cand_features
+    - cand_kinematics
 
 defaults:
   - models: models
