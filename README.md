@@ -29,12 +29,12 @@ In order to run the scripts do:
 
 To test locally on a fraction of the data
 ```
-./run.sh python3 enreg/scripts/trainModel.py output_dir= model_type=SimpleDNN training_type=jet_regression fraction_train=0.1 fraction_valid=0.1 training.num_epochs=2
-./run.sh python3 enreg/scripts/trainModel.py output_dir= model_type=SimpleDNN training_type=dm_multiclass fraction_train=0.1 fraction_valid=0.1 training.num_epochs=2
+./run.sh python3 enreg/scripts/trainModel.py output_dir=training-outputs/mytest fraction_train=0.1 fraction_valid=0.1 training.num_epochs=2 model_type=SimpleDNN training_type=jet_regression
+./run.sh python3 enreg/scripts/trainModel.py output_dir=training-outputs/mytest fraction_train=0.1 fraction_valid=0.1 training.num_epochs=2 model_type=SimpleDNN training_type=dm_multiclass
 ```
 The configuration the models starts at `enreg/config/model_training.yaml`.
 
-To submit the training of the models to gpu0, check and run
+To submit the training of the models to `gpu0`, check and run
 ```
 ./enreg/scripts/submit-pytorch-gpu-all.sh
 ```
