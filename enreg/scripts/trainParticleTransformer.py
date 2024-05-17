@@ -25,6 +25,7 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from enreg.tools.data_management.features import FeatureStandardization
 from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerDataset
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
+from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 import time
 
@@ -59,13 +60,13 @@ def train_loop(
     optimizer,
     lr_scheduler,
     tensorboard,
-    is_energy_regression,
+    kind="is_energy_regression",
 ):
     print("::::: TRAIN LOOP :::::")
     num_jets_train = len(dataloader_train.dataset)
     loss_train = 0.0
     normalization = 0.0
-    if not is_energy_regression:
+    if not kind == "is_energy_regression" and not kind == "is_dm_multiclass":
         accuracy_train = 0.0
         accuracy_normalization_train = 0.0
         class_true_train = []
@@ -92,7 +93,7 @@ def train_loop(
         y = y.to(device=dev)
         weight = weight.to(device=dev)
 
-        if is_energy_regression:
+        if kind == "is_energy_regression":
             # Predict the correction, not the full visible energy
             # jet_energy = X["reco_jet_energy"].to(device=dev)
             # pred *= jet_energy
@@ -100,6 +101,11 @@ def train_loop(
             pred = model(x, v, mask).to(device=dev)[:,0]
             predicted_pt = torch.exp(pred) * X["reco_jet_pt"].to(device=dev)
             y_for_loss = torch.log(y / X["reco_jet_pt"].to(device=dev))
+        elif kind == "is_dm_multiclass":
+            pred = model(x, v, mask).to(device=dev) #??????????????????
+            print("pred shape", pred.shape)
+            predicted_dm = torch.argmax(pred, axis=-1).to(device=dev) #?????????????????? siin tuleb argmax
+            y_for_loss = y #?????????????????? y for loss on y
         else:
             pred = model(x, v, mask).to(device=dev)
             # pred = torch.softmax(pred, dim=1)
@@ -110,14 +116,16 @@ def train_loop(
             loss = loss * weight
         loss_train += loss.sum().item()
         normalization += torch.flatten(loss).size(dim=0)
-        if not is_energy_regression:
+        if not kind == "is_energy_regression" and not kind == "is_dm_multiclass":
             accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
             accuracy_train += accuracy.sum().item()
             accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
             class_true_train.extend(y.detach().cpu().numpy())
             class_pred_train.extend(pred.argmax(dim=1).detach().cpu().numpy())
-        else:
+        elif kind == "is_energy_regression":
             ratios.extend((predicted_pt/y).detach().cpu().numpy())
+        # elif kind == "is_dm_multiclass":
+        #     ratios.extend((predicted_dm/y).detach().cpu().numpy()) #???????????????????????
 
         weights_train.extend(weight.detach().cpu().numpy())
 
@@ -132,7 +140,7 @@ def train_loop(
             print(" Running loss: %1.6f  [%i/%s]" % (loss.mean().item(), num_jets_processed, num_jets_train))
 
     loss_train /= normalization
-    if not is_energy_regression:
+    if not kind == "is_energy_regression" and not kind == "is_dm_multiclass":
         accuracy_train /= accuracy_normalization_train
         logTrainingProgress(
             tensorboard,
@@ -144,7 +152,7 @@ def train_loop(
             np.array(class_pred_train),
             np.array(weights_train),
         )
-    else:
+    elif kind == "is_energy_regression":
         mean_reco_gen_ratio = np.mean(np.abs(ratios))
         median_reco_gen_ratio = np.median(np.abs(ratios))
         stdev_reco_gen_ratio = np.std(np.abs(ratios))
@@ -160,7 +168,18 @@ def train_loop(
             iqr_reco_gen_ratio,
             np.array(weights_train),
         )
-
+    elif kind == "is_dm_multiclass":
+        # mean_reco_gen_ratio = np.mean(np.abs(ratios))
+        # median_reco_gen_ratio = np.median(np.abs(ratios))
+        # stdev_reco_gen_ratio = np.std(np.abs(ratios))
+        # iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
+        logTrainingProgress_decaymode(
+            tensorboard,
+            idx_epoch,
+            "train",
+            loss_train,
+            np.array(weights_train),
+        )
     return loss_train
 
 
@@ -173,12 +192,12 @@ def validation_loop(
     loss_fn,
     use_per_jet_weights,
     tensorboard,
-    is_energy_regression,
+    kind="is_energy_regression",
 ):
     print("::::: VALIDATION LOOP :::::")
     loss_validation = 0.0
     normalization = 0.0
-    if not is_energy_regression:
+    if not kind == "is_energy_regression" and not kind == "is_dm_multiclass":
         accuracy_validation = 0.0
         accuracy_normalization_validation = 0.0
         class_true_validation = []
@@ -197,7 +216,7 @@ def validation_loop(
             y = y.to(device=dev)
             weight = weight.to(device=dev)
 
-            if is_energy_regression:
+            if kind == "is_energy_regression":
                 pred = model(x, v, mask).to(device=dev)[:,0]
                 # Predict the correction, not the full visible energy
                 # jet_energy = X["reco_jet_energy"].to(device=dev)
@@ -205,6 +224,10 @@ def validation_loop(
                 # pred += jet_energy
                 predicted_pt = torch.exp(pred) * X["reco_jet_pt"].to(device=dev)
                 y_for_loss = torch.log(y / X["reco_jet_pt"].to(device=dev))
+            elif kind == "is_dm_multiclass":
+                pred = model(x, v, mask).to(device=dev) #??????????????????
+                predicted_dm = torch.argmax(pred, axis=-1).to(device=dev) #?????????????????? siin tuleb argmax
+                y_for_loss = y #?????????????????? y for loss on y
             else:
                 pred = model(x, v, mask).to(device=dev)
                 # pred = torch.softmax(pred, dim=1)
@@ -216,7 +239,7 @@ def validation_loop(
                 loss = loss * weight
             loss_validation += loss.sum().item()
             normalization += torch.flatten(loss).size(dim=0)
-            if not is_energy_regression:
+            if not kind == "is_energy_regression" and not kind == "is_dm_multiclass":
                 accuracy = (pred.argmax(dim=1) == y).type(torch.float32)
                 accuracy_validation += accuracy.sum().item()
                 accuracy_normalization_validation += torch.flatten(accuracy).size(dim=0)
@@ -224,12 +247,14 @@ def validation_loop(
                 class_true_validation.extend(y.detach().cpu().numpy())
                 class_pred_validation.extend(pred.argmax(dim=1).detach().cpu().numpy())
                 weights_validation.extend(weight.detach().cpu().numpy())
-            else:
+            elif kind == "is_energy_regression":
                 ratios.extend((predicted_pt/y).detach().cpu().numpy())
+            # elif kind == "is_dm_multiclass":
+            #     ratios.extend((predicted_dm/y).detach().cpu().numpy()) #???????????????????????
 
     loss_validation /= normalization
 
-    if not is_energy_regression:
+    if not kind == "is_energy_regression" and not kind == "is_dm_multiclass":
         accuracy_validation /= accuracy_normalization_validation
         logTrainingProgress(
             tensorboard,
@@ -241,7 +266,8 @@ def validation_loop(
             np.array(class_pred_validation),
             np.array(weights_validation),
         )
-    else:
+
+    elif kind == "is_energy_regression":
         mean_reco_gen_ratio = np.mean(np.abs(ratios))
         median_reco_gen_ratio = np.median(np.abs(ratios))
         stdev_reco_gen_ratio = np.std(np.abs(ratios))
@@ -257,6 +283,14 @@ def validation_loop(
             iqr_reco_gen_ratio,
             np.array(weights_validation),
         )
+    elif kind == "is_dm_multiclass":
+        logTrainingProgress_decaymode(
+            tensorboard,
+            idx_epoch,
+            "validation",
+            loss_validation,
+            np.array(weights_validation),
+        )
 
     return loss_validation
 
@@ -269,7 +303,10 @@ def run_command(cmd):
 @hydra.main(config_path="../config", config_name="model_training", version_base=None)
 def trainParticleTransformer(cfg: DictConfig) -> None:
     print("<trainParticleTransformer>:")
-    is_energy_regression = cfg.models.ParticleTransformer.training.type == 'regression'
+    if cfg.models.ParticleTransformer.training.type == 'regression':
+        kind = "is_energy_regression"
+    elif cfg.models.ParticleTransformer.training.type == 'dm_multiclass':
+        kind = "is_dm_multiclass"
 
     validation_paths = []
     train_paths = []
@@ -285,21 +322,20 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
         train_paths.extend(cfg.datasets.train[sample])
         validation_paths.extend(cfg.datasets.validation[sample])
 
-
     training_data = g.load_all_data(train_paths, n_files=cfg.n_files)
     dataset_train = ParticleTransformerDataset(
         data=training_data,
         cfg=cfg.models.ParticleTransformer.dataset,
-        is_energy_regression=is_energy_regression
+        kind=kind
     )
     validation_data = g.load_all_data(validation_paths, n_files=cfg.n_files)
     dataset_validation = ParticleTransformerDataset(
         data=validation_data,
         cfg=cfg.models.ParticleTransformer.dataset,
-        is_energy_regression=is_energy_regression
+        kind=kind
     )
 
-    if not is_energy_regression:
+    if not kind == "is_energy_regression" and not kind == "is_dm_multiclass":
         training_targets = training_data.gen_jet_tau_decaymode == -1
         validation_targets = validation_data.gen_jet_tau_decaymode == -1
         if sum(training_targets) == 0 or sum(training_targets) == len(training_targets):
@@ -325,7 +361,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
     print("Building model...")
     model = ParticleTransformer(
         input_dim=input_dim,
-        num_classes=1 if is_energy_regression else 2,
+        num_classes = 1 if kind == "is_energy_regression" else 16 if kind == "is_dm_multiclass" else 2,
         use_pre_activation_pair=False,
         for_inference=False,
         use_amp=False,
@@ -369,7 +405,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
         classweight_sig = cfg.models.ParticleTransformer.lrfinder.classweight_sig
     classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
     # loss_fn = None
-    if not is_energy_regression:
+    if not kind == "is_energy_regression" and not kind == "is_dm_multiclass":
         if cfg.models.ParticleTransformer.training.use_focal_loss:
             print("Using FocalLoss.")
             loss_fn = FocalLoss(
@@ -380,9 +416,10 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
         else:
             print("Using CrossEntropyLoss.")
             loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
-    else:
+    elif kind == "is_energy_regression":
         loss_fn = nn.HuberLoss(reduction='mean', delta=1.0)
-
+    elif kind == "is_dm_multiclass":
+        loss_fn = nn.CrossEntropyLoss(reduction="none")
     # base_optimizer = None
     # TODO: Do we event want to change the optimizer?
     if cfg.models.ParticleTransformer.training.fast_optimizer == "AdamW":
@@ -431,7 +468,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             optimizer,
             lr_scheduler,
             tensorboard,
-            is_energy_regression
+            kind=kind
         )
         print(" lr = %1.3e" % lr_scheduler.get_last_lr()[0])
         # print(" lr = %1.3e" % get_lr(optimizer))
@@ -446,7 +483,7 @@ def trainParticleTransformer(cfg: DictConfig) -> None:
             loss_fn,
             cfg.models.ParticleTransformer.training.use_per_jet_weights,
             tensorboard,
-            is_energy_regression
+            kind=kind
         )
 
 

@@ -1,5 +1,7 @@
 import os
 import hydra
+import numpy as np
+import awkward as ak
 from omegaconf import DictConfig
 from enreg.tools import general as g
 from enreg.tools.metrics import energy_regression as er
@@ -8,23 +10,34 @@ from enreg.tools.metrics import energy_regression as er
 @hydra.main(config_path="../config", config_name="benchmarking", version_base=None)
 def main(cfg: DictConfig) -> None:
     os.makedirs(os.path.expandvars(cfg.output_dir), exist_ok=True)
-    algorithm_info = {}
-    for algorithm, properties in cfg.metrics.regression.algorithms.items():
-        if not properties.compare or properties.load_from_json:
-            continue
-        ntuples_dir = properties.ntuples_dir
-        dataset_info = {}
-        for dataset in cfg.comparison_datasets:
-            sample_data = {}
-            for sample in cfg.comparison_samples:
-                input_dir = os.path.join(ntuples_dir, dataset, sample)
-                unmasked_data =  g.load_all_data(input_loc=input_dir, n_files=cfg.n_comparison_files) # Hiljem kui teada täpselt mis columns vaja, siis lisada see
-                # wp_value = cfg.metrics.regression.classifier_WPs[cfg.metrics.regression.cls_wp]
-                mask = (unmasked_data.gen_jet_tau_vis_energy > 1)# * (unmasked_data.tauClassifier > wp_value)
-                sample_data[sample] = unmasked_data[mask]
-            dataset_info[dataset] = sample_data
-        algorithm_info[algorithm] = dataset_info
-    er.plot_energy_regression(algorithm_info, cfg)
+
+    sample_data = {}
+    sample_algo_data = {}
+    for sample in cfg.comparison_samples:
+        base_ntuple_data = g.load_all_data([str(os.path.join(cfg.base_ntuple_path, sample + ".parquet"))])
+        gen_jet_tau_vis_p4 = g.reinitialize_p4(base_ntuple_data["gen_jet_tau_p4s"])
+        reco_jet_p4s = g.reinitialize_p4(base_ntuple_data.reco_jet_p4s)
+        mask = ak.to_numpy((gen_jet_tau_vis_p4.energy > 1))
+        base_ntuple_data = base_ntuple_data[mask]
+
+        sample_data[sample] = base_ntuple_data
+
+
+        algo_data = {}
+        for algorithm, properties in cfg.metrics.regression.algorithms.items():
+            this_algo_data = {}
+            if not properties.compare or properties.load_from_json:
+                continue
+            algo_output_data = g.load_all_data([str(os.path.join(properties.ntuples_dir, sample + ".parquet"))])
+
+            #reconstructed tau pt from the model prediction
+            # pred = log(gentau.pt/recojet.pt) -> gentau.pt = exp(pred) * recojet.pt
+            tau_pt = np.exp(algo_output_data["jet_regression"]["pred"]) * reco_jet_p4s.pt
+
+            algo_data[algorithm] = ak.to_numpy(tau_pt[mask])
+        algo_data["RecoJet"] = ak.to_numpy(reco_jet_p4s.pt)[mask]
+        sample_algo_data[sample] = ak.Record(algo_data)
+    er.plot_energy_regression(sample_data, sample_algo_data, cfg)
 
 
 if __name__ == '__main__':

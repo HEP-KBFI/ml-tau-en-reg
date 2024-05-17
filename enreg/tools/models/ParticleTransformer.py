@@ -494,7 +494,7 @@ class Block(nn.Module):
         else:
             residual = x
             x = self.pre_attn_norm(x)
-            x = self.attn(x, x, x, key_padding_mask=padding_mask, attn_mask=attn_mask)[0]  # (seq_len, batch, embed_dim)
+            x = self.attn(x, x, x, key_padding_mask=padding_mask.float(), attn_mask=attn_mask)[0]  # (seq_len, batch, embed_dim)
         if self.c_attn is not None:
             tgt_len = x.size(0)
             x = x.view(tgt_len, -1, self.num_heads, self.head_dim)
@@ -667,14 +667,14 @@ class ParticleTransformer(nn.Module):
             # transform
             for block in self.blocks:
                 x = block(x, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
-            print("x shape", x.shape)
+            # print("x shape", x.shape)
             for block in self.cls_blocks:
                 x = block(x, x_cls=None, padding_mask=padding_mask)
             x = torch.mean(x, axis=0)
-            print("x shape", x.shape)
+            # print("x shape", x.shape)
             x = self.norm(x).squeeze(0)
             output = self.fc(x)
-            print("output:", output.shape)
+            # print("output:", output.shape)
             if self.verbosity >= 3:
                 print_param("output", output)
             return output

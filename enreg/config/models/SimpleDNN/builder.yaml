@@ -1,4 +1,0 @@
-builder:
-  task: "regression"
-  regression:
-    model_path: /home/laurits/ENREG/training/20240412_SDNN_training/SimpleDNN_model_best.pt

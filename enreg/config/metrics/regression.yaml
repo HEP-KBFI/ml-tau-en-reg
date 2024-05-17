@@ -1,6 +1,8 @@
 regression:
   ratio_plot:
-    bin_edges: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
+    bin_edges:
+      zh_test: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
+      z_test: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
   cls_wp: Tight
   classifier_WPs:  # The values for ParticleTransformer from the previous paper
       Loose: 0.930
@@ -8,7 +10,7 @@ regression:
       Tight: 0.975
   algorithms:
     ParticleTransformer:
-      ntuples_dir: /home/laurits/ENREG/training/20240403_PT_full_stats_ZH_plus_Z_regression_no_lifetme/ParticleTransformer
+      ntuples_dir: training-outputs/240515_fullstats/jet_regression/ParticleTransformer/2024-05-16_14_39_27.725062/
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
       compare: True
@@ -16,7 +18,7 @@ regression:
       hatch: "//"
       color: "tab:purple"
     LorentzNet:
-      ntuples_dir: /home/laurits/ENREG/ntuples/20240409_LorentzNet/LorentzNet
+      ntuples_dir: training-outputs/240515_fullstats/jet_regression/LorentzNet/2024-05-16_14_39_28.191345/
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
       compare: True
@@ -24,21 +26,13 @@ regression:
       hatch: "//"
       color: "tab:green"
     SimpleDNN:
-      ntuples_dir: /home/laurits/ENREG/ntuples/20240415_SimpleDNN/SimpleDNN
+      ntuples_dir: training-outputs/240515_fullstats/jet_regression/SimpleDNN/2024-05-16_14_39_28.032994/
       json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
       load_from_json: False
       compare: True
       marker: "v"
       hatch: "//"
       color: "black"
-    HPS:
-      ntuples_dir: /home/laurits/ENREG/ntuples/2024013_HPS_HEPMC_ntuples/HPS
-      json_metrics_path: /home/laurits/tmp/20240228_enreg_metrics_test/plotting_data.json
-      load_from_json: False
-      compare: False
-      marker: "o"
-      hatch: '\\\\'
-      color: "tab:blue"
 
 defaults:
   - _self_

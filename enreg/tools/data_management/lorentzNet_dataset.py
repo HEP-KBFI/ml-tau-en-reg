@@ -10,14 +10,15 @@ from enreg.tools import general as g
 import numpy as np
 import json
 import torch
+from torch import nn
 
 
 class LorentzNetDataset(Dataset):
-    def __init__(self, data: ak.Array, cfg: DictConfig, is_energy_regression: bool = False):
+    def __init__(self, data: ak.Array, cfg: DictConfig, do_preselection=True):
         self.data = data
-        self.is_energy_regression = is_energy_regression
         self.cfg = cfg
-        self.preselection()
+        if do_preselection:
+            self.preselection()
         self.num_jets = len(self.data.reco_jet_p4s)
         self.build_tensors()
 
@@ -35,7 +36,7 @@ class LorentzNetDataset(Dataset):
 
     def build_tensors(self):
         jet_constituent_p4s = g.reinitialize_p4(self.data.reco_cand_p4s)
-        gen_jet_p4s = g.reinitialize_p4(self.data.gen_jet_p4s)
+        self.gen_jet_tau_p4s = g.reinitialize_p4(self.data.gen_jet_tau_p4s)
         self.jet_p4s = g.reinitialize_p4(self.data.reco_jet_p4s)
         cand_kinematics = ak.Array({
             "cand_px": jet_constituent_p4s.px,
@@ -108,7 +109,7 @@ class LorentzNetDataset(Dataset):
                 })
             else:
                 beam_features = ak.Array({
-                    "mass_psi": psi(torch.tensor(ak.Array([[beam_mass, beam_mass]] * len(self.jet_p4s)), dtype=torch.float32)),
+                    "mass_psi": psi(torch.tensor(ak.Array([[self.cfg.beams.mass, self.cfg.beams.mass]] * len(self.jet_p4s)), dtype=torch.float32)),
                     "pad": ak.Array([[0.0, 0.0]] * len(self.jet_p4s))
                 })
             scalars_beams = np.swapaxes(
@@ -130,10 +131,7 @@ class LorentzNetDataset(Dataset):
             self.weight_tensors = torch.tensor(ak.ones_like(self.data.gen_jet_tau_decaymode), dtype=torch.float32)
         else:
             self.weight_tensors = torch.tensor(self.data.weight.to_list(), dtype=torch.float32)
-        if self.is_energy_regression:
-            self.y_tensors = torch.tensor(gen_jet_p4s.pt, dtype=torch.float32)
-        else:
-            self.y_tensors = torch.tensor(self.data.gen_jet_tau_decaymode != -1, dtype=torch.long)
+            
         self.reco_jet_pt = torch.tensor(self.jet_p4s.pt, dtype=torch.float32)
         self.reco_jet_energy = torch.tensor(self.jet_p4s.energy, dtype=torch.float32)
 
@@ -151,78 +149,14 @@ class LorentzNetDataset(Dataset):
                     "mask": self.node_mask_tensors[idx],
                     "reco_jet_pt": self.reco_jet_pt[idx],
                 },
-                self.y_tensors[idx],
+                {
+                    "reco_jet_pt": self.reco_jet_pt[idx],
+                    "gen_tau_pt": self.gen_jet_tau_p4s[idx].pt,
+                    "jet_regression": torch.log(self.gen_jet_tau_p4s[idx].pt/self.reco_jet_pt[idx]).to(torch.float),
+                    "binary_classification": torch.tensor(self.data.gen_jet_tau_decaymode[idx] != -1, dtype=torch.long),
+                    "dm_multiclass": torch.tensor(self.data.gen_jet_tau_decaymode[idx], dtype=torch.long)
+                },
                 self.weight_tensors[idx],
             )
         else:
             raise RuntimeError("Invalid idx = %i (num_jets = %i) !!" % (idx, self.num_jets))
-
-
-class LorentzNetTauBuilder:
-    def __init__(self, cfg: DictConfig, verbosity: int = 0):
-        self.verbosity = verbosity
-        self.is_energy_regression = cfg.builder.task == 'regression'
-        self.cfg = cfg
-        if self.cfg.feature_standardization.standardize_inputs:
-            self.transform = f.FeatureStandardization(
-                method=self.cfg.feature_standardization.method,
-                features=["x", "scalars"],
-                feature_dim=1,
-                verbosity=self.verbosity,
-            )
-            self.transform.load_params(self.cfg.feature_standardization.path)
-        self.n_scalar = 7 if cfg.dataset.use_pdgId else 2
-        self.num_classes = 1 if self.is_energy_regression else 2
-        self.model = LorentzNet(
-            n_scalar=self.n_scalar,
-            n_hidden=cfg.training.n_hidden,
-            n_class=self.num_classes,
-            n_layers=cfg.training.n_layers,
-            c_weight=cfg.training.c_weight,
-            dropout=cfg.training.dropout,
-            verbosity=self.verbosity
-        )
-        model_path = self.cfg.builder.regression.model_path if self.is_energy_regression else self.cfg.builder.classification.model_path
-        self.model.load_state_dict(torch.load(model_path, map_location=torch.device("cpu")))
-        self.model.eval()
-
-    def print_config(self):
-        primitive_cfg = OmegaConf.to_container(self.cfg)
-        print(json.dumps(primitive_cfg, indent=4))
-
-    def process_jets(self, data: ak.Array):
-        print("::: Starting to process jets ::: ")
-        dataset = LorentzNetDataset(data, self.cfg.dataset, self.is_energy_regression)
-        if self.cfg.feature_standardization.standardize_inputs:
-            X = {
-                "x": dataset.x_tensors,
-                "scalars": dataset.scalars_tensors,
-                "mask": dataset.node_mask_tensors,
-            }
-            X_transformed = self.transform(X)
-            x_tensor = X_transformed["x"]
-            scalars_tensor = X_transformed["scalars"]
-            node_mask_tensor = X_transformed["mask"]
-        else:
-            x_tensor = dataset.x_tensors
-            scalars_tensors = dataset.scalars_tensors
-            node_mask_tensor = dataset.node_mask_tensors
-        with torch.no_grad():
-            pred = self.model(x_tensor, scalars_tensors, node_mask_tensor)
-        if self.is_energy_regression:
-            return {"tau_pt" : torch.exp(pred)[0] * dataset.reco_jet_pt}
-        else:
-            pred = torch.softmax(pred, dim=1)
-            tauClassifier = pred[:, 1]  # pred_mask_tensor not needed as the tensors from dataset contain only preselected ones
-            tauClassifier = list(tauClassifier.detach().numpy())
-            tau_p4s = g.reinitialize_p4(data["reco_jet_p4s"])
-            tauSigCand_p4s = data["reco_cand_p4s"]
-            tauCharges = np.zeros(len(dataset))
-            tau_decaymode = np.zeros(len(dataset))
-            return {
-                "tau_p4s": tau_p4s,
-                "tauSigCand_p4s": tauSigCand_p4s,
-                "tauClassifier": tauClassifier,
-                "tau_charge": tauCharges,
-                "tau_decaymode": tau_decaymode,
-            }

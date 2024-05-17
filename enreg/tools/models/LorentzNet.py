@@ -212,7 +212,11 @@ class LorentzNet(nn.Module):
         self.verbosity = verbosity
 
     def forward(self, x: torch.Tensor, scalars: torch.Tensor, node_mask: torch.Tensor) -> torch.Tensor:
+
+        #embed the per-particle non Lorentz invariant quantities (scalars)
         h = self.embedding(scalars)
+
+        #create particle-to-particle "edges" within each jet with all-to-all connections
         n_particles = x.size(dim=1)
         edges = torch.ones(n_particles, n_particles, dtype=torch.long, device=h.device)
         edges_above_diag = torch.triu(edges, diagonal=1)

@@ -1,9 +1,8 @@
-feature_standardization:
-  standardize_inputs: False
-  method: median_quantile
-  path: /home/laurits/ml-tau-en-reg/enreg/data/LorentzNet_FeatureStandardization.json
+input_dim: 13
+hyperparameters:
+  n_hidden: 72
+  dropout: 0.2
+  n_layers: 6
+  c_weight: 0.005
 defaults:
-  - training
-  - dataset
-  - lrfinder
-  - builder
+  - _self_

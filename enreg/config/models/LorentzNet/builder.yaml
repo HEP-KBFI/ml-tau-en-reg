@@ -1,5 +1,0 @@
-builder:
-  task: "regression"
-  metric: "theta-phi" # dataset.yaml sees kas see - kus ja miks vaja kasutada
-  regression:
-    model_path: /home/laurits/ENREG/training/20240409_LN_training/LorentzNet_model_best.pt

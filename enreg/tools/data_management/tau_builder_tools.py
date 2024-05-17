@@ -5,6 +5,7 @@ import numpy as np
 import awkward as ak
 from textwrap import dedent
 from enreg.tools import slurm_tools as st
+import pdb
 
 
 def process_single_file(input_path: str, builder, output_path: str) -> None:
@@ -13,6 +14,8 @@ def process_single_file(input_path: str, builder, output_path: str) -> None:
         jets = ak.from_parquet(input_path)
         print("Processing jets...")
         pjets = builder.process_jets(jets)
+        # pdb.set_trace()
+        # assert(len(jets["gen_tau_label"]) == len(pjets["tau_dm"]))
         print("...done, writing output file %s" % output_path)
         merged_info = {field: jets[field] for field in jets.fields}
         merged_info.update(pjets)
