@@ -240,8 +240,12 @@ def run_command(cmd):
 
 @hydra.main(config_path="../config", config_name="model_training", version_base=None)
 def trainModel(cfg: DictConfig) -> None:
+
+    #because we are doing plots for tensorboard, we don't want anything to crash
     plt.switch_backend('agg')
+
     print("<trainModel>:")
+
     kind = cfg.training_type
     model_config = cfg.models[cfg.model_type]
     DatasetClass = ParticleTransformerDataset
@@ -250,8 +254,12 @@ def trainModel(cfg: DictConfig) -> None:
         cfg.output_dir,
         cfg.training_type,
         cfg.model_type,
-        str(datetime.datetime.now()).replace(" ", "_").replace(":", "_")
+        # when running many jobs on the cluster, it's easier to not have a bunch of different dates for each model
+        # str(datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     )
+
+    if os.path.isdir(model_output_path):
+        raise Exception("Output directory exists: {}".format(model_output_path))
 
     data = g.load_all_data([os.path.join(cfg.data_path, samp) for samp in cfg.training_samples])
 
