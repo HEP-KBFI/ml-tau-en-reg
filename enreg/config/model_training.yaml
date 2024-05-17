@@ -3,7 +3,7 @@ verbosity: 1
 #everything that the user should modify is here
 #override these using command line args
 output_dir: /home/joosep/ml-tau-en-reg/training-outputs/240515_fullstats/
-data_path: /home/joosep/ml-tau-en-reg/data/20240402_full_stats_merged/
+data_path: /scratch/persistent/joosep/ml-tau/20240402_full_stats_merged
 
 #override this using command line args
 training_type: dm_multiclass
@@ -51,7 +51,7 @@ num_classes:
   binary_classification: 2
 
 training:
-  num_epochs: 10
+  num_epochs: 200
   batch_size: 512
   num_dataloader_workers: 2
   classweight_sig: 1
