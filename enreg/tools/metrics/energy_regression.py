@@ -19,44 +19,44 @@ def plot_median_and_iqr(plotting_input, cfg):
     ax2.plot([30, 180], [1, 1], ls='--', c='k')
     for algorithm in plotting_input.keys():
         ax1.plot(
-            plotting_input[algorithm]['test']['ZH_Htautau']['pt_bin_centers'],
-            plotting_input[algorithm]['test']['ZH_Htautau']['pt_ratio_medians'],
-            label=algorithm
+            plotting_input[algorithm]['zh_test']['pt_bin_centers'],
+            plotting_input[algorithm]['zh_test']['pt_ratio_medians'],
+            label=algorithm, marker="o"
         )
         ax2.plot(
-            plotting_input[algorithm]['test']['Z_Ztautau']['pt_bin_centers'],
-            plotting_input[algorithm]['test']['Z_Ztautau']['pt_ratio_medians'],
-            label=algorithm
+            plotting_input[algorithm]['z_test']['pt_bin_centers'],
+            plotting_input[algorithm]['z_test']['pt_ratio_medians'],
+            label=algorithm, marker="o"
         )
         ax3.plot(
-            plotting_input[algorithm]['test']['ZH_Htautau']['pt_bin_centers'],
-            plotting_input[algorithm]['test']['ZH_Htautau']['pt_ratio_IQR'],
-            label=algorithm
+            plotting_input[algorithm]['zh_test']['pt_bin_centers'],
+            plotting_input[algorithm]['zh_test']['pt_resolution_w_IQR'],
+            label=algorithm, marker="o"
         )
         ax4.plot(
-            plotting_input[algorithm]['test']['Z_Ztautau']['pt_bin_centers'],
-            plotting_input[algorithm]['test']['Z_Ztautau']['pt_ratio_IQR'],
-            label=algorithm
+            plotting_input[algorithm]['z_test']['pt_bin_centers'],
+            plotting_input[algorithm]['z_test']['pt_resolution_w_IQR'],
+            label=algorithm, marker="o"
         )
     ax1.title.set_text(r'ee $\rightarrow$ ZH (H $\rightarrow \tau\tau$)')
     ax2.title.set_text(r'ee $\rightarrow$ Z (Z $\rightarrow \tau\tau$)')
-    ax1.set_ylabel(r'$q_{50}(reco/gen)$')
-    ax3.set_ylabel(r"$q_{75} - q_{25}(reco/gen)$")
+    ax1.set_ylabel(r'$p_T\ scale\ (q_{50})$')
+    ax3.set_ylabel(r"$p_T\ resol.\ (q_{75} - q_{25})/q_{50}$")
     ax3.set_xlabel(r'$p_T^{gen}$')
     ax4.set_xlabel(r'$p_T^{gen}$')
-    ax1.set_xlim(30, 180)
-    ax2.set_xlim(30, 180)
-    ax3.set_xlim(30, 180)
-    ax4.set_xlim(30, 180)
+    ax1.set_xlim(20, 200)
+    ax2.set_xlim(20, 200)
+    ax3.set_xlim(20, 200)
+    ax4.set_xlim(20, 200)
     ax1.set_ylim(0.96, 1.04)
     ax3.set_ylim(0, 0.1)
     ax1.grid()
     ax2.grid()
     ax3.grid()
     ax4.grid()
-    plt.legend()
+    plt.legend(fontsize=12)
     output_path = os.path.join(cfg.output_dir, f"median_and_iqr.png")
-    plt.savefig(output_path, bbox_inches='tight')
+    plt.savefig(output_path)
     plt.close('all')
 
 
@@ -68,8 +68,8 @@ def to_bh(data, bins, cumulative=False):
     return h1
 
 
-def plot_energy_regression(algorithm_info, cfg):
-    plotting_input = get_plotting_input(algorithm_info, cfg)
+def plot_energy_regression(sample_data, algorithm_info, cfg):
+    plotting_input = get_plotting_input(sample_data, algorithm_info, cfg)
     for algorithm, properties in cfg.metrics.regression.algorithms.items():
         if properties.load_from_json:
             with open(properties.json_metrics_path, 'rt') as in_file:
@@ -80,91 +80,100 @@ def plot_energy_regression(algorithm_info, cfg):
     for algorithm in plotting_input.keys():
         for sample in cfg.comparison_samples:
             plot_bins(plotting_input, algorithm, sample, cfg)
-    for algorithm_name, algorithm_values in algorithm_info.items():
-        for dataset_name, dataset_values in algorithm_values.items():
-            for sample_name, sample_data in dataset_values.items():
-                gen_tau_p4s = g.reinitialize_p4(sample_data.gen_jet_tau_p4s)
-                gen_jet_p4s = g.reinitialize_p4(sample_data.gen_jet_p4s)
-                reco_jet_p4s = g.reinitialize_p4(sample_data.reco_jet_p4s)
-                pred_tau_pts = sample_data.tau_pt
-                plot_2d_histogram(
-                    x_entries=np.array(gen_tau_p4s.pt),
-                    y_entries=np.array(gen_jet_p4s.pt),
-                    x_label=r"$p_T^{genTau}$",
-                    y_label=r"$p_T^{genJet}$",
-                    title="",
-                    cfg=cfg,
-                    out_filename=f"genTau_vs_genJet_{sample_name}_pt.png",
-                )
-                plot_2d_histogram(
-                    x_entries=np.array(gen_tau_p4s.pt),
-                    y_entries=np.array(reco_jet_p4s.pt),
-                    x_label=r"$p_T^{genTau}$",
-                    y_label=r"$p_T^{recoJet}$",
-                    title="",
-                    cfg=cfg,
-                    out_filename=f"genTau_vs_recoJet_{sample_name}_pt.png",
-                )
-                plot_2d_histogram(
-                    x_entries=np.array(gen_tau_p4s.pt),
-                    y_entries=np.array(pred_tau_pts),
-                    x_label=r"$p_T^{genTau}$",
-                    y_label=r"$p_T^{predTau}$",
-                    title=f"{algorithm_name}:{sample_name}",
-                    cfg=cfg,
-                    out_filename=f"genTau_vs_predTau_pt_{algorithm_name}_{sample_name}.png",
-                )
-                plot_true_v_pred_1D_histo(
-                    true=np.array(gen_tau_p4s.pt),
-                    pred=np.array(pred_tau_pts),
-                    x_label="pT",
-                    y_label="Number entries",
-                    true_label="Truth",
-                    pred_label="Prediction",
-                    title=f"{algorithm_name}:{sample_name}",
-                    cfg=cfg,
-                    out_filename=f"true_pred_pt_distributions_{algorithm_name}_{sample_name}.png",
-                )
+
+    for sample_name, sample_data in sample_data.items():
+        gen_tau_p4s = g.reinitialize_p4(sample_data.gen_jet_tau_p4s)
+        gen_jet_p4s = g.reinitialize_p4(sample_data.gen_jet_p4s)
+        reco_jet_p4s = g.reinitialize_p4(sample_data.reco_jet_p4s)
+        for algorithm_name in algorithm_info[sample_name].fields:
+            pred_tau_pts = algorithm_info[sample_name][algorithm_name]
+            plot_2d_histogram(
+                x_entries=np.array(gen_tau_p4s.pt),
+                y_entries=np.array(gen_jet_p4s.pt),
+                x_label=r"$\tau\ p_T^{gen}$",
+                y_label=r"$jet\ p_T^{gen}$",
+                title="",
+                cfg=cfg,
+                out_filename=f"genTau_vs_genJet_{sample_name}_pt.png",
+            )
+            plot_2d_histogram(
+                x_entries=np.array(gen_tau_p4s.pt),
+                y_entries=np.array(reco_jet_p4s.pt),
+                x_label=r"$jet\ p_T^{gen}$",
+                y_label=r"$jet\ p_T^{reco}$",
+                title="",
+                cfg=cfg,
+                out_filename=f"genTau_vs_recoJet_{sample_name}_pt.png",
+            )
+            plot_2d_histogram(
+                x_entries=np.array(gen_tau_p4s.pt),
+                y_entries=np.array(pred_tau_pts),
+                x_label=r"$\tau\ p_T^{gen}$",
+                y_label=r"$\tau\ p_T^{reco}$",
+                title=f"{algorithm_name}:{sample_name}",
+                cfg=cfg,
+                out_filename=f"genTau_vs_predTau_pt_{algorithm_name}_{sample_name}.png",
+            )
+            plot_true_v_pred_1D_histo(
+                true=np.array(gen_tau_p4s.pt),
+                pred=np.array(pred_tau_pts),
+                x_label="pT",
+                y_label="Number entries",
+                true_label="Truth",
+                pred_label="Prediction",
+                title=f"{algorithm_name}:{sample_name}",
+                cfg=cfg,
+                out_filename=f"true_pred_pt_distributions_{algorithm_name}_{sample_name}.png",
+            )
     plot_overall_ratio(plotting_input, cfg)
 
 
-def get_plotting_input(algorithm_info: dict, cfg: DictConfig):
-    algorithms = {}
-    for algorithm_name, algorithm_values in algorithm_info.items():
-        datasets = {}
-        for dataset_name, dataset_values in algorithm_values.items():
-            samples = {}
-            for sample_name, sample_data in dataset_values.items():
-                gen_tau_p4s = g.reinitialize_p4(sample_data.gen_jet_tau_p4s)
-                gen_jet_p4s = g.reinitialize_p4(sample_data.gen_jet_p4s)
-                pred_tau_pts = sample_data.tau_pt
-                gen_pt_mask = gen_tau_p4s.pt > 15
-                sample_data = sample_data[gen_pt_mask]
-                label = f"{algorithm_name}: {sample_name}"
-                pt_ratio_medians, pt_ratio_IQR, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
-                    sample_data=sample_data, cfg=cfg)
-                samples[sample_name] = {
-                    "pt_ratio_values": pt_ratio_values,
-                    "pt_ratio_medians": pt_ratio_medians,
-                    "pt_ratio_IQR": pt_ratio_IQR,
-                    "pt_resolution_w_IQR": pt_ratio_IQR/pt_ratio_medians,
-                    "pt_bin_centers": pt_bin_centers,
-                }
-            datasets[dataset_name] = samples
-        algorithms[algorithm_name] = datasets
-    return algorithms
+def get_plotting_input(sample_info: dict, algorithm_info: dict, cfg: DictConfig):
+    samples = {}
+    for sample_name, sample_data in sample_info.items():
+        gen_tau_p4s = g.reinitialize_p4(sample_data.gen_jet_tau_p4s)
+        gen_jet_p4s = g.reinitialize_p4(sample_data.gen_jet_p4s)
+
+        gen_pt_mask = gen_tau_p4s.pt > 15
+        sample_data = sample_data[gen_pt_mask]
+
+        algorithms = {}
+        for algorithm_name in algorithm_info[sample_name].fields:
+            algorithm_data = algorithm_info[sample_name][algorithm_name]
+            pred_tau_pts = algorithm_data[gen_pt_mask]
+
+            label = f"{algorithm_name}: {sample_name}"
+            pt_ratio_medians, pt_ratio_IQR, pt_bin_centers, pt_ratio_values = prepare_tau_pt_ratio_data(
+                sample_name=sample_name,
+                sample_data=sample_data,
+                tau_pt=pred_tau_pts,
+                cfg=cfg
+            )
+            algorithms[algorithm_name] = {
+                "pt_ratio_values": pt_ratio_values,
+                "pt_ratio_medians": pt_ratio_medians,
+                "pt_ratio_IQR": pt_ratio_IQR,
+                "pt_resolution_w_IQR": pt_ratio_IQR/pt_ratio_medians,
+                "pt_bin_centers": pt_bin_centers,
+            }
+        samples[sample_name] = algorithms
+
+    algos = list(samples[sample_name].keys())
+    by_algo = {}
+    for algo in algos:
+        by_algo[algo] = {sn: samples[sn][algo] for sn in samples.keys()}
+    return by_algo
 
 
 def prepare_tau_pt_ratio_data(
+    sample_name: str,
     sample_data: ak.Array,
+    tau_pt: ak.Array,
     cfg: DictConfig
 ):
-    if 'tau_pt' not in sample_data.fields:
-        reco_gen_pt_ratio = g.reinitialize_p4(sample_data.tau_p4s).pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
-    else:
-        reco_gen_pt_ratio = sample_data.tau_pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
+    reco_gen_pt_ratio = tau_pt / g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
     gen_vis_tau_pt = g.reinitialize_p4(sample_data.gen_jet_tau_p4s).pt
-    bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges)
+    bin_edges = np.array(cfg.metrics.regression.ratio_plot.bin_edges[sample_name])
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     binned_gen_tau_pt = np.digitize(gen_vis_tau_pt, bins=bin_edges)  # Biggest idx is overflow
     ratio_values = [reco_gen_pt_ratio[binned_gen_tau_pt == bin_idx].to_numpy() for bin_idx in range(1, len(bin_edges))]
@@ -176,17 +185,24 @@ def prepare_tau_pt_ratio_data(
 def plot_bins(plotting_input, algorithm, sample, cfg):
     fig, rows = plt.subplots(nrows=3, ncols=4, sharex='col', figsize=(16,9))
     plt.title(f"{algorithm}: {sample}")
-    i = 0
-    bins = np.linspace(0.5, 1.5, 25)
-    bin_edges = cfg.metrics.regression.ratio_plot.bin_edges
-    bin_titles = [f"[{bin_edges[i]}, {bin_edges[i+1]}]" for i in range(len(bin_edges) - 1)]
-    for row in rows:
-        for ax in row:
-            plot_data = plotting_input[algorithm]['test'][sample]['pt_ratio_values'][i]
-            histo = hep.histplot(to_bh(plot_data, bins=bins), ax=ax, density=True)
-            ax.set_title(bin_titles[i], fontsize=12)
-            ax.set_xlim(0.5, 1.5)
-            i += 1
+    bins = np.linspace(0.5, 1.5, 101)
+    bin_edges = list(cfg.metrics.regression.ratio_plot.bin_edges[sample])
+    bin_titles = [f"$p_{{\\tau,true}} \in [{bin_edges[i]}, {bin_edges[i+1]}]\ GeV$" for i in range(len(bin_edges) - 1)]
+    axes = rows.flatten()
+    if len(bin_edges) - 1 > len(axes):
+        raise Exception("more bins than axes: {} > {}".format(len(bin_edges), len(axes))) 
+    for i in range(len(bin_edges)-1):
+        ax = axes[i]
+        plot_data = plotting_input[algorithm][sample]['pt_ratio_values'][i]
+        histo = hep.histplot(to_bh(plot_data, bins=bins), ax=ax, density=True)
+        ax.set_title(bin_titles[i], fontsize=12)
+        ax.set_xlim(0.5, 1.5)
+        ax.set_xlabel("$q$", fontsize=12)
+
+    #delete unused axes
+    for iax in range(len(axes)):
+        if iax >= len(bin_edges)-1:
+            axes[iax].set_title("")
     output_path = os.path.join(cfg.output_dir, f"bin_contents_{algorithm}_{sample}.png")
     plt.savefig(output_path, bbox_inches='tight')
     plt.close('all')
@@ -250,16 +266,20 @@ def plot_true_v_pred_1D_histo(
 
 
 def plot_overall_ratio(plotting_input, cfg):
-    be = np.linspace(0, 8, 80)
+    be = np.linspace(0, 2, 100)
     for sample in cfg.comparison_samples:
+        fig = plt.figure()
+        ax = plt.axes()
         for algorithm in plotting_input.keys():
             all_values = []
-            for b_values in plotting_input[algorithm]['test'][sample]['pt_ratio_values']:
+            for b_values in plotting_input[algorithm][sample]['pt_ratio_values']:
                 all_values.extend(b_values)
             plt.hist(all_values, bins=be, label=algorithm, histtype='step')
-        plt.axvline(x=1, ymin=0, ymax=1e5)
+        plt.axvline(x=1, ymin=0, ymax=1e5, color="black")
         plt.yscale('log')
-        plt.legend()
+        plt.legend(loc=1)
         output_path = os.path.join(cfg.output_dir, f"ratioplot_{sample}.png")
+        plt.xlabel("$response\ q=p_{T}^{reco}/p_{T}^{gen}$")
+        ax.set_ylim(top=ax.get_ylim()[1]*10)
         plt.savefig(output_path, bbox_inches='tight')
         plt.close('all')
