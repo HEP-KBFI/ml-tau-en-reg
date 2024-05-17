@@ -130,3 +130,7 @@ dmypy.json
 
 sftp-config.json
 discussions*
+
+logs/*
+outputs/*
+training-outputs/*
