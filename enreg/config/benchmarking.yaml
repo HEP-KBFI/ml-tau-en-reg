@@ -5,7 +5,7 @@ load_from_json: False
 #this path contains the input ntuples to the ML model (jet & tau properties)
 #the model predictions are stored in separte files
 #and are configured in metrics/regression.yaml -> algorithms/ntuples_dir
-base_ntuple_path: data/20240402_full_stats_merged/
+base_ntuple_path: /scratch/persistent/joosep/ml-tau/20240402_full_stats_merged
 comparison_samples:
   - zh_test
   - z_test

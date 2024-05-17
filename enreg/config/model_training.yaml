@@ -2,7 +2,7 @@ verbosity: 1
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: /home/joosep/ml-tau-en-reg/training-outputs/240515_fullstats/
+output_dir: training-outputs/240515_fullstats/
 data_path: /scratch/persistent/joosep/ml-tau/20240402_full_stats_merged
 
 #override this using command line args
@@ -74,6 +74,4 @@ feature_standardization:
 
 defaults:
   - models: models
-  - tau_builder
-  - ntupelizer
   - _self_
