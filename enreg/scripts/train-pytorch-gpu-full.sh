@@ -12,4 +12,4 @@ TEST_SAMPS=$4
 
 export KERAS_BACKEND=torch
 
-./run.sh python3 enreg/scripts/trainModel.py "@$"
+./run.sh python3 enreg/scripts/trainModel.py "$@"
