@@ -59,15 +59,15 @@ samples_to_process:
 samples:
   Z_Ztautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /home/laurits/ENREG/ntuples/20240423_fixed_lifetime/Z_Ztautau
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240519_qq_and_zh_2M/Z_Ztautau
     is_signal: True
   ZH_Htautau:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /home/laurits/ENREG/ntuples/20240423_fixed_lifetime/ZH_Htautau
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240519_qq_and_zh_2M/ZH_Htautau
     is_signal: True
   QCD:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_qq_ecm380/
-    output_dir: /home/laurits/ENREG/ntuples/20240423_fixed_lifetime/QCD
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240519_qq_and_zh_2M/QCD
     is_signal: False
 validation:
   output_dir: $HOME/CLIC_ntuple_validation_v5

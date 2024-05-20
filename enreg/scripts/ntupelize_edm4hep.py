@@ -69,7 +69,7 @@ def process_all_input_files(cfg: DictConfig) -> None:
             pool = multiprocessing.Pool(processes=10)
             pool.starmap(process_single_file, zip(all_input_paths, all_output_paths, repeat(cfg)))
         elif cfg.use_slurm:
-            nst.multipath_slurm_ntupelizer(all_input_paths, all_output_paths)
+            nst.multipath_slurm_ntupelizer(all_input_paths, all_output_paths, batch_size=20)
         else:
             for input_path, output_path in zip(all_input_paths, all_output_paths):
                 process_single_file(input_path, output_path, cfg)
