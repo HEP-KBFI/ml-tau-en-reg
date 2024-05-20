@@ -77,7 +77,7 @@ def prepare_job_file(
                 #SBATCH --job-name=ntupelizer
                 #SBATCH --ntasks=1
                 #SBATCH --partition=short
-                #SBATCH --time=00:12:00
+                #SBATCH --time=02:00:00
                 #SBATCH --cpus-per-task=1
                 #SBATCH -e {error_file}
                 #SBATCH -o {log_file}
