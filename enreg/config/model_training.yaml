@@ -1,5 +1,9 @@
 verbosity: 1
 
+#if you want to enable only the testing of an already trained model, disable training here
+train: True
+test: True
+
 #everything that the user should modify is here
 #override these using command line args
 output_dir: training-outputs/240515_fullstats/
