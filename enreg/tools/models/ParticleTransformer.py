@@ -664,17 +664,18 @@ class ParticleTransformer(nn.Module):
             if (v is not None or uu is not None) and self.pair_embed is not None:
                 attn_mask = self.pair_embed(v, uu).view(-1, v.size(-1), v.size(-1))  # (N*num_heads, P, P)
 
-            # transform
+            # transform particles
             for block in self.blocks:
                 x = block(x, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
-            # print("x shape", x.shape)
+            cls_tokens = self.cls_token.expand(1, x.size(1), -1)  # (1, N, C)
+            
+            # transform class tokens (jet summary)
             for block in self.cls_blocks:
-                x = block(x, x_cls=None, padding_mask=padding_mask)
-            x = torch.mean(x, axis=0)
-            # print("x shape", x.shape)
-            x = self.norm(x).squeeze(0)
-            output = self.fc(x)
-            # print("output:", output.shape)
+                cls_tokens = block(x, x_cls=cls_tokens, padding_mask=padding_mask)
+            x_cls = self.norm(cls_tokens).squeeze(0)
+
+            output = self.fc(x_cls) #(Nbatch, num_class)
             if self.verbosity >= 3:
                 print_param("output", output)
+
             return output
