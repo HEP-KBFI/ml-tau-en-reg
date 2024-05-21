@@ -667,9 +667,9 @@ class ParticleTransformer(nn.Module):
             # transform particles
             for block in self.blocks:
                 x = block(x, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
-            cls_tokens = self.cls_token.expand(1, x.size(1), -1)  # (1, N, C)
             
             # transform class tokens (jet summary)
+            cls_tokens = self.cls_token.expand(1, x.size(1), -1)  # (1, N, C)
             for block in self.cls_blocks:
                 cls_tokens = block(x, x_cls=cls_tokens, padding_mask=padding_mask)
             x_cls = self.norm(cls_tokens).squeeze(0)
