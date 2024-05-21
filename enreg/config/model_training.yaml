@@ -6,8 +6,8 @@ test: True
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: training-outputs/240515_fullstats/
-data_path: /scratch/persistent/joosep/ml-tau/20240402_full_stats_merged
+output_dir: training-outputs/240520_qq_zh_2m_merged/
+data_path: /scratch/persistent/joosep/ml-tau/20240520_qq_zh_2m_merged
 
 #override this using command line args
 training_type: dm_multiclass

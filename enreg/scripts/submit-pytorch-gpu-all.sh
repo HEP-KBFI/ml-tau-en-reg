@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #edit this as needed
-export OUTDIR=training-outputs/240517_fullstats/
+export OUTDIR=training-outputs/240520_qq_zh_2m_merged/
 
 #for regression and decay mode, use only signal (tau) jets
 export TRAIN_SAMPS=zh_train.parquet
