@@ -387,11 +387,12 @@ def trainModel(cfg: DictConfig) -> None:
             loss_fn = nn.CrossEntropyLoss(reduction="none")
 
         if cfg.training.fast_optimizer == "AdamW":
-            base_optimizer = torch.optim.AdamW(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+            base_optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.training.lr)
         elif cfg.training.fast_optimizer == "RAdam":
-            base_optimizer = torch.optim.RAdam(model.parameters(), lr=1.0e-3, weight_decay=1.0e-2)
+            base_optimizer = torch.optim.RAdam(model.parameters(), lr=cfg.training.lr)
         else:
             raise RuntimeError("Invalid configuration parameter 'fast_optimizer' !!")
+
         if cfg.training.slow_optimizer == "Lookahead":
             print("Using {} optimizer with Lookahead.".format(cfg.training.fast_optimizer))
             optimizer = Lookahead(base_optimizer=base_optimizer, k=10, alpha=0.5)
@@ -404,23 +405,23 @@ def trainModel(cfg: DictConfig) -> None:
         num_batches_train = len(dataloader_train)
         print("Training for {} epochs.".format(cfg.training.num_epochs))
         print("#batches(train) = {}".format(num_batches_train))
-        lr_scheduler = OneCycleLR(
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             base_optimizer,
-            max_lr=1.0e-3,
-            epochs=cfg.training.num_epochs,
-            steps_per_epoch=num_batches_train,
-            anneal_strategy="cos"
+            T_max=len(dataloader_train)*cfg.training.num_epochs,
+            eta_min=cfg.training.lr*0.01
         )
         print("Starting training...")
         print(" current time:", datetime.datetime.now())
         tensorboard = SummaryWriter(os.path.join(model_output_path,"tensorboard_logs"))
         min_loss_validation = -1.0
-        # early_stopper = EarlyStopper(patience=100, min_delta=0.01)
+        early_stopper = EarlyStopper(patience=10)
+        losses_train = []
+        losses_validation = []
         for idx_epoch in range(cfg.training.num_epochs):
             print("Processing epoch #%i" % idx_epoch)
             print(" current time:", datetime.datetime.now())
 
-            train_loop(
+            loss_train = train_loop(
                 idx_epoch,
                 dataloader_train,
                 transform,
@@ -456,14 +457,20 @@ def trainModel(cfg: DictConfig) -> None:
                     train=False
                 )
 
+            losses_train.append(loss_train)
+            losses_validation.append(loss_validation)
+
             if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
                 print("Saving best model to file {}".format(best_model_output_path))
                 torch.save(model.state_dict(), best_model_output_path)
                 min_loss_validation = loss_validation
             process = psutil.Process(os.getpid())
             print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
-            # if early_stopper.early_stop(loss_validation):
-            #     break
+
+            with open(os.path.join(model_output_path, "history.json"), "w") as fi:
+                json.dump({"losses_train": losses_train, "losses_validation": losses_validation}, fi, indent=4)
+            if early_stopper.early_stop(loss_validation):
+                break
         print("Finished training.")
         print("Current time:", datetime.datetime.now())
 
