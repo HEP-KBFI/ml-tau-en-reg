@@ -6,8 +6,8 @@ test: True
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: training-outputs/240515_fullstats/
-data_path: /scratch/persistent/joosep/ml-tau/20240402_full_stats_merged
+output_dir: training-outputs/240524_cosinescheduler/
+data_path: /scratch/persistent/joosep/ml-tau/20240520_qq_zh_2m_merged
 
 #override this using command line args
 training_type: dm_multiclass
@@ -36,7 +36,7 @@ fraction_train: 0.8
 fraction_valid: 0.2
 
 dataset:
-  max_cands: 25
+  max_cands: 16
   use_lifetime: False
   min_jet_theta: 0.0
   max_jet_theta: 1000
@@ -55,8 +55,9 @@ num_classes:
   binary_classification: 2
 
 training:
-  num_epochs: 200
-  batch_size: 512
+  lr: 1e-4
+  num_epochs: 100
+  batch_size: 1024
   num_dataloader_workers: 2
   classweight_sig: 1
   classweight_bgr: 10
