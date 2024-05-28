@@ -35,8 +35,6 @@ from enreg.tools.models.LorentzNet import LorentzNet
 from enreg.tools.data_management.features import FeatureStandardization
 
 from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerDataset
-from enreg.tools.data_management.lorentzNet_dataset import LorentzNetDataset
-from enreg.tools.data_management.simpleDNN_dataset import DeepSetDataset
 
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
@@ -310,6 +308,8 @@ def trainModel(cfg: DictConfig) -> None:
         model = ParticleTransformer(
             input_dim=input_dim,
             num_classes=num_classes,
+            num_layers=cfg.models.ParticleTransformer.hyperparameters.num_layers,
+            embed_dims=cfg.models.ParticleTransformer.hyperparameters.embed_dims,
             use_pre_activation_pair=False,
             for_inference=False,
             use_amp=False,
