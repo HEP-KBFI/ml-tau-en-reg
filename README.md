@@ -17,6 +17,16 @@ $ du -csh /scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/*
 101M	/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/z_train.parquet
 ```
 
+# Results
+```
+5.7M    /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/dm_multiclass/LorentzNet
+8.1M    /local/joosep/ml-tau-en-reg/results/240528_PT_num_layers_4/dm_multiclass/ParticleTransformer
+6.4M    /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/dm_multiclass/SimpleDNN
+6.1M    /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/LorentzNet
+14M     /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/ParticleTransformer
+6.7M    /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/SimpleDNN
+```
+
 # Running
 
 All the necessary packages are installed to the singularity image used in the ```run.sh``` script.
