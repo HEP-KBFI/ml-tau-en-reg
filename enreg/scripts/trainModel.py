@@ -414,7 +414,7 @@ def trainModel(cfg: DictConfig) -> None:
         print(" current time:", datetime.datetime.now())
         tensorboard = SummaryWriter(os.path.join(model_output_path,"tensorboard_logs"))
         min_loss_validation = -1.0
-        early_stopper = EarlyStopper(patience=10)
+        # early_stopper = EarlyStopper(patience=10)
         losses_train = []
         losses_validation = []
         for idx_epoch in range(cfg.training.num_epochs):
@@ -469,8 +469,8 @@ def trainModel(cfg: DictConfig) -> None:
 
             with open(os.path.join(model_output_path, "history.json"), "w") as fi:
                 json.dump({"losses_train": losses_train, "losses_validation": losses_validation}, fi, indent=4)
-            if early_stopper.early_stop(loss_validation):
-                break
+            # if early_stopper.early_stop(loss_validation):
+            #     break
         print("Finished training.")
         print("Current time:", datetime.datetime.now())
 
