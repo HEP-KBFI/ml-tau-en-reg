@@ -1,6 +1,6 @@
 input_dim: 13
 hyperparameters:
-  num_layers: 8
+  num_layers: 4
   embed_dims:
     - 128
     - 512

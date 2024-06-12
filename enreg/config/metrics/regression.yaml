@@ -10,7 +10,7 @@ regression:
       Tight: 0.975
   algorithms:
     ParticleTransformer:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/ParticleTransformer/
+      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240608_PT_num_layers_4_all/240608_PT_num_layers_4_all_v1/jet_regression/ParticleTransformer/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
@@ -18,7 +18,7 @@ regression:
       hatch: "//"
       color: "tab:purple"
     LorentzNet:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/LorentzNet/
+      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240608_PT_num_layers_4_all/240608_PT_num_layers_4_all_v1/jet_regression/LorentzNet/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
@@ -26,7 +26,7 @@ regression:
       hatch: "//"
       color: "tab:green"
     SimpleDNN:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/SimpleDNN/
+      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240608_PT_num_layers_4_all/240608_PT_num_layers_4_all_v1/jet_regression/SimpleDNN/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True

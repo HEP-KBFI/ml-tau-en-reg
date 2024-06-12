@@ -55,7 +55,7 @@ def plot_median_and_iqr(plotting_input, cfg):
     ax3.grid()
     ax4.grid()
     plt.legend(fontsize=12)
-    output_path = os.path.join(cfg.output_dir, f"median_and_iqr.png")
+    output_path = os.path.join(cfg.output_dir, f"median_and_iqr.pdf")
     plt.savefig(output_path)
     plt.close('all')
 
@@ -94,7 +94,7 @@ def plot_energy_regression(sample_data, algorithm_info, cfg):
                 y_label=r"$jet\ p_T^{gen}$",
                 title="",
                 cfg=cfg,
-                out_filename=f"genTau_vs_genJet_{sample_name}_pt.png",
+                out_filename=f"genTau_vs_genJet_{sample_name}_pt.pdf",
             )
             plot_2d_histogram(
                 x_entries=np.array(gen_tau_p4s.pt),
@@ -103,7 +103,7 @@ def plot_energy_regression(sample_data, algorithm_info, cfg):
                 y_label=r"$jet\ p_T^{reco}$",
                 title="",
                 cfg=cfg,
-                out_filename=f"genTau_vs_recoJet_{sample_name}_pt.png",
+                out_filename=f"genTau_vs_recoJet_{sample_name}_pt.pdf",
             )
             plot_2d_histogram(
                 x_entries=np.array(gen_tau_p4s.pt),
@@ -112,7 +112,7 @@ def plot_energy_regression(sample_data, algorithm_info, cfg):
                 y_label=r"$\tau\ p_T^{reco}$",
                 title=f"{algorithm_name}:{sample_name}",
                 cfg=cfg,
-                out_filename=f"genTau_vs_predTau_pt_{algorithm_name}_{sample_name}.png",
+                out_filename=f"genTau_vs_predTau_pt_{algorithm_name}_{sample_name}.pdf",
             )
             plot_true_v_pred_1D_histo(
                 true=np.array(gen_tau_p4s.pt),
@@ -123,7 +123,7 @@ def plot_energy_regression(sample_data, algorithm_info, cfg):
                 pred_label="Prediction",
                 title=f"{algorithm_name}:{sample_name}",
                 cfg=cfg,
-                out_filename=f"true_pred_pt_distributions_{algorithm_name}_{sample_name}.png",
+                out_filename=f"true_pred_pt_distributions_{algorithm_name}_{sample_name}.pdf",
             )
     plot_overall_ratio(plotting_input, cfg)
 
@@ -203,7 +203,7 @@ def plot_bins(plotting_input, algorithm, sample, cfg):
     for iax in range(len(axes)):
         if iax >= len(bin_edges)-1:
             axes[iax].set_title("")
-    output_path = os.path.join(cfg.output_dir, f"bin_contents_{algorithm}_{sample}.png")
+    output_path = os.path.join(cfg.output_dir, f"bin_contents_{algorithm}_{sample}.pdf")
     plt.savefig(output_path, bbox_inches='tight')
     plt.close('all')
 
@@ -278,7 +278,7 @@ def plot_overall_ratio(plotting_input, cfg):
         plt.axvline(x=1, ymin=0, ymax=1e5, color="black")
         plt.yscale('log')
         plt.legend(loc=1)
-        output_path = os.path.join(cfg.output_dir, f"ratioplot_{sample}.png")
+        output_path = os.path.join(cfg.output_dir, f"ratioplot_{sample}.pdf")
         plt.xlabel("$response\ q=p_{T}^{reco}/p_{T}^{gen}$")
         ax.set_ylim(top=ax.get_ylim()[1]*10)
         plt.savefig(output_path, bbox_inches='tight')
