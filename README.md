@@ -19,12 +19,37 @@ $ du -csh /scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/*
 
 # Results
 ```
-5.7M    /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/dm_multiclass/LorentzNet
-8.1M    /local/joosep/ml-tau-en-reg/results/240528_PT_num_layers_4/dm_multiclass/ParticleTransformer
-6.4M    /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/dm_multiclass/SimpleDNN
-6.1M    /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/LorentzNet
-14M     /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/ParticleTransformer
-6.7M    /local/joosep/ml-tau-en-reg/results/240524_cosinescheduler/jet_regression/SimpleDNN
+$ du -csh /local/joosep/ml-tau-en-reg/results/240611_PT2layers/*/*/*
+7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/dm_multiclass/LorentzNet
+11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/dm_multiclass/ParticleTransformer
+7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/dm_multiclass/SimpleDNN
+7.2M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/jet_regression/LorentzNet
+9.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/jet_regression/ParticleTransformer
+6.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/jet_regression/SimpleDNN
+7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/dm_multiclass/LorentzNet
+11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/dm_multiclass/ParticleTransformer
+7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/dm_multiclass/SimpleDNN
+7.2M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/jet_regression/LorentzNet
+9.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/jet_regression/ParticleTransformer
+6.7M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/jet_regression/SimpleDNN
+7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/dm_multiclass/LorentzNet
+11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/dm_multiclass/ParticleTransformer
+7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/dm_multiclass/SimpleDNN
+7.2M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/jet_regression/LorentzNet
+9.7M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/jet_regression/ParticleTransformer
+6.6M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/jet_regression/SimpleDNN
+7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/dm_multiclass/LorentzNet
+11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/dm_multiclass/ParticleTransformer
+7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/dm_multiclass/SimpleDNN
+7.1M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/jet_regression/LorentzNet
+9.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/jet_regression/ParticleTransformer
+6.7M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/jet_regression/SimpleDNN
+7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/dm_multiclass/LorentzNet
+11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/dm_multiclass/ParticleTransformer
+7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/dm_multiclass/SimpleDNN
+7.4M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/jet_regression/LorentzNet
+9.7M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/jet_regression/ParticleTransformer
+6.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/jet_regression/SimpleDNN
 ```
 
 # Running
