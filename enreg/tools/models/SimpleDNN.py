@@ -23,7 +23,7 @@ class DeepSet(nn.Module):
 
         self.act = nn.GELU
         self.act_obj = self.act()
-        self.dropout = 0.2
+        self.dropout = 0.1
         self.width = 128
         self.embedding_dim = 128
 
