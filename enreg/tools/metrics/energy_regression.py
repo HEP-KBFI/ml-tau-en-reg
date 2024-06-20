@@ -21,10 +21,13 @@ def plot_median_and_iqr(plotting_input, cfg):
 
 
 def plot_median_iqr(plotting_input, cfg, dataset, y_data):
+    hep.style.use(hep.styles.CMS)
     if dataset == 'zh_test':
         title = r'ee $\rightarrow$ ZH (H $\rightarrow \tau\tau$)'
+        x_max = 170
     elif dataset == 'z_test':
         title = r'ee $\rightarrow$ Z (Z $\rightarrow \tau\tau$)'
+        x_max = 190
     else:
         raise ValueError(f"No {dataset} found")
 
@@ -40,7 +43,7 @@ def plot_median_iqr(plotting_input, cfg, dataset, y_data):
     else:
         raise ValueError(f"{y_data} not found")
 
-    plt.title(r'ee $\rightarrow$ ZH (H $\rightarrow \tau\tau$)')
+    plt.title(title)
     for algorithm in plotting_input.keys():
         plt.plot(
             plotting_input[algorithm][dataset]['pt_bin_centers'],
@@ -49,7 +52,7 @@ def plot_median_iqr(plotting_input, cfg, dataset, y_data):
         )
     plt.ylabel(y_label)
     plt.xlabel(r'$p_T^{gen}$')
-    plt.xlim(20, 200)
+    plt.xlim(20, x_max)
     plt.ylim(y_lim[0], y_lim[1])
     plt.grid()
     plt.legend()
