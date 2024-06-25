@@ -30,7 +30,6 @@ def process_and_merge(
         for input_path in input_paths:
             print(f"processing {input_path}")
             data = nt.process_input_file(input_path, cfg.tree_path, cfg.branches, remove_background=remove_bkg)
-            print(f"processed {len(data)} entries") 
             #Record -> Array to allow concat later on
             data = ak.Array({k: data[k] for k in data.fields}) 
             datas.append(data)
