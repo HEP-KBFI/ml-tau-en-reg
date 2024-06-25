@@ -67,7 +67,7 @@ def cluster_jets(particles_p4):
     jets = vector.awk(cluster.inclusive_jets(min_pt=20.0))
     jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
     constituent_index = ak.Array(cluster.constituent_index(min_pt=20.0))
-    print("clustered {len(jets)} jets")
+    print(f"clustered {len(jets)} jets")
     return jets, constituent_index
 
 
@@ -1004,6 +1004,6 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     removal_mask = data.gen_jet_tau_decaymode != 16
     if remove_background:
         removal_mask = (data.gen_jet_tau_decaymode != -1) * removal_mask
-    print(f"{np.sum(removal_mask)} entries after masking")
+    print(f"{np.sum(removal_mask)} jets after masking")
     data = ak.Record({key: data[key][removal_mask] for key in data.fields})
     return data
