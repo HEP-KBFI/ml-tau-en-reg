@@ -11,6 +11,7 @@ import pyhepmc
 import fastjet
 import numpy as np
 import awkward as ak
+from particle import pdgid
 from enreg.tools import general as g
 from enreg.tools.data_management import lifeTimeTools as lt
 
@@ -251,18 +252,14 @@ def to_vector(jet):
     )
 
 
-def map_pdgid_to_candid(pdgid, charge):
-    # TODO: Add this to a config.
-    if pdgid == 0:
-        return 0
-    # photon, electron, muon
-    if abs(pdgid) in [22, 11, 13, 15, 16, 1, 2, 3, 4, 5, 21, 12, 14]:
-        return abs(pdgid)
-    # charged hadron
-    if abs(charge) > 0:
-        return 211
-    # neutral hadron
-    return 130
+def map_pdgid_to_candid(pdg_id):
+    if pdgid.is_hadron(pdg_id):
+        if abs(pdgid.charge(pdg_id)) > 0:
+            return 211  # charged hadron
+        else:
+            return 130  # neutral hadron
+    else:
+        return abs(pdg_id)
 
 
 def get_matched_gen_jet_p4(reco_jets, gen_jets):
@@ -295,9 +292,8 @@ def retrieve_tau_info(tau_children, n_taus):
     tau_vis_p4s = []
     tau_full_p4s = []
     for ti in range(n_taus):
-        daughter_charges = [-1*np.sign(tc.pid) if abs(tc.pid) not in [12, 14, 16, 111, 130, 310, 311, 221, 223] else 0 for tc in tau_children[ti]]
         daughter_pdgs = [tc.pid for tc in tau_children[ti]]
-        PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
+        PDGs = [map_pdgid_to_candid(pdg_id) for pdg_id in daughter_pdgs]
         tau_vis_p4 = vector.awk(
             ak.zip(
                 {
@@ -405,9 +401,8 @@ def get_stable_mc_particles(mc_particles, mc_p4):
 def get_reco_particle_pdg(reco_particles):
     reco_particle_pdg = []
     for i in range(len(reco_particles.charge)):
-        charges = ak.flatten(reco_particles["charge"][i], axis=-1).to_numpy()
         pdgs = ak.flatten(reco_particles["type"][i], axis=-1).to_numpy()
-        mapped_pdgs = ak.from_iter([map_pdgid_to_candid(pdgs[j], charges[j]) for j in range(len(pdgs))])
+        mapped_pdgs = ak.from_iter([map_pdgid_to_candid(pdgs[j]) for j in range(len(pdgs))])
         reco_particle_pdg.append(mapped_pdgs)
     return ak.from_iter(reco_particle_pdg)
 
