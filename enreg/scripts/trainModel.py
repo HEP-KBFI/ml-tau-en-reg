@@ -92,6 +92,20 @@ class EarlyStopper:
         return False
 
 
+def get_weights(dataset, n_bins=20):
+    """ Returns the weights for each of the jets based on the pT of the generated tau. The fewer events in a given
+    genTau pT bin, the bigger the weight.
+    """
+    gen_tau_pt = g.reinitialize_p4(dataset.gen_jet_tau_p4s).pt
+    hist, bin_edges = np.histogram(gen_tau_pt, bins=n_bins, range=(0, 180))
+    weight_histogram = np.median(hist)/hist
+    histo_location = np.digitize(gen_tau_pt, bins=bin_edges)
+    map_from = np.array(range(1, len(bin_edges)))
+    map_to = weight_histogram
+    mask = histo_location[:,None] == map_from
+    val = map_to[np.argmax(mask, axis=1)]
+    return ak.Array(np.where(np.any(mask, axis=1), val, histo_location))
+
 
 def train_loop(
     idx_epoch,
@@ -277,10 +291,15 @@ def trainModel(cfg: DictConfig) -> None:
         data=training_data,
         cfg=cfg.dataset,
     )
+    weights_train = torch.tensor(get_weights(dataset_train))
+    dataset_train.weight_tensors = weights_train
+
     dataset_validation = DatasetClass(
         data=validation_data,
         cfg=cfg.dataset,
     )
+    weights_validation = torch.tensor(get_weights(dataset_validation))
+    dataset_validation.weight_tensors = weights_validation
 
     if kind == "binary_classification":
         training_targets = training_data.gen_jet_tau_decaymode == -1
