@@ -97,9 +97,13 @@ def get_decaymode(pdg_ids):
     """
     pdg_ids = np.abs(np.array(pdg_ids))
     unique, counts = np.unique(pdg_ids, return_counts=True)
-    p_counts = {i: 0 for i in [16, 130, 211, 13, 14, 12, 11, 22]}
+    common_particles = [16, 130, 211, 13, 14, 12, 11]
+    n_uncommon = len(set(unique) - set(common_particles))
+    p_counts = {i: 0 for i in common_particles}
     p_counts.update(dict(zip(unique, counts)))
-    if np.sum(p_counts[211]) == 1 and p_counts[130] == 0:
+    if n_uncommon > 0:
+        return 15
+    elif np.sum(p_counts[211]) == 1 and p_counts[130] == 0:
         return 0
     elif np.sum(p_counts[211]) == 1 and p_counts[130] == 1:
         return 1

@@ -11,6 +11,7 @@ import pyhepmc
 import fastjet
 import numpy as np
 import awkward as ak
+from particle import pdgid
 from enreg.tools import general as g
 from enreg.tools.data_management import lifeTimeTools as lt
 
@@ -252,18 +253,14 @@ def to_vector(jet):
     )
 
 
-def map_pdgid_to_candid(pdgid, charge):
-    # TODO: Add this to a config.
-    if pdgid == 0:
-        return 0
-    # photon, electron, muon
-    if abs(pdgid) in [22, 11, 13, 15, 16, 1, 2, 3, 4, 5, 21, 12, 14]:
-        return abs(pdgid)
-    # charged hadron
-    if abs(charge) > 0:
-        return 211
-    # neutral hadron
-    return 130
+def map_pdgid_to_candid(pdg_id):
+    if pdgid.is_hadron(pdg_id):
+        if abs(pdgid.charge(pdg_id)) > 0:
+            return 211  # charged hadron
+        else:
+            return 130  # neutral hadron
+    else:
+        return abs(pdg_id)
 
 
 def get_matched_gen_jet_p4(reco_jets, gen_jets):
@@ -296,9 +293,8 @@ def retrieve_tau_info(tau_children, n_taus):
     tau_vis_p4s = []
     tau_full_p4s = []
     for ti in range(n_taus):
-        daughter_charges = [-1*np.sign(tc.pid) if abs(tc.pid) not in [12, 14, 16, 111, 130, 310, 311, 221, 223] else 0 for tc in tau_children[ti]]
         daughter_pdgs = [tc.pid for tc in tau_children[ti]]
-        PDGs = [map_pdgid_to_candid(pdgid, charge) for pdgid, charge in zip(daughter_pdgs, daughter_charges)]
+        PDGs = [map_pdgid_to_candid(pdg_id) for pdg_id in daughter_pdgs]
         tau_vis_p4 = vector.awk(
             ak.zip(
                 {
@@ -406,9 +402,8 @@ def get_stable_mc_particles(mc_particles, mc_p4):
 def get_reco_particle_pdg(reco_particles):
     reco_particle_pdg = []
     for i in range(len(reco_particles.charge)):
-        charges = ak.flatten(reco_particles["charge"][i], axis=-1).to_numpy()
         pdgs = ak.flatten(reco_particles["type"][i], axis=-1).to_numpy()
-        mapped_pdgs = ak.from_iter([map_pdgid_to_candid(pdgs[j], charges[j]) for j in range(len(pdgs))])
+        mapped_pdgs = ak.from_iter([map_pdgid_to_candid(pdgs[j]) for j in range(len(pdgs))])
         reco_particle_pdg.append(mapped_pdgs)
     return ak.from_iter(reco_particle_pdg)
 
@@ -896,19 +891,24 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     reco_cand_PCA_z_err = get_jet_constituent_property(event_PCA_z_err, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     # IP variables documented below and more detailed in src/lifeTimeTools.py
+    event_reco_cand_p4s = g.reinitialize_p4(event_reco_cand_p4s)
+    event_cand_ordering_mask = ak.argsort(event_reco_cand_p4s.pt, axis=2, ascending=False)
+    reco_cand_p4s = get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet)
+    reco_cand_ordering_mask = ak.argsort(reco_cand_p4s.pt, axis=2, ascending=False)
+    print(reco_cand_ordering_mask)
     data = {
-        "event_reco_cand_p4s": g.reinitialize_p4(event_reco_cand_p4s),
+        "event_reco_cand_p4s": event_reco_cand_p4s[event_cand_ordering_mask],
         "event_reco_cand_pdg": ak.from_iter(
             [[reco_particle_pdg[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
-        ),
+        )[event_cand_ordering_mask],
         "event_reco_cand_charge": ak.from_iter(
             [[reco_particles["charge"][j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))]
-        ),
-        "reco_cand_p4s": get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet),
+        )[event_cand_ordering_mask],
+        "reco_cand_p4s": reco_cand_p4s[reco_cand_ordering_mask],
         "reco_cand_charge": get_jet_constituent_property(
             reco_particles["charge"], reco_jet_constituent_indices, num_ptcls_per_jet
-        ),
-        "reco_cand_pdg": get_jet_constituent_property(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet),
+        )[reco_cand_ordering_mask],
+        "reco_cand_pdg": get_jet_constituent_property(reco_particle_pdg, reco_jet_constituent_indices, num_ptcls_per_jet)[reco_cand_ordering_mask],
         "reco_jet_p4s": vector.awk(
             ak.zip({"mass": reco_jets.mass, "px": reco_jets.x, "py": reco_jets.y, "pz": reco_jets.z})
         ),
@@ -916,78 +916,78 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
         # "reco_cand_genPDG": get_jet_constituent_property(
         #     reco_particle_genPDG, reco_jet_constituent_indices, num_ptcls_per_jet
         # ),
-        "event_reco_cand_dxy": event_reco_cand_dxy,  # impact parameter in xy  for all pf in event
-        "event_reco_cand_dz": event_reco_cand_dz,  # impact parameter in z for all pf in event
-        "event_reco_cand_d3": event_reco_cand_d3,  # impact parameter in 3d for all pf in event
-        "event_reco_cand_dxy_f2D": event_reco_cand_dxy_f2D,  # impact parameter in xy  for all pf in event (PCA found in 2DA)
-        "event_reco_cand_dz_f2D": event_reco_cand_dz_f2D,  # impact parameter in z for all pf in event (PCA found in 2DA)
-        "event_reco_cand_d3_f2D": event_reco_cand_d3_f2D,  # impact parameter in 3d for all pf in event (PCA found in 2DA)
-        "event_reco_cand_dxy_err": event_reco_cand_dxy_err,  # xy impact parameter error (all pf)
-        "event_reco_cand_dz_err": event_reco_cand_dz_err,  # z impact parameter error (all pf)
-        "event_reco_cand_d3_err": event_reco_cand_d3_err,  # 3d impact parameter error (all pf)
-        "event_reco_cand_dxy_f2D_err": event_reco_cand_dxy_f2D_err,  # xy impact parameter error (all pf) (PCA found in 2DA)
-        "event_reco_cand_dz_f2D_err": event_reco_cand_dz_f2D_err,  # z impact parameter error (all pf) (PCA found in 2DA)
-        "event_reco_cand_d3_f2D_err": event_reco_cand_d3_f2D_err,  # 3d impact parameter error (all pf) (PCA found in 2DA)
-        "event_reco_cand_signed_dxy": event_reco_cand_signed_dxy,  # impact parameter in xy for all pf in event (jet sign)
-        "event_reco_cand_signed_dz": event_reco_cand_signed_dz,  # impact parameter in z for all pf in event (jet sign)
-        "event_reco_cand_signed_d3": event_reco_cand_signed_d3,  # impact parameter in 3d for all pf in event (jet sign)
-        "event_reco_cand_signed_dxy_f2D": event_reco_cand_signed_dxy_f2D,  # ip prm in xy for all pf in evt (j sign, 2D PCA)
-        "event_reco_cand_signed_dz_f2D": event_reco_cand_signed_dz_f2D,  # ip prm in z for all pf in evt (j sign, 2D PCA)
-        "event_reco_cand_signed_d3_f2D": event_reco_cand_signed_d3_f2D,  # ip prm in 3d for all pf in evt (j sign, 2D PCA)
-        "event_reco_cand_d0": event_reco_cand_d0,  # track parameter, xy distance to referrence point
-        "event_reco_cand_z0": event_reco_cand_z0,  # track parameter, z distance to referrence point
-        "event_reco_cand_d0_err": event_reco_cand_d0_err,  # track parameter error
-        "event_reco_cand_z0_err": event_reco_cand_z0_err,  # track parameter error
-        "event_reco_cand_signed_d0": event_reco_cand_signed_d0,  # track prm, xy distance to referrence point (jet sign)
-        "event_reco_cand_signed_z0": event_reco_cand_signed_z0,  # track prm, z distance to referrence point (jet sign)
-        "event_reco_cand_PCA_x": event_reco_cand_PCA_x,  # closest approach to PV (x-comp)
-        "event_reco_cand_PCA_y": event_reco_cand_PCA_y,  # closest approach to PV (y-comp)
-        "event_reco_cand_PCA_z": event_reco_cand_PCA_z,  # closest approach to PV (z-comp)
-        "event_reco_cand_PCA_x_err": event_reco_cand_PCA_x_err,  # PCA error (x-comp)
-        "event_reco_cand_PCA_y_err": event_reco_cand_PCA_y_err,  # PCA error (y-comp)
-        "event_reco_cand_PCA_z_err": event_reco_cand_PCA_z_err,  # PCA error (z-comp)
-        "event_reco_cand_PV_x": event_reco_cand_PV_x,  # primary vertex (PX) x-comp
-        "event_reco_cand_PV_y": event_reco_cand_PV_y,  # primary vertex (PX) y-comp
-        "event_reco_cand_PV_z": event_reco_cand_PV_z,  # primary vertex (PX) z-comp
-        "event_reco_cand_phi0": event_reco_cand_phi0,
-        "event_reco_cand_tanL": event_reco_cand_tanL,
-        "event_reco_cand_omega": event_reco_cand_omega,
-        "reco_cand_phi0": reco_cand_phi0,
-        "reco_cand_tanL": reco_cand_tanL,
-        "reco_cand_omega": reco_cand_omega,
-        "reco_cand_dxy": reco_cand_dxy,  # impact parameter in xy
-        "reco_cand_dz": reco_cand_dz,  # impact parameter in z
-        "reco_cand_d3": reco_cand_d3,  # impact parameter in 3D
-        "reco_cand_dxy_f2D": reco_cand_dxy_f2D,  # impact parameter in xy (PCA found in 2DA)
-        "reco_cand_dz_f2D": reco_cand_dz_f2D,  # impact parameter in z (PCA found in 2DA)
-        "reco_cand_d3_f2D": reco_cand_d3_f2D,  # impact parameter in 3D (PCA found in 2DA)
-        "reco_cand_signed_dxy": reco_cand_signed_dxy,  # impact parameter in xy (jet sign)
-        "reco_cand_signed_dz": reco_cand_signed_dz,  # impact parameter in z (jet sign)
-        "reco_cand_signed_d3": reco_cand_signed_d3,  # impact parameter in 3d (jet sign)
-        "reco_cand_signed_dxy_f2D": reco_cand_signed_dxy_f2D,  # impact parameter in xy (jet sign) (PCA found in 2DA)
-        "reco_cand_signed_dz_f2D": reco_cand_signed_dz_f2D,  # impact parameter in z (jet sign) (PCA found in 2DA)
-        "reco_cand_signed_d3_f2D": reco_cand_signed_d3_f2D,  # impact parameter in 3d (jet sign) (PCA found in 2DA)
-        "reco_cand_dxy_err": reco_cand_dxy_err,  # xy impact parameter error
-        "reco_cand_dz_err": reco_cand_dz_err,  # z impact parameter error
-        "reco_cand_d3_err": reco_cand_d3_err,  # 3d impact parameter error
-        "reco_cand_dxy_f2D_err": reco_cand_dxy_f2D_err,  # xy impact parameter error (PCA found in 2DA)
-        "reco_cand_dz_f2D_err": reco_cand_dz_f2D_err,  # z impact parameter error (PCA found in 2DA)
-        "reco_cand_d3_f2D_err": reco_cand_d3_f2D_err,  # 3d impact parameter error (PCA found in 2DA)
-        "reco_cand_d0": reco_cand_d0,  # track parameter, xy distance to referrence point
-        "reco_cand_z0": reco_cand_z0,  # track parameter, z distance to referrence point
-        "reco_cand_signed_d0": reco_cand_signed_d0,  # track parameter, xy distance to referrence point (jet sign)
-        "reco_cand_signed_z0": reco_cand_signed_z0,  # track parameter, z distance to referrence point (jet sign)
-        "reco_cand_d0_err": reco_cand_d0_err,  # track parameter error
-        "reco_cand_z0_err": reco_cand_z0_err,  # track parameter error
-        "reco_cand_PCA_x": reco_cand_PCA_x,  # closest approach to PV (x-comp)
-        "reco_cand_PCA_y": reco_cand_PCA_y,  # closest approach to PV (y-comp)
-        "reco_cand_PCA_z": reco_cand_PCA_z,  # closest approach to PV (z-comp)
-        "reco_cand_PCA_x_err": reco_cand_PCA_x_err,  # PCA error (x-comp)
-        "reco_cand_PCA_y_err": reco_cand_PCA_y_err,  # PCA error (y-comp)
-        "reco_cand_PCA_z_err": reco_cand_PCA_z_err,  # PCA error (z-comp)
-        "reco_cand_PV_x": reco_cand_PV_x,  # primary vertex (PX) x-comp
-        "reco_cand_PV_y": reco_cand_PV_y,  # primary vertex (PX) y-comp
-        "reco_cand_PV_z": reco_cand_PV_z,  # primary vertex (PX) z-comp
+        "event_reco_cand_dxy": event_reco_cand_dxy[event_cand_ordering_mask],  # impact parameter in xy  for all pf in event
+        "event_reco_cand_dz": event_reco_cand_dz[event_cand_ordering_mask],  # impact parameter in z for all pf in event
+        "event_reco_cand_d3": event_reco_cand_d3[event_cand_ordering_mask],  # impact parameter in 3d for all pf in event
+        "event_reco_cand_dxy_f2D": event_reco_cand_dxy_f2D[event_cand_ordering_mask],  # impact parameter in xy  for all pf in event (PCA found in 2DA)
+        "event_reco_cand_dz_f2D": event_reco_cand_dz_f2D[event_cand_ordering_mask],  # impact parameter in z for all pf in event (PCA found in 2DA)
+        "event_reco_cand_d3_f2D": event_reco_cand_d3_f2D[event_cand_ordering_mask],  # impact parameter in 3d for all pf in event (PCA found in 2DA)
+        "event_reco_cand_dxy_err": event_reco_cand_dxy_err[event_cand_ordering_mask],  # xy impact parameter error (all pf)
+        "event_reco_cand_dz_err": event_reco_cand_dz_err[event_cand_ordering_mask],  # z impact parameter error (all pf)
+        "event_reco_cand_d3_err": event_reco_cand_d3_err[event_cand_ordering_mask],  # 3d impact parameter error (all pf)
+        "event_reco_cand_dxy_f2D_err": event_reco_cand_dxy_f2D_err[event_cand_ordering_mask],  # xy impact parameter error (all pf) (PCA found in 2DA)
+        "event_reco_cand_dz_f2D_err": event_reco_cand_dz_f2D_err[event_cand_ordering_mask],  # z impact parameter error (all pf) (PCA found in 2DA)
+        "event_reco_cand_d3_f2D_err": event_reco_cand_d3_f2D_err[event_cand_ordering_mask],  # 3d impact parameter error (all pf) (PCA found in 2DA)
+        "event_reco_cand_signed_dxy": event_reco_cand_signed_dxy[event_cand_ordering_mask],  # impact parameter in xy for all pf in event (jet sign)
+        "event_reco_cand_signed_dz": event_reco_cand_signed_dz[event_cand_ordering_mask],  # impact parameter in z for all pf in event (jet sign)
+        "event_reco_cand_signed_d3": event_reco_cand_signed_d3[event_cand_ordering_mask],  # impact parameter in 3d for all pf in event (jet sign)
+        "event_reco_cand_signed_dxy_f2D": event_reco_cand_signed_dxy_f2D[event_cand_ordering_mask],  # ip prm in xy for all pf in evt (j sign, 2D PCA)
+        "event_reco_cand_signed_dz_f2D": event_reco_cand_signed_dz_f2D[event_cand_ordering_mask],  # ip prm in z for all pf in evt (j sign, 2D PCA)
+        "event_reco_cand_signed_d3_f2D": event_reco_cand_signed_d3_f2D[event_cand_ordering_mask],  # ip prm in 3d for all pf in evt (j sign, 2D PCA)
+        "event_reco_cand_d0": event_reco_cand_d0[event_cand_ordering_mask],  # track parameter, xy distance to referrence point
+        "event_reco_cand_z0": event_reco_cand_z0[event_cand_ordering_mask],  # track parameter, z distance to referrence point
+        "event_reco_cand_d0_err": event_reco_cand_d0_err[event_cand_ordering_mask],  # track parameter error
+        "event_reco_cand_z0_err": event_reco_cand_z0_err[event_cand_ordering_mask],  # track parameter error
+        "event_reco_cand_signed_d0": event_reco_cand_signed_d0[event_cand_ordering_mask],  # track prm, xy distance to referrence point (jet sign)
+        "event_reco_cand_signed_z0": event_reco_cand_signed_z0[event_cand_ordering_mask],  # track prm, z distance to referrence point (jet sign)
+        "event_reco_cand_PCA_x": event_reco_cand_PCA_x[event_cand_ordering_mask],  # closest approach to PV (x-comp)
+        "event_reco_cand_PCA_y": event_reco_cand_PCA_y[event_cand_ordering_mask],  # closest approach to PV (y-comp)
+        "event_reco_cand_PCA_z": event_reco_cand_PCA_z[event_cand_ordering_mask],  # closest approach to PV (z-comp)
+        "event_reco_cand_PCA_x_err": event_reco_cand_PCA_x_err[event_cand_ordering_mask],  # PCA error (x-comp)
+        "event_reco_cand_PCA_y_err": event_reco_cand_PCA_y_err[event_cand_ordering_mask],  # PCA error (y-comp)
+        "event_reco_cand_PCA_z_err": event_reco_cand_PCA_z_err[event_cand_ordering_mask],  # PCA error (z-comp)
+        "event_reco_cand_PV_x": event_reco_cand_PV_x[event_cand_ordering_mask],  # primary vertex (PX) x-comp
+        "event_reco_cand_PV_y": event_reco_cand_PV_y[event_cand_ordering_mask],  # primary vertex (PX) y-comp
+        "event_reco_cand_PV_z": event_reco_cand_PV_z[event_cand_ordering_mask],  # primary vertex (PX) z-comp
+        "event_reco_cand_phi0": event_reco_cand_phi0[event_cand_ordering_mask],
+        "event_reco_cand_tanL": event_reco_cand_tanL[event_cand_ordering_mask],
+        "event_reco_cand_omega": event_reco_cand_omega[event_cand_ordering_mask],
+        "reco_cand_phi0": reco_cand_phi0[reco_cand_ordering_mask],
+        "reco_cand_tanL": reco_cand_tanL[reco_cand_ordering_mask],
+        "reco_cand_omega": reco_cand_omega[reco_cand_ordering_mask],
+        "reco_cand_dxy": reco_cand_dxy[reco_cand_ordering_mask],  # impact parameter in xy
+        "reco_cand_dz": reco_cand_dz[reco_cand_ordering_mask],  # impact parameter in z
+        "reco_cand_d3": reco_cand_d3[reco_cand_ordering_mask],  # impact parameter in 3D
+        "reco_cand_dxy_f2D": reco_cand_dxy_f2D[reco_cand_ordering_mask],  # impact parameter in xy (PCA found in 2DA)
+        "reco_cand_dz_f2D": reco_cand_dz_f2D[reco_cand_ordering_mask],  # impact parameter in z (PCA found in 2DA)
+        "reco_cand_d3_f2D": reco_cand_d3_f2D[reco_cand_ordering_mask],  # impact parameter in 3D (PCA found in 2DA)
+        "reco_cand_signed_dxy": reco_cand_signed_dxy[reco_cand_ordering_mask],  # impact parameter in xy (jet sign)
+        "reco_cand_signed_dz": reco_cand_signed_dz[reco_cand_ordering_mask],  # impact parameter in z (jet sign)
+        "reco_cand_signed_d3": reco_cand_signed_d3[reco_cand_ordering_mask],  # impact parameter in 3d (jet sign)
+        "reco_cand_signed_dxy_f2D": reco_cand_signed_dxy_f2D[reco_cand_ordering_mask],  # impact parameter in xy (jet sign) (PCA found in 2DA)
+        "reco_cand_signed_dz_f2D": reco_cand_signed_dz_f2D[reco_cand_ordering_mask],  # impact parameter in z (jet sign) (PCA found in 2DA)
+        "reco_cand_signed_d3_f2D": reco_cand_signed_d3_f2D[reco_cand_ordering_mask],  # impact parameter in 3d (jet sign) (PCA found in 2DA)
+        "reco_cand_dxy_err": reco_cand_dxy_err[reco_cand_ordering_mask],  # xy impact parameter error
+        "reco_cand_dz_err": reco_cand_dz_err[reco_cand_ordering_mask],  # z impact parameter error
+        "reco_cand_d3_err": reco_cand_d3_err[reco_cand_ordering_mask],  # 3d impact parameter error
+        "reco_cand_dxy_f2D_err": reco_cand_dxy_f2D_err[reco_cand_ordering_mask],  # xy impact parameter error (PCA found in 2DA)
+        "reco_cand_dz_f2D_err": reco_cand_dz_f2D_err[reco_cand_ordering_mask],  # z impact parameter error (PCA found in 2DA)
+        "reco_cand_d3_f2D_err": reco_cand_d3_f2D_err[reco_cand_ordering_mask],  # 3d impact parameter error (PCA found in 2DA)
+        "reco_cand_d0": reco_cand_d0[reco_cand_ordering_mask],  # track parameter, xy distance to referrence point
+        "reco_cand_z0": reco_cand_z0[reco_cand_ordering_mask],  # track parameter, z distance to referrence point
+        "reco_cand_signed_d0": reco_cand_signed_d0[reco_cand_ordering_mask],  # track parameter, xy distance to referrence point (jet sign)
+        "reco_cand_signed_z0": reco_cand_signed_z0[reco_cand_ordering_mask],  # track parameter, z distance to referrence point (jet sign)
+        "reco_cand_d0_err": reco_cand_d0_err[reco_cand_ordering_mask],  # track parameter error
+        "reco_cand_z0_err": reco_cand_z0_err[reco_cand_ordering_mask],  # track parameter error
+        "reco_cand_PCA_x": reco_cand_PCA_x[reco_cand_ordering_mask],  # closest approach to PV (x-comp)
+        "reco_cand_PCA_y": reco_cand_PCA_y[reco_cand_ordering_mask],  # closest approach to PV (y-comp)
+        "reco_cand_PCA_z": reco_cand_PCA_z[reco_cand_ordering_mask],  # closest approach to PV (z-comp)
+        "reco_cand_PCA_x_err": reco_cand_PCA_x_err[reco_cand_ordering_mask],  # PCA error (x-comp)
+        "reco_cand_PCA_y_err": reco_cand_PCA_y_err[reco_cand_ordering_mask],  # PCA error (y-comp)
+        "reco_cand_PCA_z_err": reco_cand_PCA_z_err[reco_cand_ordering_mask],  # PCA error (z-comp)
+        "reco_cand_PV_x": reco_cand_PV_x[reco_cand_ordering_mask],  # primary vertex (PX) x-comp
+        "reco_cand_PV_y": reco_cand_PV_y[reco_cand_ordering_mask],  # primary vertex (PX) y-comp
+        "reco_cand_PV_z": reco_cand_PV_z[reco_cand_ordering_mask],  # primary vertex (PX) z-comp
         "gen_jet_p4s": vector.awk(ak.zip({"mass": gen_jets.mass, "px": gen_jets.x, "py": gen_jets.y, "pz": gen_jets.z})),
         "gen_jet_tau_decaymode": gen_tau_jet_info["gen_jet_tau_decaymode"],
         "gen_jet_tau_vis_energy": gen_tau_jet_info["gen_jet_tau_vis_energy"],

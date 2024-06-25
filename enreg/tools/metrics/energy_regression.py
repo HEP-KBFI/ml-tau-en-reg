@@ -14,50 +14,52 @@ from enreg.tools.visualization import base as b
 hep.style.use(hep.styles.CMS)
 
 def plot_median_and_iqr(plotting_input, cfg):
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2, sharey='row', sharex='col', figsize=(16,9))
-    ax1.plot([30, 180], [1, 1], ls='--', c='k')
-    ax2.plot([30, 180], [1, 1], ls='--', c='k')
+    plot_median_iqr(plotting_input, cfg, "z_test", "iqr")
+    plot_median_iqr(plotting_input, cfg, "z_test", "median")
+    plot_median_iqr(plotting_input, cfg, 'zh_test', "median")
+    plot_median_iqr(plotting_input, cfg, 'zh_test', "iqr")
+
+
+def plot_median_iqr(plotting_input, cfg, dataset, y_data):
+    hep.style.use(hep.styles.CMS)
+    if dataset == 'zh_test':
+        title = r'ee $\rightarrow$ ZH (H $\rightarrow \tau\tau$)'
+        x_max = 170
+    elif dataset == 'z_test':
+        title = r'ee $\rightarrow$ Z (Z $\rightarrow \tau\tau$)'
+        x_max = 190
+    else:
+        raise ValueError(f"No {dataset} found")
+
+    if y_data == "median":
+        y_key = 'pt_ratio_medians'
+        y_label = r'$p_T\ scale\ (q_{50})$'
+        plt.plot([30, 200], [1, 1], ls='--', c='k')
+        y_lim = (0.96, 1.04)
+    elif y_data == 'iqr':
+        y_key = 'pt_resolution_w_IQR'
+        y_lim = (0, 0.1)
+        y_label = r"$p_T\ resol.\ (q_{75} - q_{25})/q_{50}$"
+    else:
+        raise ValueError(f"{y_data} not found")
+
+    plt.title(title)
     for algorithm in plotting_input.keys():
-        ax1.plot(
-            plotting_input[algorithm]['zh_test']['pt_bin_centers'],
-            plotting_input[algorithm]['zh_test']['pt_ratio_medians'],
+        plt.plot(
+            plotting_input[algorithm][dataset]['pt_bin_centers'],
+            plotting_input[algorithm][dataset][y_key],
             label=algorithm, marker="o"
         )
-        ax2.plot(
-            plotting_input[algorithm]['z_test']['pt_bin_centers'],
-            plotting_input[algorithm]['z_test']['pt_ratio_medians'],
-            label=algorithm, marker="o"
-        )
-        ax3.plot(
-            plotting_input[algorithm]['zh_test']['pt_bin_centers'],
-            plotting_input[algorithm]['zh_test']['pt_resolution_w_IQR'],
-            label=algorithm, marker="o"
-        )
-        ax4.plot(
-            plotting_input[algorithm]['z_test']['pt_bin_centers'],
-            plotting_input[algorithm]['z_test']['pt_resolution_w_IQR'],
-            label=algorithm, marker="o"
-        )
-    ax1.title.set_text(r'ee $\rightarrow$ ZH (H $\rightarrow \tau\tau$)')
-    ax2.title.set_text(r'ee $\rightarrow$ Z (Z $\rightarrow \tau\tau$)')
-    ax1.set_ylabel(r'$p_T\ scale\ (q_{50})$')
-    ax3.set_ylabel(r"$p_T\ resol.\ (q_{75} - q_{25})/q_{50}$")
-    ax3.set_xlabel(r'$p_T^{gen}$')
-    ax4.set_xlabel(r'$p_T^{gen}$')
-    ax1.set_xlim(20, 200)
-    ax2.set_xlim(20, 200)
-    ax3.set_xlim(20, 200)
-    ax4.set_xlim(20, 200)
-    ax1.set_ylim(0.96, 1.04)
-    ax3.set_ylim(0, 0.1)
-    ax1.grid()
-    ax2.grid()
-    ax3.grid()
-    ax4.grid()
-    plt.legend(fontsize=12)
-    output_path = os.path.join(cfg.output_dir, f"median_and_iqr.pdf")
+    plt.ylabel(y_label)
+    plt.xlabel(r'$p_T^{gen}$')
+    plt.xlim(20, x_max)
+    plt.ylim(y_lim[0], y_lim[1])
+    plt.grid()
+    plt.legend()
+    output_path = os.path.join(cfg.output_dir, f"{dataset}_{y_data}.pdf")
     plt.savefig(output_path)
     plt.close('all')
+
 
 
 def to_bh(data, bins, cumulative=False):
