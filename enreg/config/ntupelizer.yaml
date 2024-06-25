@@ -1,4 +1,3 @@
-use_slurm: True
 slurm_run: False
 files_per_job: 50
 n_files: -1
