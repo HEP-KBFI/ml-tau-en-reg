@@ -12,7 +12,7 @@ from enreg.tools.data_management import ntupelizer_slurm_tools as nst
 
 
 def save_record_to_file(data: ak.Record, output_path: str) -> None:
-    print(f"Saving to {len(data)} processed entries to {output_path}")
+    print(f"Saving {len(data)} processed entries to {output_path}")
     ak.to_parquet(data, output_path)
 
 
@@ -28,8 +28,9 @@ def process_and_merge(
         start_time = time.time()
         remove_bkg = cfg.samples[sample].is_signal
         for input_path in input_paths:
-            print("processing {}".format(input_path))
+            print(f"processing {input_path}")
             data = nt.process_input_file(input_path, cfg.tree_path, cfg.branches, remove_background=remove_bkg)
+            print(f"processed {len(data)} entries") 
             #Record -> Array to allow concat later on
             data = ak.Array({k: data[k] for k in data.fields}) 
             datas.append(data)
@@ -41,7 +42,7 @@ def process_and_merge(
         end_time = time.time()
         print(f"Finished processing in {end_time-start_time:.2f} s.")
     else:
-        print("File {} already processed, skipping.".format(output_path))
+        print(f"File {output_path} already processed, skipping.")
 
 
 #actually run the ntuplizer on slurm

@@ -41,6 +41,7 @@ def load_single_file_contents(
         idx3 = "MergedRecoParticles#1/MergedRecoParticles#1.index"
         idx_recoparticle_track = tree.arrays(idx3)[idx3]
         arrays["idx_track"] = idx_recoparticle_track
+    print(f"loaded {len(arrays)} events")
     return arrays
 
 
@@ -998,10 +999,12 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
         "gen_jet_tau_decay_vertex_z": gen_tau_jet_info["tau_gen_jet_DV_z"],
     }
     data = ak.Record({key: ak.flatten(value, axis=1) for key, value in data.items()})
+    print(f"{len(data)} entries")
 
     ## remove backgrounds for signal samples
     removal_mask = data.gen_jet_tau_decaymode != 16
     if remove_background:
         removal_mask = (data.gen_jet_tau_decaymode != -1) * removal_mask
+    print(f"{np.sum(removal_mask)} entries after masking")
     data = ak.Record({key: data[key][removal_mask] for key in data.fields})
     return data

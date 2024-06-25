@@ -1,5 +1,5 @@
 slurm_run: False
-files_per_job: 50
+files_per_job: 20
 n_files: -1
 tree_path: events
 branches:
