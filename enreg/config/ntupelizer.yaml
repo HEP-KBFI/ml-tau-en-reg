@@ -1,6 +1,5 @@
-use_slurm: True
 slurm_run: False
-use_multiprocessing: False
+files_per_job: 20
 n_files: -1
 tree_path: events
 branches:
@@ -51,27 +50,26 @@ branches:
   - SiTracks_Refitted_1.tanLambda
   - SiTracks_Refitted_1.omega
   - SiTracks_Refitted_1.covMatrix[21]
-test_run: False
 samples_to_process:
-  - Z_Ztautau
-  - ZH_Htautau
-  - QCD
+  - p8_ee_Z_Ztautau_ecm380
+  - p8_ee_ZH_Htautau_ecm380
+  - p8_ee_qq_ecm380
 samples:
-  Z_Ztautau:
+  p8_ee_Z_Ztautau_ecm380:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240519_qq_and_zh_2M/Z_Ztautau
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240625_all_2M/p8_ee_Z_Ztautau_ecm380/
     is_signal: True
-  ZH_Htautau:
+  p8_ee_ZH_Htautau_ecm380:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240519_qq_and_zh_2M/ZH_Htautau
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240625_all_2M/p8_ee_ZH_Htautau_ecm380/
     is_signal: True
-  QCD:
+  p8_ee_qq_ecm380:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_qq_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240519_qq_and_zh_2M/QCD
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240625_all_2M/p8_ee_qq_ecm380/
     is_signal: False
 validation:
-  output_dir: $HOME/CLIC_ntuple_validation_v5
+  output_dir: $HOME/CLIC_ntuple_validation
   validation_samples:
-    - Z_Ztautau
-    - ZH_Htautau
-    # - QCD
+    - p8_ee_Z_Ztautau_ecm380 
+    - p8_ee_ZH_Htautau_ecm380 
+    - p8_ee_qq_ecm380 

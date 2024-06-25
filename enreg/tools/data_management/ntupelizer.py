@@ -29,6 +29,7 @@ def load_single_file_contents(
 ) -> ak.Array:
     with uproot.open(path) as in_file:
         tree = in_file[tree_path]
+        print(f"ROOT file has {tree.num_entries} entries")
         arrays = tree.arrays(branches)
         idx0 = "RecoMCTruthLink#0/RecoMCTruthLink#0.index"
         idx1 = "RecoMCTruthLink#1/RecoMCTruthLink#1.index"
@@ -66,6 +67,7 @@ def cluster_jets(particles_p4):
     jets = vector.awk(cluster.inclusive_jets(min_pt=20.0))
     jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
     constituent_index = ak.Array(cluster.constituent_index(min_pt=20.0))
+    print(f"clustered {len(jets)} jets")
     return jets, constituent_index
 
 
@@ -894,7 +896,6 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     event_cand_ordering_mask = ak.argsort(event_reco_cand_p4s.pt, axis=2, ascending=False)
     reco_cand_p4s = get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_ordering_mask = ak.argsort(reco_cand_p4s.pt, axis=2, ascending=False)
-    print(reco_cand_ordering_mask)
     data = {
         "event_reco_cand_p4s": event_reco_cand_p4s[event_cand_ordering_mask],
         "event_reco_cand_pdg": ak.from_iter(
@@ -1003,5 +1004,6 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     removal_mask = data.gen_jet_tau_decaymode != 16
     if remove_background:
         removal_mask = (data.gen_jet_tau_decaymode != -1) * removal_mask
+    print(f"{np.sum(removal_mask)} jets after masking")
     data = ak.Record({key: data[key][removal_mask] for key in data.fields})
     return data

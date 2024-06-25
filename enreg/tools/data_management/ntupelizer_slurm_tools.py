@@ -5,12 +5,9 @@ from enreg.tools import slurm_tools as st
 import enreg
 
 
-def multipath_slurm_ntupelizer(input_paths, output_paths, batch_size=7):
+def multipath_slurm_ntupelizer(input_paths, output_paths):
     tmp_dir = st.create_tmp_run_dir()
-    number_batches = int(len(input_paths) / batch_size) + 1
-    input_path_chunks = list(np.array_split(input_paths, number_batches))
-    output_path_chunks = list(np.array_split(output_paths, number_batches))
-    input_file_paths, output_file_paths = create_job_input_list(input_path_chunks, output_path_chunks, tmp_dir)
+    input_file_paths, output_file_paths = create_job_input_list(input_paths, output_paths, tmp_dir)
     for job_idx, (input_file_path, output_file_path) in enumerate(zip(input_file_paths, output_file_paths)):
         job_file = prepare_job_file(input_file_path, output_file_path, job_idx, tmp_dir)
         # subprocess.call(["sbatch", job_file])
@@ -19,18 +16,17 @@ def multipath_slurm_ntupelizer(input_paths, output_paths, batch_size=7):
     # wait_iteration()
 
 
-def create_job_input_list(input_path_chunks, output_path_chunks, output_dir):
+def create_job_input_list(input_path_chunks: list[list[str]], output_path_chunks: list[str], output_dir: str):
     input_file_paths = []
     output_file_paths = []
-    for i, (in_chunk, out_chunk) in enumerate(zip(input_path_chunks, output_path_chunks)):
+    for i, (in_chunk, out_path) in enumerate(zip(input_path_chunks, output_path_chunks)):
         input_file_path = os.path.join(output_dir, f"input_paths_{i}.txt")
         output_file_path = os.path.join(output_dir, f"output_paths_{i}.txt")
         with open(input_file_path, 'wt') as outFile:
             for path in in_chunk:
                 outFile.write(path + "\n")
         with open(output_file_path, 'wt') as outFile:
-            for path in out_chunk:
-                outFile.write(path + "\n")
+            outFile.write(out_path + "\n")
         input_file_paths.append(input_file_path)
         output_file_paths.append(output_file_path)
     return input_file_paths, output_file_paths

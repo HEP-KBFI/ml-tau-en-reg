@@ -60,6 +60,7 @@ In order to run the scripts do:
 ./run.sh python3 [XYZ]
 ```
 
+
 # Training
 
 To test locally on a fraction of the data
@@ -91,6 +92,24 @@ notebooks/losses.ipynb
 
 ```
 ./run.sh jupyter notebook --no-browser
+```
+
+# Creating the input data
+
+## Simulation with Key4HEP
+
+Edit `sim/run_sim.sh` to change the output directory, then generate 100 events as follows:
+```
+cd sim
+./run_sim.sh 1 p8_ee_ZH_Htautau_ecm380.cmd 
+```
+
+## Creating ML ntuples
+
+To produce the jet-based ML ntuples from the .root and .hepmc files 
+```
+./run.sh python3 enreg/scripts/ntupelize_edm4hep.py
+bash /home/joosep/tmp/NA7VJ17OVH/executables/execute0.sh  
 ```
 
 # Contributing
