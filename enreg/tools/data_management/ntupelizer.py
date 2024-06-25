@@ -891,7 +891,7 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     reco_particle_pdg = get_reco_particle_pdg(reco_particles)
     # IP variables documented below and more detailed in src/lifeTimeTools.py
     event_reco_cand_p4s = g.reinitialize_p4(event_reco_cand_p4s)
-    event_cand_ordering_mask = ak.argsort(event_reco_cand_p4s.pt, axis=1, ascending=False)
+    event_cand_ordering_mask = ak.argsort(event_reco_cand_p4s.pt, axis=2, ascending=False)
     reco_cand_p4s = get_jet_constituent_p4s(reco_p4, reco_jet_constituent_indices, num_ptcls_per_jet)
     reco_cand_ordering_mask = ak.argsort(reco_cand_p4s.pt, axis=2, ascending=False)
     print(reco_cand_ordering_mask)
