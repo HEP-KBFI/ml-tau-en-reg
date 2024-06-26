@@ -6,8 +6,8 @@ test: True
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: training-outputs/240524_cosinescheduler/
-data_path: /scratch/persistent/joosep/ml-tau/20240520_qq_zh_2m_merged
+output_dir: training-outputs/240625_all_2M/
+data_path: /scratch/persistent/joosep/ml-tau/20240625_all_2M_merged
 
 #override this using command line args
 training_type: dm_multiclass
