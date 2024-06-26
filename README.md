@@ -8,48 +8,36 @@ git clone git@github.com:Laurits7/ml-tau-en-reg.git
 
 The latest merged ntuples for training are here:
 ```
-$ du -csh /scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/*
-490M	/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/qq_test.parquet
-2.0G	/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/qq_train.parquet
-30M	/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/zh_test.parquet
-119M	/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/zh_train.parquet
-26M	/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/z_test.parquet
-101M	/scratch/persistent/joosep/ml-tau/20240402_full_stats_merged/z_train.parquet
+$ du -csh /scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/*
+390M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/qq_test.parquet
+1.6G	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/qq_train.parquet
+93M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/zh_test.parquet
+370M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/zh_train.parquet
+78M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/z_test.parquet
+312M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/z_train.parquet
 ```
 
 # Results
 ```
-$ du -csh /local/joosep/ml-tau-en-reg/results/240611_PT2layers/*/*/*
-7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/dm_multiclass/LorentzNet
-11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/dm_multiclass/ParticleTransformer
-7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/dm_multiclass/SimpleDNN
-7.2M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/jet_regression/LorentzNet
-9.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/jet_regression/ParticleTransformer
-6.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v1/jet_regression/SimpleDNN
-7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/dm_multiclass/LorentzNet
-11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/dm_multiclass/ParticleTransformer
-7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/dm_multiclass/SimpleDNN
-7.2M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/jet_regression/LorentzNet
-9.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/jet_regression/ParticleTransformer
-6.7M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v2/jet_regression/SimpleDNN
-7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/dm_multiclass/LorentzNet
-11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/dm_multiclass/ParticleTransformer
-7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/dm_multiclass/SimpleDNN
-7.2M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/jet_regression/LorentzNet
-9.7M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/jet_regression/ParticleTransformer
-6.6M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v3/jet_regression/SimpleDNN
-7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/dm_multiclass/LorentzNet
-11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/dm_multiclass/ParticleTransformer
-7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/dm_multiclass/SimpleDNN
-7.1M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/jet_regression/LorentzNet
-9.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/jet_regression/ParticleTransformer
-6.7M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v4/jet_regression/SimpleDNN
-7.5M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/dm_multiclass/LorentzNet
-11M     /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/dm_multiclass/ParticleTransformer
-7.0M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/dm_multiclass/SimpleDNN
-7.4M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/jet_regression/LorentzNet
-9.7M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/jet_regression/ParticleTransformer
-6.8M    /local/joosep/ml-tau-en-reg/results/240611_PT2layers/v5/jet_regression/SimpleDNN
+$ du -csh /local/joosep/ml-tau-en-reg/results/240625_all_2M/*/*/*
+7.9M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v1/dm_multiclass/LorentzNet
+11M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v1/dm_multiclass/ParticleTransformer
+7.4M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v1/dm_multiclass/SimpleDNN
+9.3M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v1/jet_regression/LorentzNet
+12M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v1/jet_regression/ParticleTransformer
+8.6M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v1/jet_regression/SimpleDNN
+7.9M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v2/dm_multiclass/LorentzNet
+11M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v2/dm_multiclass/ParticleTransformer
+7.4M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v2/dm_multiclass/SimpleDNN
+9.2M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v2/jet_regression/LorentzNet
+12M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v2/jet_regression/ParticleTransformer
+8.5M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v2/jet_regression/SimpleDNN
+7.9M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v3/dm_multiclass/LorentzNet
+11M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v3/dm_multiclass/ParticleTransformer
+7.4M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v3/dm_multiclass/SimpleDNN
+9.1M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v3/jet_regression/LorentzNet
+12M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v3/jet_regression/ParticleTransformer
+8.6M	/local/joosep/ml-tau-en-reg/results/240625_all_2M/v3/jet_regression/SimpleDNN
 ```
 
 # Running
