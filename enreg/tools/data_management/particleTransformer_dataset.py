@@ -21,6 +21,7 @@ def stack_and_pad_features(cand_features, max_cands):
     cand_features_tensors[np.isinf(cand_features_tensors)] = 0
     return cand_features_tensors
 
+
 class ParticleTransformerDataset(Dataset):
     def __init__(self, data: ak.Array, cfg: DictConfig, do_preselection=True):
         self.data = data

@@ -291,15 +291,15 @@ def trainModel(cfg: DictConfig) -> None:
         data=training_data,
         cfg=cfg.dataset,
     )
-    weights_train = torch.tensor(get_weights(dataset_train))
-    dataset_train.weight_tensors = weights_train
-
     dataset_validation = DatasetClass(
         data=validation_data,
         cfg=cfg.dataset,
     )
-    weights_validation = torch.tensor(get_weights(dataset_validation))
-    dataset_validation.weight_tensors = weights_validation
+    if kind == "jet_regression":
+        weights_train = torch.tensor(get_weights(dataset_train))
+        dataset_train.weight_tensors = weights_train
+        weights_validation = torch.tensor(get_weights(dataset_validation))
+        dataset_validation.weight_tensors = weights_validation
 
     if kind == "binary_classification":
         training_targets = training_data.gen_jet_tau_decaymode == -1
