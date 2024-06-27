@@ -3,7 +3,7 @@
 #for regression and decay mode, use only signal (tau) jets
 export TRAIN_SAMPS=z_train.parquet
 export TEST_SAMPS=z_test.parquet,zh_test.parquet
-for i in `seq 1 1`; do
+for i in `seq 1 3`; do
     export OUTDIR=training-outputs/240626_train_on_z/v$i
     sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=LorentzNet
     sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=ParticleTransformer
