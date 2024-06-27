@@ -92,19 +92,29 @@ class EarlyStopper:
         return False
 
 
-def get_weights(dataset, n_bins=20):
+def get_weights(train_dataset, validation_dataset, n_bins=20):
     """ Returns the weights for each of the jets based on the pT of the generated tau. The fewer events in a given
     genTau pT bin, the bigger the weight.
     """
-    gen_tau_pt = g.reinitialize_p4(dataset.gen_jet_tau_p4s).pt
-    hist, bin_edges = np.histogram(gen_tau_pt, bins=n_bins, range=(0, 180))
+    train_gen_tau_pt = g.reinitialize_p4(train_dataset.gen_jet_tau_p4s).pt
+    val_gen_tau_pt = g.reinitialize_p4(validation_dataset.gen_jet_tau_p4s).pt
+    hist, bin_edges = np.histogram(train_gen_tau_pt, bins=n_bins, range=(0, 180))
     weight_histogram = np.median(hist)/hist
-    histo_location = np.digitize(gen_tau_pt, bins=bin_edges)
+
+    train_histo_location = np.digitize(train_gen_tau_pt, bins=bin_edges)
+    val_histo_location = np.digitize(val_gen_tau_pt, bins=bin_edges)
     map_from = np.array(range(1, len(bin_edges)))
     map_to = weight_histogram
-    mask = histo_location[:,None] == map_from
-    val = map_to[np.argmax(mask, axis=1)]
-    return ak.Array(np.where(np.any(mask, axis=1), val, histo_location))
+
+    train_mask = train_histo_location[:,None] == map_from
+    val_mask = val_histo_location[:,None] == map_from
+
+    train_values = map_to[np.argmax(train_mask, axis=1)]
+    val_values = map_to[np.argmax(val_mask, axis=1)]
+
+    train_weights = ak.Array(np.where(np.any(train_mask, axis=1), train_values, train_histo_location))
+    val_weights = ak.Array(np.where(np.any(val_mask, axis=1), val_values, val_histo_location))
+    return torch.tensor(train_weights), torch.tensor(val_weights)
 
 
 def train_loop(
@@ -296,9 +306,8 @@ def trainModel(cfg: DictConfig) -> None:
         cfg=cfg.dataset,
     )
     if kind == "jet_regression":
-        weights_train = torch.tensor(get_weights(dataset_train))
+        weights_train, weights_validation = get_weights(dataset_train, dataset_validation)
         dataset_train.weight_tensors = weights_train
-        weights_validation = torch.tensor(get_weights(dataset_validation))
         dataset_validation.weight_tensors = weights_validation
 
     if kind == "binary_classification":
