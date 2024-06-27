@@ -76,8 +76,7 @@ def plot_energy_regression(sample_data, algorithm_info, cfg):
         if properties.load_from_json:
             with open(properties.json_metrics_path, 'rt') as in_file:
                 plotting_input.update(json.load(in_file)[algorithm])
-    json_output_path = output_path = os.path.join(cfg.output_dir, 'plotting_data.json')
-    g.save_to_json(plotting_input, json_output_path)
+
     plot_median_and_iqr(plotting_input, cfg)
     for algorithm in plotting_input.keys():
         for sample in cfg.comparison_samples:
