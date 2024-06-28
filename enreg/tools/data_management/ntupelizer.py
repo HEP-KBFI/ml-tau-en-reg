@@ -61,12 +61,12 @@ def calculate_p4(p_type: str, arrays: ak.Array):
     return particles, particle_p4
 
 
-def cluster_jets(particles_p4):
+def cluster_jets(particles_p4, min_pt=5.0):
     jetdef = fastjet.JetDefinition2Param(fastjet.ee_genkt_algorithm, 0.4, -1)
     cluster = fastjet.ClusterSequence(particles_p4, jetdef)
-    jets = vector.awk(cluster.inclusive_jets(min_pt=20.0))
+    jets = vector.awk(cluster.inclusive_jets(min_pt=min_pt))
     jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
-    constituent_index = ak.Array(cluster.constituent_index(min_pt=20.0))
+    constituent_index = ak.Array(cluster.constituent_index(min_pt=min_pt))
     print(f"clustered {len(jets)} jets")
     return jets, constituent_index
 
@@ -526,11 +526,11 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrays=arrays)
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     hepmc_events = load_events_from_hepmc(input_path)
-    reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4)
+    reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4, min_pt=5.0)
     # mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrays=arrays)
     # stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
     stable_mc_p4, stable_mc_particles = retrieve_hepmc_gen_particles(hepmc_events)
-    gen_jets, gen_jet_constituent_indices = cluster_jets(stable_mc_p4)
+    gen_jets, gen_jet_constituent_indices = cluster_jets(stable_mc_p4, min_pt=0.0)
     gen_jets, gen_jet_constituent_indices = filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles)
     reco_indices, gen_indices = get_matched_gen_jet_p4(reco_jets, gen_jets)
     reco_jet_constituent_indices = ak.from_iter([reco_jet_constituent_indices[i][idx] for i, idx in enumerate(reco_indices)])
