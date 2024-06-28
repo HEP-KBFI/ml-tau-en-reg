@@ -36,7 +36,7 @@ fraction_train: 0.8
 fraction_valid: 0.2
 
 dataset:
-  max_cands: 16
+  max_cands: 25
   use_lifetime: False
   min_jet_theta: 0.0
   max_jet_theta: 1000
