@@ -305,7 +305,7 @@ def trainModel(cfg: DictConfig) -> None:
         data=validation_data,
         cfg=cfg.dataset,
     )
-    if kind == "jet_regression":
+    if kind == "jet_regression" and cfg.training.apply_regression_weights:
         weights_train, weights_validation = get_weights(dataset_train, dataset_validation)
         dataset_train.weight_tensors = weights_train
         dataset_validation.weight_tensors = weights_validation

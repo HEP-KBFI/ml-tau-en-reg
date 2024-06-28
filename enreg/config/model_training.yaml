@@ -62,6 +62,7 @@ training:
   classweight_sig: 1
   classweight_bgr: 10
   use_class_weights: True
+  apply_regression_weights: False
   use_per_jet_weights: True
   use_focal_loss: True
   focal_loss_gamma: 2.0
