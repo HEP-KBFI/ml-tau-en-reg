@@ -20,6 +20,7 @@ $ du -csh /scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/*
 # Results
 ```
 $ du -csh /local/joosep/ml-tau-en-reg/results/240626_train_on_z/*/*/*
+
 7.9M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/LorentzNet
 11M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/ParticleTransformer
 7.5M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/SimpleDNN
@@ -38,6 +39,7 @@ $ du -csh /local/joosep/ml-tau-en-reg/results/240626_train_on_z/*/*/*
 9.3M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/jet_regression/LorentzNet
 12M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/jet_regression/ParticleTransformer
 8.6M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/jet_regression/SimpleDNN
+
 ```
 
 # Running
