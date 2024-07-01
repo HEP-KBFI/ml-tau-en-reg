@@ -310,7 +310,7 @@ def trainModel(cfg: DictConfig) -> None:
         dataset_train.weight_tensors = weights_train
         dataset_validation.weight_tensors = weights_validation
 
-    if kind == "binary_classification":
+    if kind == "binary_classification":  # What is this? The targets are set in the dataset already, no?
         training_targets = training_data.gen_jet_tau_decaymode == -1
         validation_targets = validation_data.gen_jet_tau_decaymode == -1
         if sum(training_targets) == 0 or sum(training_targets) == len(training_targets):
