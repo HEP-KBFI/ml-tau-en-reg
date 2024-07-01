@@ -8,19 +8,18 @@ git clone git@github.com:Laurits7/ml-tau-en-reg.git
 
 The latest merged ntuples for training are here:
 ```
-$ du -csh /scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/*
-390M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/qq_test.parquet
-1.6G	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/qq_train.parquet
-93M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/zh_test.parquet
-370M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/zh_train.parquet
-78M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/z_test.parquet
-312M	/scratch/persistent/joosep/ml-tau/20240625_all_2M_merged/z_train.parquet
+$ du -csh /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/*
+474M    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/qq_test.parquet
+1.9G    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/qq_train.parquet
+112M    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/zh_test.parquet
+445M    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/zh_train.parquet
+97M     /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/z_test.parquet
+386M    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/z_train.parquet
 ```
 
 # Results
 ```
 $ du -csh /local/joosep/ml-tau-en-reg/results/240626_train_on_z/*/*/*
-
 7.9M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/LorentzNet
 11M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/ParticleTransformer
 7.5M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/SimpleDNN

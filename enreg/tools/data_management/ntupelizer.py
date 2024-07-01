@@ -67,7 +67,8 @@ def cluster_jets(particles_p4, min_pt=5.0):
     jets = vector.awk(cluster.inclusive_jets(min_pt=min_pt))
     jets = vector.awk(ak.zip({"energy": jets["t"], "x": jets["x"], "y": jets["y"], "z": jets["z"]}))
     constituent_index = ak.Array(cluster.constituent_index(min_pt=min_pt))
-    print(f"clustered {len(jets)} jets")
+    njets = np.sum(ak.num(jets))
+    print(f"clustered {njets} jets")
     return jets, constituent_index
 
 
