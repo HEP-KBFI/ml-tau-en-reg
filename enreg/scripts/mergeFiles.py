@@ -41,9 +41,6 @@ def load_sample(path):
     for fi in tqdm.tqdm(list(glob.glob(path + "/*.parquet"))):
         ret = ak.from_parquet(fi, columns=columns)
         ret = ak.Array({k: ret[k] for k in ret.fields})
-
-        #apply a cut on minimum genjet pt
-        ret = ret[to_p4(ret["gen_jet_p4s"]).pt>10]
         data.append(ret)
     data = ak.concatenate(data)
 
@@ -70,7 +67,7 @@ if __name__ == "__main__":
         ("p8_ee_ZH_Htautau_ecm380", "zh"),
         ("p8_ee_Z_Ztautau_ecm380", "z")
     ]:
-        data = load_sample("/local/joosep/ml-tau-en-reg/ntuples/20240625_all_2M/" + sample_long)
+        data = load_sample("/local/joosep/ml-tau-en-reg/ntuples/20240701_lowered_ptcut/" + sample_long)
         data_train, data_test = split_train_test(data)
         ak.to_parquet(data_train, sample_short + "_train.parquet", row_group_size=1024)
         ak.to_parquet(data_test, sample_short + "_test.parquet", row_group_size=1024)
