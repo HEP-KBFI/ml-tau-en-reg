@@ -310,20 +310,6 @@ def trainModel(cfg: DictConfig) -> None:
         dataset_train.weight_tensors = weights_train
         dataset_validation.weight_tensors = weights_validation
 
-    if kind == "binary_classification":  # What is this? The targets are set in the dataset already, no?
-        training_targets = training_data.gen_jet_tau_decaymode == -1
-        validation_targets = validation_data.gen_jet_tau_decaymode == -1
-        if sum(training_targets) == 0 or sum(training_targets) == len(training_targets):
-            raise AssertionError((
-                "Training dataset should contain both signal and background samples."
-                f"Currently #Signal = {len(training_targets) - sum(training_targets)} and #BKG = {sum(training_targets)}"
-            ))
-        if sum(validation_targets) == 0 or sum(validation_targets) == len(validation_targets):
-            raise AssertionError((
-                "Validation dataset should contain both signal and background samples."
-                f"Currently #Signal = {len(validation_targets) - sum(validation_targets)} and #BKG = {sum(validation_targets)}"
-            ))
-
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device: {}".format(dev))
 
