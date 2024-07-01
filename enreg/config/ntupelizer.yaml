@@ -57,15 +57,15 @@ samples_to_process:
 samples:
   p8_ee_Z_Ztautau_ecm380:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240625_all_2M/p8_ee_Z_Ztautau_ecm380/
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240701_lowered_ptcut/p8_ee_Z_Ztautau_ecm380/
     is_signal: True
   p8_ee_ZH_Htautau_ecm380:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240625_all_2M/p8_ee_ZH_Htautau_ecm380/
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240701_lowered_ptcut/p8_ee_ZH_Htautau_ecm380/
     is_signal: True
   p8_ee_qq_ecm380:
     input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_qq_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240625_all_2M/p8_ee_qq_ecm380/
+    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240701_lowered_ptcut/p8_ee_qq_ecm380/
     is_signal: False
 validation:
   output_dir: $HOME/CLIC_ntuple_validation
