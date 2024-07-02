@@ -10,7 +10,7 @@ regression:
       Tight: 0.975
   algorithms:
     ParticleTransformer:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/jet_regression/ParticleTransformer/
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240701_lowered_ptcut_merged/v1/jet_regression/ParticleTransformer/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
@@ -18,7 +18,7 @@ regression:
       hatch: "//"
       color: "tab:purple"
     LorentzNet:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/jet_regression/LorentzNet/
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240701_lowered_ptcut_merged/v1/jet_regression/LorentzNet/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
@@ -26,7 +26,7 @@ regression:
       hatch: "//"
       color: "tab:green"
     SimpleDNN:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/jet_regression/SimpleDNN/
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240701_lowered_ptcut_merged/v1/jet_regression/SimpleDNN/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
