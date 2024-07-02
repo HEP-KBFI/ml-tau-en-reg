@@ -42,16 +42,24 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 import time
 
 def unpack_ParticleTransformer_data(X, dev):
+    # Kinematics
     cand_features = X["cand_features"].to(device=dev)
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev)
+
+    # Additional features
+
+    # Lifetimes
+
     return cand_features, cand_kinematics, mask
 
 def unpack_LorentzNet_data(X, dev):
+    # Kinematics
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     beam_kinematics = X["beam_kinematics"].to(device=dev)
     kinematics = torch.swapaxes(torch.concatenate([beam_kinematics, cand_kinematics], axis=-1), 1, 2)
-
+    
+    # Additional features
     cand_features = X["cand_features"].to(device=dev)
     beam_features = X["beam_features"].to(device=dev)
     scalars = torch.swapaxes(torch.concatenate([beam_features, cand_features], axis=-1), 1, 2)
@@ -59,14 +67,36 @@ def unpack_LorentzNet_data(X, dev):
     cand_mask = X["mask"].to(device=dev)
     beam_mask = X["beam_mask"].to(device=dev)
     mask = torch.swapaxes(torch.concatenate([beam_mask, cand_mask], axis=-1), 1, 2)
+    
+    # Lifetimes
+
     return kinematics, scalars, mask
 
 def unpack_SimpleDNN_data(X, dev):
+    # Kinematics
     cand_kinematics = torch.swapaxes(X["cand_kinematics"].to(device=dev), 1, 2)
     cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2)
+    print('\nX keys ',X.keys())
+    print('\nX beam fetures ',X['beam_features'][0])
+    print('\ncand_kinematics ',X["cand_kinematics"][0])
+    print('\ncand_kinematics ',cand_kinematics[0])
+    print('\ncand_features',cand_features[0])
+    print('\nreco_jet_pt ',X["reco_jet_pt"][0])
+    # Addiditonal features
+    
+    # Lifetimes
+    
     cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2)
     pfs = torch.concatenate([cand_kinematics, cand_features], axis=-1)
+    
     return pfs, cand_mask
+
+# Configure
+feature_set = ['kinematics', 'pdgs', 'lifetimes']
+
+# X keys dict_keys(['cand_kinematics', 'cand_features',
+#  'beam_kinematics', 'beam_features', 'beam_mask',
+#  'mask', 'reco_jet_pt'])
 
 dataset_unpackers = {
     "ParticleTransformer": unpack_ParticleTransformer_data,
