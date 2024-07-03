@@ -72,22 +72,22 @@ class ParticleTransformerDataset(Dataset):
             print("use_lifetime")
             # There is some problem with the lifetime variables as they do no exactly match the ones on CV implementation
             charge_mask = ak.values_astype(np.abs(self.data.reco_cand_charge) == 1, np.int64)
-            d0_mask = ak.values_astype(np.abs(self.data.reco_cand_d0) > -99, np.int64)
             dz_mask = ak.values_astype(np.abs(self.data.reco_cand_dz) > -99, np.int64)
-            total_mask = charge_mask * d0_mask * dz_mask
-            cand_features["cand_d0"] = (np.tanh(self.data.reco_cand_d0)) * total_mask
-            cand_features["cand_d0_err"] = (
-                np.tanh(self.data.reco_cand_d0)
-                / ak.max(
-                    ak.Array([0.01 * self.data.reco_cand_d0, self.data.reco_cand_d0_err]),
-                    axis=0,
-                )
-            ) * total_mask
+            dxy_mask = ak.values_astype(np.abs(self.data.reco_cand_dxy) > -99, np.int64)
+            total_mask = charge_mask * dxy_mask * dz_mask
             cand_features["cand_dz"] = (np.tanh(self.data.reco_cand_dz)) * total_mask
             cand_features["cand_dz_err"] = (
                 np.tanh(self.data.reco_cand_dz)
                 / ak.max(
                     ak.Array([0.01 * self.data.reco_cand_dz, self.data.reco_cand_dz_err]),
+                    axis=0,
+                )
+            ) * total_mask
+            cand_features["cand_dy"] = (np.tanh(self.data.reco_cand_dxy)) * total_mask
+            cand_features["cand_dxy_err"] = (
+                np.tanh(self.data.reco_cand_dxy)
+                / ak.max(
+                    ak.Array([0.01 * self.data.reco_cand_dxy, self.data.reco_cand_dxy_err]),
                     axis=0,
                 )
             ) * total_mask
@@ -99,13 +99,29 @@ class ParticleTransformerDataset(Dataset):
             "cand_en": jet_constituent_p4s.energy,
         })
 
+        cand_lifetimes = ak.Array({
+            "re_cand_dz": self.data.reco_cand_dz,
+            "re_cand_dz_err": self.data.reco_cand_dz_err,
+            "re_cand_dxy": self.data.reco_cand_dxy,
+            "re_cand_dxy_err": self.data.reco_cand_dxy_err
+        })
+
         print("creating padded tensors")
         cand_features_tensors = stack_and_pad_features(cand_features, self.cfg.max_cands)
         cand_kinematics_tensors = stack_and_pad_features(cand_kinematics, self.cfg.max_cands)
+        cand_lifetimes_tensors = stack_and_pad_features(cand_lifetimes, self.cfg.max_cands)
 
         self.cand_features_tensors = torch.tensor(cand_features_tensors, dtype=torch.float32)
         self.cand_kinematics_tensors = torch.tensor(cand_kinematics_tensors, dtype=torch.float32)
-        print("cand_features_tensors={} cand_kinematics_tensors={}".format(self.cand_features_tensors.shape, self.cand_kinematics_tensors.shape))
+        self.cand_lifetimes_tensors = torch.tensor(cand_lifetimes_tensors, dtype=torch.float32)
+        
+        print(
+            "cand_features_tensors={} cand_kinematics_tensors={} self.cand_lifetimes_tensors={}".format(
+                self.cand_features_tensors.shape,
+                self.cand_kinematics_tensors.shape,
+                self.cand_lifetimes_tensors.shape
+            )
+        )
 
         #for LorentzNet, add two additional fake particles (i.e. beams)
         #these are the Lorentz-invariant quantities and will be stacked with cand_kinematics in the network
@@ -164,6 +180,7 @@ class ParticleTransformerDataset(Dataset):
                 {
                     "cand_kinematics": self.cand_kinematics_tensors[idx],
                     "cand_features": self.cand_features_tensors[idx],
+                    "cand_lifetimes": self.cand_lifetimes_tensors[idx],
 
                     #for LorentzNet
                     "beam_kinematics": self.beams_kinematics_tensor[idx],
