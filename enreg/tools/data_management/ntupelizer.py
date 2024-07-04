@@ -1,8 +1,3 @@
-"""Script for ntupelizing the EDM4HEP dataformat to ML friendly format. To run the script in our singularity image:
-           ./scripts/run-env.sh  src/edm4hep_to_ntuple.py [args]
-Call with 'python3'
-"""
-
 import os
 import numba
 import uproot
@@ -11,16 +6,10 @@ import pyhepmc
 import fastjet
 import numpy as np
 import awkward as ak
+import bz2
 from particle import pdgid
 from enreg.tools import general as g
 from enreg.tools.data_management import lifeTimeTools as lt
-
-os.environ["OMP_NUM_THREADS"]="1"
-os.environ["OPENBLAS_NUM_THREADS"]="1"
-os.environ["MKL_NUM_THREADS"]="1"
-os.environ["VECLIB_MAXIMUM_THREADS"]="1"
-os.environ["NUMEXPR_NUM_THREADS"]="1"
-
 
 def load_single_file_contents(
     path: str,
@@ -476,11 +465,14 @@ def match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets):
 
 
 def load_events_from_hepmc(root_file_path: str):
-    hepmc_file_path  = root_file_path.replace(".root", ".hepmc").replace("reco_", "sim_")
+    # Example input files
+    # Key4HEP ROOT file: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/root/reco_p8_ee_ZH_Htautau_ecm380_200001.root
+    # HEPMC file: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/sim/sim_p8_ee_ZH_Htautau_ecm380_200001.bz2
+    hepmc_file_path  = root_file_path.replace("/root/","/sim/").replace(".root", ".hepmc.bz2").replace("reco_", "sim_")
     events = []
     if not os.path.exists(hepmc_file_path):
         print(f"Incorrect path for the .hepmc file: {hepmc_file_path}")
-    with pyhepmc.open(hepmc_file_path) as f:
+    with pyhepmc.open(bz2.BZ2File(hepmc_file_path, "rb")) as f:
         for event in f:
             events.append(event)
     return events
@@ -526,10 +518,9 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     arrays = load_single_file_contents(input_path, tree_path, branches)
     reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrays=arrays)
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
+    #Get the generator-level truth from the HepMC file corresponding to the Key4HEP ROOT file
     hepmc_events = load_events_from_hepmc(input_path)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4, min_pt=5.0)
-    # mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrays=arrays)
-    # stable_mc_p4, stable_mc_particles = get_stable_mc_particles(mc_particles, mc_p4)
     stable_mc_p4, stable_mc_particles = retrieve_hepmc_gen_particles(hepmc_events)
     gen_jets, gen_jet_constituent_indices = cluster_jets(stable_mc_p4, min_pt=0.0)
     gen_jets, gen_jet_constituent_indices = filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles)
@@ -544,10 +535,6 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
         gen_tau_jet_info = retrieve_hepmc_gen_tau_info(hepmc_events, gen_jets)
     else:
         gen_tau_jet_info = no_tau_genjet_matching(gen_jets)
-
-    # reco_particle_genPDG = get_genmatched_reco_particles_properties(reco_p4, mc_p4, reco_particles, mc_particles)  # Why matching mc_particles, not stable_mc_particles
-
-    # jet_parton_PDGs = match_Z_parton_to_reco_jet(mc_particles, mc_p4, reco_jets)  # Why matching mc_particles, not stable_mc_particles
 
     event_reco_cand_p4s = ak.from_iter([[reco_p4[j] for i in range(len(reco_jets[j]))] for j in range(len(reco_jets))])
     event_lifetime_infos = ak.from_iter([lt.findTrackPCAs(arrays, i) for i in range(len(reco_p4))])

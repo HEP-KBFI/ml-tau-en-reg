@@ -74,7 +74,7 @@ def prepare_inputs(cfg: DictConfig):
         output_dir = cfg.samples[sample_name].output_dir
         input_dir = cfg.samples[sample_name].input_dir
         os.makedirs(output_dir, exist_ok=True)
-        input_wcp = os.path.join(input_dir, "*.root")
+        input_wcp = os.path.join(input_dir, "root", "*.root")
         
         #divide the input list into chunks of files_per_job
         #each chunk of N input files will yield exactly one output file 
@@ -91,6 +91,13 @@ def prepare_inputs(cfg: DictConfig):
 
 @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
 def main(cfg: DictConfig) -> None:
+    import os
+    os.environ["OMP_NUM_THREADS"]="1"
+    os.environ["OPENBLAS_NUM_THREADS"]="1"
+    os.environ["MKL_NUM_THREADS"]="1"
+    os.environ["VECLIB_MAXIMUM_THREADS"]="1"
+    os.environ["NUMEXPR_NUM_THREADS"]="1"
+
     print("Working directory : {}".format(os.getcwd()))
 
     if cfg.slurm_run:
