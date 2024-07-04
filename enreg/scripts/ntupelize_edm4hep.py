@@ -74,7 +74,7 @@ def prepare_inputs(cfg: DictConfig):
         output_dir = cfg.samples[sample_name].output_dir
         input_dir = cfg.samples[sample_name].input_dir
         os.makedirs(output_dir, exist_ok=True)
-        input_wcp = os.path.join(input_dir, "*.root")
+        input_wcp = os.path.join(input_dir, "root", "*.root")
         
         #divide the input list into chunks of files_per_job
         #each chunk of N input files will yield exactly one output file 
