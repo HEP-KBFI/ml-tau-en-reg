@@ -85,37 +85,35 @@ def unpack_LorentzNet_data(X, dev):
         return kinematics, scalars, mask
 
 
-def unpack_SimpleDNN_data(X, dev):
-    # Kinematics
-    cand_kinematics = torch.swapaxes(X["cand_kinematics"].to(device=dev), 1, 2)
-    cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2)
+def unpack_SimpleDNN_data(X, dev, feature_set):
+    # Kinematics are a default option
+    cand_kinematics = torch.swapaxes(X["cand_kinematics"].to(device=dev), 1, 2) # [1024, 16, 4]
+    cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2) # [1024, 16, 1]
     print('\nX keys', X.keys())
     print('\ncand kin', cand_kinematics.shape,'\n')
-    print('\nmask shape', cand_mask.shape,'\n')
+    print('\ncand mask shape', cand_mask.shape,'\n')
     
     # Additional features
     #if ('pdgs' in feature_set and l == 2):
-    cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2)
+    cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2) # [1024, 16, 13]
     print('\ncand feats', cand_features.shape,'\n')
-    pfs = torch.cat([cand_kinematics, cand_features], axis=-1)
+    pfs = torch.cat([cand_kinematics, cand_features], axis=-1) # [1024, 16, 17]
     print('\npfs', pfs.shape,'\n')
     #return pfs, cand_mask
     
     # Lifetimes
-    if ('lifetimes' in feature_set and l == 3):
-        cand_lifetimes = torch.swapaxes(X["cand_lifetimes"].to(device=dev), 1, 2)
+    if ('lifetimes' in feature_set):
+        cand_lifetimes = torch.swapaxes(X["cand_lifetimes"].to(device=dev), 1, 2) # [1024, 16, 4]
         print('\nLIFETIMES', cand_lifetimes.shape,'\n')
-        pfs = torch.cat([pfs, cand_lifetimes], axis=-1)
+        pfs = torch.cat([pfs, cand_lifetimes], axis=-1) #[1024, 16, 21]
+        print('\n lifetimes pfs',pfs.shape,'\n')
         return pfs, cand_mask
     
     return cand_kinematics, cand_mask
-    
 
 # X keys dict_keys(['cand_kinematics', 'cand_features', 'cand_lifetimes',
 #  'beam_kinematics', 'beam_features', 'beam_mask',
 #  'mask', 'reco_jet_pt'])
-feature_set = ['kinematics','pdgs','lifetimes']
-l = len(feature_set)
 
 dataset_unpackers = {
     "ParticleTransformer": unpack_ParticleTransformer_data,
@@ -178,6 +176,7 @@ def train_loop(
     lr_scheduler,
     tensorboard,
     dataset_unpacker,
+    feature_set,
     num_classes,
     kind="jet_regression",
     train=True,
@@ -216,7 +215,7 @@ def train_loop(
         # Compute prediction and loss
         if transform:
             X = transform(X)
-        model_inputs = dataset_unpacker(X, dev)
+        model_inputs = dataset_unpacker(X, dev, feature_set)
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
@@ -315,6 +314,8 @@ def trainModel(cfg: DictConfig) -> None:
     #because we are doing plots for tensorboard, we don't want anything to crash
     plt.switch_backend('agg')
 
+    feature_set = cfg.dataset.feature_set
+    print("\nUsing features: ", feature_set,'\n')
     print("<trainModel>:")
 
     kind = cfg.training_type
@@ -364,7 +365,7 @@ def trainModel(cfg: DictConfig) -> None:
 
     print("Building model...")
     input_dim = model_config.input_dim
-    if cfg.dataset.use_lifetime:
+    if cfg.dataset.use_lifetime: # sus
         input_dim += 4
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
@@ -389,8 +390,8 @@ def trainModel(cfg: DictConfig) -> None:
             c_weight=cfg.models.LorentzNet.hyperparameters.c_weight,
             verbosity=cfg.verbosity,
         ).to(device=dev)
-    elif cfg.model_type == "SimpleDNN":
-        if ('lifetimes' in feature_set and l == 3):
+    elif cfg.model_type == "SimpleDNN": # Input dim changes 
+        if ('lifetimes' in feature_set):
             input_dim = 21
         model = DeepSet(input_dim, num_classes).to(device=dev)
 
@@ -498,6 +499,7 @@ def trainModel(cfg: DictConfig) -> None:
                 lr_scheduler,
                 tensorboard,
                 dataset_unpackers[cfg.model_type],
+                feature_set,
                 num_classes,
                 kind=kind
             )
@@ -517,9 +519,10 @@ def trainModel(cfg: DictConfig) -> None:
                     None,
                     tensorboard,
                     dataset_unpackers[cfg.model_type],
+                    feature_set,
                     num_classes,
                     kind=kind,
-                    train=False
+                    train=False,
                 )
 
             losses_train.append(loss_train)
@@ -565,7 +568,7 @@ def trainModel(cfg: DictConfig) -> None:
             preds = []
             targets = []
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
-                model_inputs = dataset_unpackers[cfg.model_type](X, dev)
+                model_inputs = dataset_unpackers[cfg.model_type](X, dev, feature_set)
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":
