@@ -6,16 +6,10 @@ import pyhepmc
 import fastjet
 import numpy as np
 import awkward as ak
+import bz2
 from particle import pdgid
 from enreg.tools import general as g
 from enreg.tools.data_management import lifeTimeTools as lt
-
-os.environ["OMP_NUM_THREADS"]="1"
-os.environ["OPENBLAS_NUM_THREADS"]="1"
-os.environ["MKL_NUM_THREADS"]="1"
-os.environ["VECLIB_MAXIMUM_THREADS"]="1"
-os.environ["NUMEXPR_NUM_THREADS"]="1"
-
 
 def load_single_file_contents(
     path: str,

@@ -91,6 +91,13 @@ def prepare_inputs(cfg: DictConfig):
 
 @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)
 def main(cfg: DictConfig) -> None:
+    import os
+    os.environ["OMP_NUM_THREADS"]="1"
+    os.environ["OPENBLAS_NUM_THREADS"]="1"
+    os.environ["MKL_NUM_THREADS"]="1"
+    os.environ["VECLIB_MAXIMUM_THREADS"]="1"
+    os.environ["NUMEXPR_NUM_THREADS"]="1"
+
     print("Working directory : {}".format(os.getcwd()))
 
     if cfg.slurm_run:
