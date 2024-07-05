@@ -25,7 +25,7 @@ regression:
       marker: "v"
       hatch: "//"
       color: "tab:green"
-    SimpleDNN:
+    DeepSet:
       ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240701_lowered_ptcut_merged/v1/jet_regression/SimpleDNN/
       json_metrics_path: plotting_data.json
       load_from_json: False
