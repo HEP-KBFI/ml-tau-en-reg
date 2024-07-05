@@ -41,7 +41,7 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 import time
 
-def unpack_ParticleTransformer_data(X, dev):
+def unpack_ParticleTransformer_data(X, dev, feature_set):
     # Kinematics
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     
@@ -52,14 +52,14 @@ def unpack_ParticleTransformer_data(X, dev):
     return cand_features, cand_kinematics, mask
     # Lifetimes
 
-def unpack_LorentzNet_data(X, dev):
+def unpack_LorentzNet_data(X, dev, feature_set):
     # Kinematics
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     beam_kinematics = X["beam_kinematics"].to(device=dev)
     kinematics = torch.swapaxes(torch.cat([beam_kinematics, cand_kinematics], axis=-1), 1, 2)
     
     # Additional features
-    if 'pdgs' in feature_set:
+    if 'additional' in feature_set:
         cand_features = X["cand_features"].to(device=dev)
         beam_features = X["beam_features"].to(device=dev)
         scalars = torch.swapaxes(torch.cat([beam_features, cand_features], axis=-1), 1, 2)
@@ -70,7 +70,7 @@ def unpack_LorentzNet_data(X, dev):
         return kinematics, scalars, mask
     
     # Lifetimes
-    if ('lifetimes' and 'pdgs') in feature_set:
+    if ('lifetimes' and 'additional') in feature_set:
         cand_features = X["cand_features"].to(device=dev)
         beam_features = X["beam_features"].to(device=dev)
         scalars = torch.swapaxes(torch.cat([beam_features, cand_features], axis=-1), 1, 2)
@@ -89,31 +89,28 @@ def unpack_SimpleDNN_data(X, dev, feature_set):
     # Kinematics are a default option
     cand_kinematics = torch.swapaxes(X["cand_kinematics"].to(device=dev), 1, 2) # [1024, 16, 4]
     cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2) # [1024, 16, 1]
-    print('\nX keys', X.keys())
-    print('\ncand kin', cand_kinematics.shape,'\n')
-    print('\ncand mask shape', cand_mask.shape,'\n')
+    #print('\nX keys', X.keys())
+    #print('\ncand kin', cand_kinematics.shape,'\n')
+    #print('\ncand mask shape', cand_mask.shape,'\n')
     
     # Additional features
-    #if ('pdgs' in feature_set and l == 2):
-    cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2) # [1024, 16, 13]
-    print('\ncand feats', cand_features.shape,'\n')
-    pfs = torch.cat([cand_kinematics, cand_features], axis=-1) # [1024, 16, 17]
-    print('\npfs', pfs.shape,'\n')
-    #return pfs, cand_mask
+    if ('additional' in feature_set and len(feature_set) == 2):
+        cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2) # [1024, 16, 13]
+        pfs = torch.cat([cand_kinematics, cand_features], axis=-1) # [1024, 16, 17]
+        #print('\ncand feats', cand_features.shape,'\n')
+        #print('\npfs', pfs.shape,'\n')
+        return pfs, cand_mask
     
     # Lifetimes
-    if ('lifetimes' in feature_set):
+    if ('lifetimes' in feature_set and len(feature_set) == 3):
         cand_lifetimes = torch.swapaxes(X["cand_lifetimes"].to(device=dev), 1, 2) # [1024, 16, 4]
-        print('\nLIFETIMES', cand_lifetimes.shape,'\n')
-        pfs = torch.cat([pfs, cand_lifetimes], axis=-1) #[1024, 16, 21]
-        print('\n lifetimes pfs',pfs.shape,'\n')
+        cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2) # [1024, 16, 13]
+        pfs = torch.cat([cand_kinematics, cand_features, cand_lifetimes], axis=-1) #[1024, 16, 21]
+        #print('\nLIFETIMES', cand_lifetimes.shape,'\n')
+        #print('\n lifetimes pfs', pfs.shape,'\n')
         return pfs, cand_mask
     
     return cand_kinematics, cand_mask
-
-# X keys dict_keys(['cand_kinematics', 'cand_features', 'cand_lifetimes',
-#  'beam_kinematics', 'beam_features', 'beam_mask',
-#  'mask', 'reco_jet_pt'])
 
 dataset_unpackers = {
     "ParticleTransformer": unpack_ParticleTransformer_data,
@@ -391,8 +388,15 @@ def trainModel(cfg: DictConfig) -> None:
             verbosity=cfg.verbosity,
         ).to(device=dev)
     elif cfg.model_type == "SimpleDNN": # Input dim changes 
-        if ('lifetimes' in feature_set):
+        if 'lifetimes' in feature_set and len(feature_set) == 3:
             input_dim = 21
+        elif ('additional' in feature_set and len(feature_set) == 2):
+            input_dim = 17
+        elif ('kinematics' in feature_set and len(feature_set) == 1):
+            input_dim = 4
+        else:
+            raise ValueError("Unsupported feature_set configuration for SimpleDNN model.")
+            
         model = DeepSet(input_dim, num_classes).to(device=dev)
 
     initWeights(model)

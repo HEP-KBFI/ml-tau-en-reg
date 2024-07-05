@@ -42,7 +42,10 @@ dataset:
   max_jet_theta: 1000
   min_jet_pt: 0
   max_jet_pt: 1000
-  feature_set: ['kinematics','pdgs','lifetimes']
+  feature_set:
+    - kinematics
+    - additional
+    - lifetimes
 
   #for LorentzNet
   beams:
