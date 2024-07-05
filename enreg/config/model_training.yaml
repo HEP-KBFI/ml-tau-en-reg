@@ -43,9 +43,9 @@ dataset:
   min_jet_pt: 0
   max_jet_pt: 1000
   feature_set:
-    - kinematics
-    - additional
-    - lifetimes
+    - cand_kinematics
+    - cand_features
+    - cand_lifetimes
 
   #for LorentzNet
   beams:

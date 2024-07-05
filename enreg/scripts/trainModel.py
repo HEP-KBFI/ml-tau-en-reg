@@ -86,31 +86,16 @@ def unpack_LorentzNet_data(X, dev, feature_set):
 
 
 def unpack_SimpleDNN_data(X, dev, feature_set):
-    # Kinematics are a default option
-    cand_kinematics = torch.swapaxes(X["cand_kinematics"].to(device=dev), 1, 2) # [1024, 16, 4]
-    cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2) # [1024, 16, 1]
-    #print('\nX keys', X.keys())
-    #print('\ncand kin', cand_kinematics.shape,'\n')
-    #print('\ncand mask shape', cand_mask.shape,'\n')
+    # Create a dictionary for each feature
+    features_as_dict = {
+        feature: torch.swapaxes(X[feature].to(device=dev), 1, 2) for feature in feature_set
+    }
+    cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2)
     
-    # Additional features
-    if ('additional' in feature_set and len(feature_set) == 2):
-        cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2) # [1024, 16, 13]
-        pfs = torch.cat([cand_kinematics, cand_features], axis=-1) # [1024, 16, 17]
-        #print('\ncand feats', cand_features.shape,'\n')
-        #print('\npfs', pfs.shape,'\n')
-        return pfs, cand_mask
+    # Concatenate chosen features
+    pfs = torch.cat([features_as_dict[feat] for feat in feature_set], axis=-1)
     
-    # Lifetimes
-    if ('lifetimes' in feature_set and len(feature_set) == 3):
-        cand_lifetimes = torch.swapaxes(X["cand_lifetimes"].to(device=dev), 1, 2) # [1024, 16, 4]
-        cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2) # [1024, 16, 13]
-        pfs = torch.cat([cand_kinematics, cand_features, cand_lifetimes], axis=-1) #[1024, 16, 21]
-        #print('\nLIFETIMES', cand_lifetimes.shape,'\n')
-        #print('\n lifetimes pfs', pfs.shape,'\n')
-        return pfs, cand_mask
-    
-    return cand_kinematics, cand_mask
+    return pfs, cand_mask
 
 dataset_unpackers = {
     "ParticleTransformer": unpack_ParticleTransformer_data,
@@ -388,14 +373,13 @@ def trainModel(cfg: DictConfig) -> None:
             verbosity=cfg.verbosity,
         ).to(device=dev)
     elif cfg.model_type == "SimpleDNN": # Input dim changes 
-        if 'lifetimes' in feature_set and len(feature_set) == 3:
-            input_dim = 21
-        elif ('additional' in feature_set and len(feature_set) == 2):
-            input_dim = 17
-        elif ('kinematics' in feature_set and len(feature_set) == 1):
-            input_dim = 4
-        else:
-            raise ValueError("Unsupported feature_set configuration for SimpleDNN model.")
+        input_dim = 0
+        if 'cand_kinematics' in feature_set:
+            input_dim += 4
+        if 'cand_features' in feature_set:
+            input_dim += 13
+        if 'cand_lifetimes' in feature_set:
+            input_dim += 4
             
         model = DeepSet(input_dim, num_classes).to(device=dev)
 
