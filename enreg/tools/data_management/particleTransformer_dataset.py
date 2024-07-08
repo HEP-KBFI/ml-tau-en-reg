@@ -72,22 +72,22 @@ class ParticleTransformerDataset(Dataset):
             print("use_lifetime")
             # There is some problem with the lifetime variables as they do no exactly match the ones on CV implementation
             charge_mask = ak.values_astype(np.abs(self.data.reco_cand_charge) == 1, np.int64)
+            d0_mask = ak.values_astype(np.abs(self.data.reco_cand_d0) > -99, np.int64)
             dz_mask = ak.values_astype(np.abs(self.data.reco_cand_dz) > -99, np.int64)
-            dxy_mask = ak.values_astype(np.abs(self.data.reco_cand_dxy) > -99, np.int64)
-            total_mask = charge_mask * dxy_mask * dz_mask
+            total_mask = charge_mask * d0_mask * dz_mask
+            cand_features["cand_d0"] = (np.tanh(self.data.reco_cand_d0)) * total_mask
+            cand_features["cand_d0_err"] = (
+                np.tanh(self.data.reco_cand_d0)
+                / ak.max(
+                    ak.Array([0.01 * self.data.reco_cand_d0, self.data.reco_cand_d0_err]),
+                    axis=0,
+                )
+            ) * total_mask
             cand_features["cand_dz"] = (np.tanh(self.data.reco_cand_dz)) * total_mask
             cand_features["cand_dz_err"] = (
                 np.tanh(self.data.reco_cand_dz)
                 / ak.max(
                     ak.Array([0.01 * self.data.reco_cand_dz, self.data.reco_cand_dz_err]),
-                    axis=0,
-                )
-            ) * total_mask
-            cand_features["cand_dy"] = (np.tanh(self.data.reco_cand_dxy)) * total_mask
-            cand_features["cand_dxy_err"] = (
-                np.tanh(self.data.reco_cand_dxy)
-                / ak.max(
-                    ak.Array([0.01 * self.data.reco_cand_dxy, self.data.reco_cand_dxy_err]),
                     axis=0,
                 )
             ) * total_mask

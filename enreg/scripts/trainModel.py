@@ -42,47 +42,25 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 import time
 
 def unpack_ParticleTransformer_data(X, dev, feature_set):
-    # Kinematics
-    cand_kinematics = X["cand_kinematics"].to(device=dev)
-    
-    # Additional features
     cand_features = X["cand_features"].to(device=dev)
-    
+    cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev)
     return cand_features, cand_kinematics, mask
-    # Lifetimes
 
 def unpack_LorentzNet_data(X, dev, feature_set):
-    # Kinematics
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     beam_kinematics = X["beam_kinematics"].to(device=dev)
-    kinematics = torch.swapaxes(torch.cat([beam_kinematics, cand_kinematics], axis=-1), 1, 2)
-    
-    # Additional features
-    if 'additional' in feature_set:
-        cand_features = X["cand_features"].to(device=dev)
-        beam_features = X["beam_features"].to(device=dev)
-        scalars = torch.swapaxes(torch.cat([beam_features, cand_features], axis=-1), 1, 2)
-        
-        cand_mask = X["mask"].to(device=dev)
-        beam_mask = X["beam_mask"].to(device=dev)
-        mask = torch.swapaxes(torch.cat([beam_mask, cand_mask], axis=-1), 1, 2)
-        return kinematics, scalars, mask
-    
-    # Lifetimes
-    if ('lifetimes' and 'additional') in feature_set:
-        cand_features = X["cand_features"].to(device=dev)
-        beam_features = X["beam_features"].to(device=dev)
-        scalars = torch.swapaxes(torch.cat([beam_features, cand_features], axis=-1), 1, 2)
-        
-        cand_mask = X["mask"].to(device=dev)
-        beam_mask = X["beam_mask"].to(device=dev)
-        mask = torch.swapaxes(torch.cat([beam_mask, cand_mask], axis=-1), 1, 2)
+    kinematics = torch.swapaxes(torch.concatenate([beam_kinematics, cand_kinematics], axis=-1), 1, 2)
 
-        cand_lifetimes = X["cand_lifetimes"].to(device=dev)
-        print('\nLIFETIMES',cand_lifetimes.shape(),'\n')
+    cand_features = X["cand_features"].to(device=dev)
+    beam_features = X["beam_features"].to(device=dev)
+    scalars = torch.swapaxes(torch.concatenate([beam_features, cand_features], axis=-1), 1, 2)
 
-        return kinematics, scalars, mask
+    cand_mask = X["mask"].to(device=dev)
+    beam_mask = X["beam_mask"].to(device=dev)
+    mask = torch.swapaxes(torch.concatenate([beam_mask, cand_mask], axis=-1), 1, 2)
+    return kinematics, scalars, mask
+
 
 
 def unpack_SimpleDNN_data(X, dev, feature_set):
@@ -347,7 +325,7 @@ def trainModel(cfg: DictConfig) -> None:
 
     print("Building model...")
     input_dim = model_config.input_dim
-    if cfg.dataset.use_lifetime: # sus
+    if cfg.dataset.use_lifetime:
         input_dim += 4
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
