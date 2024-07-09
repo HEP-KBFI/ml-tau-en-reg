@@ -99,13 +99,29 @@ class ParticleTransformerDataset(Dataset):
             "cand_en": jet_constituent_p4s.energy,
         })
 
+        cand_lifetimes = ak.Array({
+            "re_cand_dz": self.data.reco_cand_dz,
+            "re_cand_dz_err": self.data.reco_cand_dz_err,
+            "re_cand_dxy": self.data.reco_cand_dxy,
+            "re_cand_dxy_err": self.data.reco_cand_dxy_err
+        })
+
         print("creating padded tensors")
         cand_features_tensors = stack_and_pad_features(cand_features, self.cfg.max_cands)
         cand_kinematics_tensors = stack_and_pad_features(cand_kinematics, self.cfg.max_cands)
+        cand_lifetimes_tensors = stack_and_pad_features(cand_lifetimes, self.cfg.max_cands)
 
         self.cand_features_tensors = torch.tensor(cand_features_tensors, dtype=torch.float32)
         self.cand_kinematics_tensors = torch.tensor(cand_kinematics_tensors, dtype=torch.float32)
-        print("cand_features_tensors={} cand_kinematics_tensors={}".format(self.cand_features_tensors.shape, self.cand_kinematics_tensors.shape))
+        self.cand_lifetimes_tensors = torch.tensor(cand_lifetimes_tensors, dtype=torch.float32)
+        
+        print(
+            "cand_features_tensors={} cand_kinematics_tensors={} self.cand_lifetimes_tensors={}".format(
+                self.cand_features_tensors.shape,
+                self.cand_kinematics_tensors.shape,
+                self.cand_lifetimes_tensors.shape
+            )
+        )
 
         #for LorentzNet, add two additional fake particles (i.e. beams)
         #these are the Lorentz-invariant quantities and will be stacked with cand_kinematics in the network
@@ -164,6 +180,7 @@ class ParticleTransformerDataset(Dataset):
                 {
                     "cand_kinematics": self.cand_kinematics_tensors[idx],
                     "cand_features": self.cand_features_tensors[idx],
+                    "cand_lifetimes": self.cand_lifetimes_tensors[idx],
 
                     #for LorentzNet
                     "beam_kinematics": self.beams_kinematics_tensor[idx],

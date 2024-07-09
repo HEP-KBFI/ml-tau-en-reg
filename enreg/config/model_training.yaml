@@ -42,6 +42,10 @@ dataset:
   max_jet_theta: 1000
   min_jet_pt: 0
   max_jet_pt: 1000
+  feature_set:
+    - cand_kinematics
+    - cand_features
+    - cand_lifetimes
 
   #for LorentzNet
   beams:

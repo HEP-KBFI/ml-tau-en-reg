@@ -41,13 +41,13 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 import time
 
-def unpack_ParticleTransformer_data(X, dev):
+def unpack_ParticleTransformer_data(X, dev, feature_set):
     cand_features = X["cand_features"].to(device=dev)
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev)
     return cand_features, cand_kinematics, mask
 
-def unpack_LorentzNet_data(X, dev):
+def unpack_LorentzNet_data(X, dev, feature_set):
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     beam_kinematics = X["beam_kinematics"].to(device=dev)
     kinematics = torch.swapaxes(torch.concatenate([beam_kinematics, cand_kinematics], axis=-1), 1, 2)
@@ -61,11 +61,18 @@ def unpack_LorentzNet_data(X, dev):
     mask = torch.swapaxes(torch.concatenate([beam_mask, cand_mask], axis=-1), 1, 2)
     return kinematics, scalars, mask
 
-def unpack_SimpleDNN_data(X, dev):
-    cand_kinematics = torch.swapaxes(X["cand_kinematics"].to(device=dev), 1, 2)
-    cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2)
+
+
+def unpack_SimpleDNN_data(X, dev, feature_set):
+    # Create a dictionary for each feature
+    features_as_dict = {
+        feature: torch.swapaxes(X[feature].to(device=dev), 1, 2) for feature in feature_set
+    }
     cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2)
-    pfs = torch.concatenate([cand_kinematics, cand_features], axis=-1)
+    
+    # Concatenate chosen features
+    pfs = torch.cat([features_as_dict[feat] for feat in feature_set], axis=-1)
+    
     return pfs, cand_mask
 
 dataset_unpackers = {
@@ -129,6 +136,7 @@ def train_loop(
     lr_scheduler,
     tensorboard,
     dataset_unpacker,
+    feature_set,
     num_classes,
     kind="jet_regression",
     train=True,
@@ -167,7 +175,7 @@ def train_loop(
         # Compute prediction and loss
         if transform:
             X = transform(X)
-        model_inputs = dataset_unpacker(X, dev)
+        model_inputs = dataset_unpacker(X, dev, feature_set)
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
@@ -266,6 +274,8 @@ def trainModel(cfg: DictConfig) -> None:
     #because we are doing plots for tensorboard, we don't want anything to crash
     plt.switch_backend('agg')
 
+    feature_set = cfg.dataset.feature_set
+    print("\nUsing features: ", feature_set,'\n')
     print("<trainModel>:")
 
     kind = cfg.training_type
@@ -340,7 +350,15 @@ def trainModel(cfg: DictConfig) -> None:
             c_weight=cfg.models.LorentzNet.hyperparameters.c_weight,
             verbosity=cfg.verbosity,
         ).to(device=dev)
-    elif cfg.model_type == "SimpleDNN":
+    elif cfg.model_type == "SimpleDNN": # Input dim changes 
+        input_dim = 0
+        if 'cand_kinematics' in feature_set:
+            input_dim += 4
+        if 'cand_features' in feature_set:
+            input_dim += 13
+        if 'cand_lifetimes' in feature_set:
+            input_dim += 4
+            
         model = DeepSet(input_dim, num_classes).to(device=dev)
 
     initWeights(model)
@@ -447,6 +465,7 @@ def trainModel(cfg: DictConfig) -> None:
                 lr_scheduler,
                 tensorboard,
                 dataset_unpackers[cfg.model_type],
+                feature_set,
                 num_classes,
                 kind=kind
             )
@@ -466,9 +485,10 @@ def trainModel(cfg: DictConfig) -> None:
                     None,
                     tensorboard,
                     dataset_unpackers[cfg.model_type],
+                    feature_set,
                     num_classes,
                     kind=kind,
-                    train=False
+                    train=False,
                 )
 
             losses_train.append(loss_train)
@@ -514,7 +534,7 @@ def trainModel(cfg: DictConfig) -> None:
             preds = []
             targets = []
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
-                model_inputs = dataset_unpackers[cfg.model_type](X, dev)
+                model_inputs = dataset_unpackers[cfg.model_type](X, dev, feature_set)
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":
