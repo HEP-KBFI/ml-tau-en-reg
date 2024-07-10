@@ -1,3 +1,4 @@
+import math
 import torch
 from torch import nn
 from typing import Tuple
@@ -211,13 +212,40 @@ class LorentzNet(nn.Module):
 
         self.verbosity = verbosity
 
-    def forward(self, x: torch.Tensor, scalars: torch.Tensor, node_mask: torch.Tensor) -> torch.Tensor:
+        self.beams_mass = 1
+        self.beam1_p4 = [math.sqrt(1 + self.beams_mass**2), 0.0, 0.0, +1.0]
+        self.beam2_p4 = [math.sqrt(1 + self.beams_mass**2), 0.0, 0.0, -1.0]
+
+    def forward(self, cand_features, cand_kinematics, cand_mask) -> torch.Tensor:
+        # cand_features: (N=num_batches, C=num_features, P=num_particles)
+        # cand_kinematics_pxpypze: (N, 4, P) [px,py,pz,energy]
+        # cand_mask: (N, 1, P) -- real particle = 1, padded = 0
+
+        cand_kinematics = torch.swapaxes(cand_kinematics, 1, 2) #(N, 4, P) -> (N, P, 4)
+        cand_features = torch.swapaxes(cand_features, 1, 2) #(N, C, P) -> (N, P, C)
+        cand_mask = torch.swapaxes(cand_mask, 1, 2) #(N, 1, P) -> (N, P, 1)
+
+        batch_size = cand_features.shape[0]
+        num_features = cand_features.shape[2]
+
+        #add two fake "beam" particles are required by LorentzNet
+        #(N, P, 4) -> (N, P+2, 4)
+        beams_kinematics_tensor = torch.tensor([[self.beam1_p4, self.beam2_p4]], dtype=torch.float32).to(cand_kinematics.device).expand(batch_size, 2, 4)
+        cand_kinematics = torch.concatenate([beams_kinematics_tensor, cand_kinematics], axis=1)
+
+        #(N, P, C) -> (N, P+2, C)
+        beam_features = torch.nn.functional.pad(torch.tensor([[+1.0, -1.0]]), (0, 0, 0, num_features-1)).to(cand_kinematics.device).expand(batch_size, num_features, 2).swapaxes(1,2)
+        cand_features = torch.concatenate([beam_features, cand_features], axis=1)
+
+        #(N, P, 1) -> (N, P+2, 1)
+        beams_mask = torch.ones((batch_size, 2, 1), dtype=torch.float32).to(cand_kinematics)
+        cand_mask = torch.concatenate([beams_mask, cand_mask], axis=1)
 
         #embed the per-particle non Lorentz invariant quantities (scalars)
-        h = self.embedding(scalars)
+        h = self.embedding(cand_features)
 
         #create particle-to-particle "edges" within each jet with all-to-all connections
-        n_particles = x.size(dim=1)
+        n_particles = cand_kinematics.size(dim=1)
         edges = torch.ones(n_particles, n_particles, dtype=torch.long, device=h.device)
         edges_above_diag = torch.triu(edges, diagonal=1)
         edges_below_diag = torch.tril(edges, diagonal=-1)
@@ -230,8 +258,8 @@ class LorentzNet(nn.Module):
         edgej = edgej.expand(h.size(dim=0), -1)
 
         for i in range(self.n_layers):
-            h, x, _ = self.LGEBs[i].forward(h, x, edgei, edgej, node_attr=scalars)
-        h = h * node_mask
+            h, cand_kinematics, _ = self.LGEBs[i].forward(h, cand_kinematics, edgei, edgej, node_attr=cand_features)
+        h = h * cand_mask
         h = h.view(-1, n_particles, self.n_hidden)
         h = torch.mean(h, dim=1)
         pred = self.graph_dec(h)

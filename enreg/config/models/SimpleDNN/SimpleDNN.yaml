@@ -1,3 +1,2 @@
-input_dim: 17
 defaults:
   - _self_
