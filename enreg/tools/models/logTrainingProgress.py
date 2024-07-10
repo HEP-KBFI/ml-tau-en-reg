@@ -40,7 +40,10 @@ def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true
     tensorboard.add_scalar("recall/%s" % mode, recall, global_step=idx_epoch)
     tensorboard.add_scalar("F1_score/%s" % mode, F1_score, global_step=idx_epoch)
     tensorboard.add_histogram("tauClassifier_sig/%s" % mode, signal_proba[class_true == 1], global_step=idx_epoch)
-    tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, signal_proba[class_true == 0], global_step=idx_epoch)
+    if len(signal_proba[class_true==0]) > 0:
+        tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, signal_proba[class_true == 0], global_step=idx_epoch)
+    else:
+        raise ValueError("No backround samples. Signal_proba[class_true == 0] is empty.")
 
     fpr, tpr, _ = roc_curve(class_true, signal_proba)
     fig = plt.figure(figsize=(5,5))

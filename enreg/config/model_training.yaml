@@ -22,14 +22,15 @@ model_type: ParticleTransformer
 #these samples can be used for training and validation
 #qq is added back using command line flags for the binary classification task
 training_samples:
-  - zh_train.parquet
-#  - qq_train.parquet
+  - z_train.parquet
+#  - zh_train.parquet
+  - qq_train.parquet
 
 #these are never used in the training code, only for the final evaluation
 test_samples:
-  - zh_test.parquet
   - z_test.parquet
-#  - qq_test.parquet
+#  - zh_test.parquet
+  - qq_test.parquet
 
 #the training sample will be further subdividied as follows to train and valid
 fraction_train: 0.8
