@@ -56,6 +56,7 @@ training:
   num_epochs: 100
   batch_size: 1024
   num_dataloader_workers: 2
+  prefetch_factor: 100
   classweight_sig: 1
   classweight_bgr: 10
   use_class_weights: True
