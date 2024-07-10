@@ -297,7 +297,7 @@ def trainModel(cfg: DictConfig) -> None:
     input_dim = 0
     if 'cand_kinematics' in feature_set:
         input_dim += 4
-    if 'cand_features' in feature_set:
+    if 'cand_ParT_features' in feature_set:
         input_dim += 13
     if 'cand_lifetimes' in feature_set:
         input_dim += 4
