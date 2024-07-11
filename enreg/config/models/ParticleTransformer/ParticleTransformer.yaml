@@ -1,4 +1,3 @@
-input_dim: 13
 hyperparameters:
   num_layers: 2
   embed_dims:
