@@ -34,45 +34,25 @@ from enreg.tools.models.LorentzNet import LorentzNet
 
 from enreg.tools.data_management.features import FeatureStandardization
 
-from enreg.tools.data_management.particleTransformer_dataset import ParticleTransformerDataset
+from enreg.tools.data_management.particleTransformer_dataset import load_row_groups, ParticleTransformerDataset
 
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 import time
 
-def unpack_ParticleTransformer_data(X, dev):
-    cand_features = X["cand_features"].to(device=dev)
+def unpack_data(X, dev, feature_set):
+    # Create a dictionary for each feature
+    features_as_dict = {
+        feature: X[feature].to(device=dev) for feature in feature_set
+    }
+
+    # Concatenate chosen features
+    particle_features = torch.cat([features_as_dict[feat] for feat in feature_set], axis=1)
+
     cand_kinematics = X["cand_kinematics"].to(device=dev)
-    mask = X["mask"].to(device=dev)
-    return cand_features, cand_kinematics, mask
-
-def unpack_LorentzNet_data(X, dev):
-    cand_kinematics = X["cand_kinematics"].to(device=dev)
-    beam_kinematics = X["beam_kinematics"].to(device=dev)
-    kinematics = torch.swapaxes(torch.concatenate([beam_kinematics, cand_kinematics], axis=-1), 1, 2)
-
-    cand_features = X["cand_features"].to(device=dev)
-    beam_features = X["beam_features"].to(device=dev)
-    scalars = torch.swapaxes(torch.concatenate([beam_features, cand_features], axis=-1), 1, 2)
-
-    cand_mask = X["mask"].to(device=dev)
-    beam_mask = X["beam_mask"].to(device=dev)
-    mask = torch.swapaxes(torch.concatenate([beam_mask, cand_mask], axis=-1), 1, 2)
-    return kinematics, scalars, mask
-
-def unpack_SimpleDNN_data(X, dev):
-    cand_kinematics = torch.swapaxes(X["cand_kinematics"].to(device=dev), 1, 2)
-    cand_features = torch.swapaxes(X["cand_features"].to(device=dev), 1, 2)
-    cand_mask = torch.swapaxes(X["mask"].to(device=dev), 1, 2)
-    pfs = torch.concatenate([cand_kinematics, cand_features], axis=-1)
-    return pfs, cand_mask
-
-dataset_unpackers = {
-    "ParticleTransformer": unpack_ParticleTransformer_data,
-    "LorentzNet": unpack_LorentzNet_data,
-    "SimpleDNN": unpack_SimpleDNN_data,
-}
+    mask = X["mask"].to(device=dev).bool()
+    return particle_features, cand_kinematics, mask
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -120,7 +100,6 @@ def get_weights(train_dataset, validation_dataset, n_bins=20):
 def train_loop(
     idx_epoch,
     dataloader_train,
-    transform,
     model,
     dev,
     loss_fn,
@@ -128,7 +107,7 @@ def train_loop(
     optimizer,
     lr_scheduler,
     tensorboard,
-    dataset_unpacker,
+    feature_set,
     num_classes,
     kind="jet_regression",
     train=True,
@@ -165,9 +144,7 @@ def train_loop(
 
     for idx_batch, (X, y, weight) in tqdm.tqdm(enumerate(dataloader_train), total=len(dataloader_train)):
         # Compute prediction and loss
-        if transform:
-            X = transform(X)
-        model_inputs = dataset_unpacker(X, dev)
+        model_inputs = unpack_data(X, dev, feature_set)
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
@@ -262,15 +239,16 @@ def run_command(cmd):
 
 @hydra.main(config_path="../config", config_name="model_training", version_base=None)
 def trainModel(cfg: DictConfig) -> None:
+    print("<trainModel>:")
 
     #because we are doing plots for tensorboard, we don't want anything to crash
     plt.switch_backend('agg')
 
-    print("<trainModel>:")
+    feature_set = cfg.dataset.feature_set
+    print(f"Using features: {feature_set}")
 
     kind = cfg.training_type
     model_config = cfg.models[cfg.model_type]
-    DatasetClass = ParticleTransformerDataset
 
     model_output_path = os.path.join(
         cfg.output_dir,
@@ -284,25 +262,26 @@ def trainModel(cfg: DictConfig) -> None:
     if cfg.train and os.path.isdir(model_output_path):
         raise Exception("Output directory exists while train=True: {}".format(model_output_path))
 
-    data = g.load_all_data([os.path.join(cfg.data_path, samp) for samp in cfg.training_samples])
+    # get the number of row groups (independently loadable chunks) in each input file
+    data = sum([load_row_groups(os.path.join(cfg.data_path, fn)) for fn in cfg.training_samples], [])
 
-    #shuffle input samples
+    #shuffle row groups
     perm = np.random.permutation(len(data))
-    data_reshuf = data[perm]
+    data_reshuf = [data[p] for p in perm]
 
-    #take train and validation split
+    #take train and validation split from the row groups
     ntrain = int(len(data_reshuf)*cfg.fraction_train)
     nvalid = int(len(data_reshuf)*cfg.fraction_valid)
     training_data = data_reshuf[:ntrain]
     validation_data = data_reshuf[ntrain:ntrain+nvalid]
-    print("train={} validation={}".format(len(training_data), len(validation_data)))
+    print(f"row groups: train={len(training_data)} validation={len(validation_data)}")
     
-    dataset_train = DatasetClass(
-        data=training_data,
+    dataset_train = ParticleTransformerDataset(
+        row_groups=training_data,
         cfg=cfg.dataset,
     )
-    dataset_validation = DatasetClass(
-        data=validation_data,
+    dataset_validation = ParticleTransformerDataset(
+        row_groups=validation_data,
         cfg=cfg.dataset,
     )
     if kind == "jet_regression" and cfg.training.apply_regression_weights:
@@ -311,12 +290,19 @@ def trainModel(cfg: DictConfig) -> None:
         dataset_validation.weight_tensors = weights_validation
 
     dev = "cuda" if torch.cuda.is_available() else "cpu"
-    print("Using device: {}".format(dev))
+    print(f"Using device: {dev}")
 
     print("Building model...")
-    input_dim = model_config.input_dim
-    if cfg.dataset.use_lifetime:
+
+    #configure the number of model input dimensions based on the input features 
+    input_dim = 0
+    if 'cand_kinematics' in feature_set:
         input_dim += 4
+    if 'cand_ParT_features' in feature_set:
+        input_dim += 13
+    if 'cand_lifetimes' in feature_set:
+        input_dim += 4
+    
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
         model = ParticleTransformer(
@@ -357,27 +343,14 @@ def trainModel(cfg: DictConfig) -> None:
             dataset_train,
             batch_size=cfg.training.batch_size,
             num_workers=cfg.training.num_dataloader_workers,
-            prefetch_factor=10,
-            shuffle=True
+            prefetch_factor=cfg.training.prefetch_factor,
         )
         dataloader_validation = DataLoader(
             dataset_validation,
             batch_size=cfg.training.batch_size,
             num_workers=cfg.training.num_dataloader_workers,
-            prefetch_factor=10,
-            shuffle=True
+            prefetch_factor=cfg.training.prefetch_factor,
         )
-
-        transform = None
-        if cfg.feature_standardization.standardize_inputs:
-            transform = FeatureStandardization(
-                method=cfg.feature_standardization.method,
-                features=ccfg.feature_standardization.features,
-                feature_dim=1,
-                verbosity=cfg.verbosity,
-            )
-            transform.compute_params(dataloader_train)
-            transform.save_params(os.path.join(model_output_path, "feature_transform.json"))
 
         if kind == "binary_classification":
             if cfg.training.use_class_weights:
@@ -438,7 +411,6 @@ def trainModel(cfg: DictConfig) -> None:
             loss_train = train_loop(
                 idx_epoch,
                 dataloader_train,
-                transform,
                 model,
                 dev,
                 loss_fn,
@@ -446,7 +418,7 @@ def trainModel(cfg: DictConfig) -> None:
                 optimizer,
                 lr_scheduler,
                 tensorboard,
-                dataset_unpackers[cfg.model_type],
+                feature_set,
                 num_classes,
                 kind=kind
             )
@@ -457,7 +429,6 @@ def trainModel(cfg: DictConfig) -> None:
                 loss_validation = train_loop(
                     idx_epoch,
                     dataloader_validation,
-                    transform,
                     model,
                     dev,
                     loss_fn,
@@ -465,10 +436,10 @@ def trainModel(cfg: DictConfig) -> None:
                     None,
                     None,
                     tensorboard,
-                    dataset_unpackers[cfg.model_type],
+                    feature_set,
                     num_classes,
                     kind=kind,
-                    train=False
+                    train=False,
                 )
 
             losses_train.append(loss_train)
@@ -498,23 +469,21 @@ def trainModel(cfg: DictConfig) -> None:
         print("Evaluating on test samples")
         for test_sample in cfg.test_samples:
             print("Evaluating on {}".format(test_sample))
-            data = g.load_all_data([str(os.path.join(cfg.data_path, test_sample))])
-            dataset_full = DatasetClass(
-                data=data,
+            data = load_row_groups(os.path.join(cfg.data_path, test_sample))
+            dataset_full = ParticleTransformerDataset(
+                row_groups=data,
                 cfg=cfg.dataset,
-                do_preselection=False #for evaluation, ensure we do no selection
             )
             dataloader_full = DataLoader(
                 dataset_full,
                 batch_size=cfg.training.batch_size,
                 num_workers=cfg.training.num_dataloader_workers,
-                prefetch_factor=100,
-                shuffle=False
+                prefetch_factor=cfg.training.prefetch_factor,
             )
             preds = []
             targets = []
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
-                model_inputs = dataset_unpackers[cfg.model_type](X, dev)
+                model_inputs = unpack_data(X, dev, feature_set)
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":

@@ -217,53 +217,6 @@ def trunc_normal_(tensor, mean=0.0, std=1.0, a=-2.0, b=2.0):
         return tensor
 
 
-class SequenceTrimmer(nn.Module):
-    def __init__(self, enabled=False, target=(0.9, 1.02), **kwargs) -> None:
-        super().__init__(**kwargs)
-        self.enabled = enabled
-        self.target = target
-        self._counter = 0
-
-    def forward(self, x, v=None, mask=None, uu=None):
-        # x: (N, C, P)
-        # v: (N, 4, P) [px,py,pz,energy]
-        # mask: (N, 1, P) -- real particle = 1, padded = 0
-        # uu: (N, C', P, P)
-        if mask is None:
-            mask = torch.ones_like(x[:, :1])
-        mask = mask.bool()
-
-        if self.enabled:
-            if self._counter < 5:
-                self._counter += 1
-            else:
-                if self.training:
-                    q = min(1, random.uniform(*self.target))
-                    maxlen = torch.quantile(mask.type_as(x).sum(dim=-1), q).long()
-                    rand = torch.rand_like(mask.type_as(x))
-                    rand.masked_fill_(~mask, -1)
-                    perm = rand.argsort(dim=-1, descending=True)  # (N, 1, P)
-                    mask = torch.gather(mask, -1, perm)
-                    x = torch.gather(x, -1, perm.expand_as(x))
-                    if v is not None:
-                        v = torch.gather(v, -1, perm.expand_as(v))
-                    if uu is not None:
-                        uu = torch.gather(uu, -2, perm.unsqueeze(-1).expand_as(uu))
-                        uu = torch.gather(uu, -1, perm.unsqueeze(-2).expand_as(uu))
-                else:
-                    maxlen = mask.sum(dim=-1).max()
-                maxlen = max(maxlen, 1)
-                if maxlen < mask.size(-1):
-                    mask = mask[:, :, :maxlen]
-                    x = x[:, :, :maxlen]
-                    if v is not None:
-                        v = v[:, :, :maxlen]
-                    if uu is not None:
-                        uu = uu[:, :, :maxlen, :maxlen]
-
-        return x, v, mask, uu
-
-
 class Embed(nn.Module):
     def __init__(self, input_dim, dims, normalize_input=True, activation="gelu"):
         super().__init__()
@@ -369,53 +322,31 @@ class PairEmbed(nn.Module):
         else:
             raise RuntimeError("`mode` can only be `sum` or `concat`")
 
-    def forward(self, x, uu=None):
+    def forward(self, x):
         # x: (batch, v_dim, seq_len)
-        # uu: (batch, v_dim, seq_len, seq_len)
-        assert x is not None or uu is not None
         with torch.no_grad():
-            if x is not None:
-                batch_size, _, seq_len = x.size()
-            else:
-                batch_size, _, seq_len, _ = uu.size()
+            batch_size, _, seq_len = x.size()
             if self.is_symmetric and not self.for_onnx:
                 i, j = torch.tril_indices(
                     seq_len, seq_len, offset=-1 if self.remove_self_pair else 0, device=(x if x is not None else uu).device
                 )
-                if x is not None:
-                    x = x.unsqueeze(-1).repeat(1, 1, 1, seq_len)
-                    xi = x[:, :, i, j]  # (batch, dim, seq_len*(seq_len+1)/2)
-                    xj = x[:, :, j, i]
-                    x = self.pairwise_lv_fts(xi, xj)
-                if uu is not None:
-                    # (batch, dim, seq_len*(seq_len+1)/2)
-                    uu = uu[:, :, i, j]
+                x = x.unsqueeze(-1).repeat(1, 1, 1, seq_len)
+                xi = x[:, :, i, j]  # (batch, dim, seq_len*(seq_len+1)/2)
+                xj = x[:, :, j, i]
+                x = self.pairwise_lv_fts(xi, xj)
             else:
-                if x is not None:
-                    x = self.pairwise_lv_fts(x.unsqueeze(-1), x.unsqueeze(-2))
-                    if self.remove_self_pair:
-                        i = torch.arange(0, seq_len, device=x.device)
-                        x[:, :, i, i] = 0
-                    x = x.view(-1, self.pairwise_lv_dim, seq_len * seq_len)
-                if uu is not None:
-                    uu = uu.view(-1, self.pairwise_input_dim, seq_len * seq_len)
+                x = self.pairwise_lv_fts(x.unsqueeze(-1), x.unsqueeze(-2))
+                if self.remove_self_pair:
+                    i = torch.arange(0, seq_len, device=x.device)
+                    x[:, :, i, i] = 0
+                x = x.view(-1, self.pairwise_lv_dim, seq_len * seq_len)
             if self.mode == "concat":
-                if x is None:
-                    pair_fts = uu
-                elif uu is None:
-                    pair_fts = x
-                else:
-                    pair_fts = torch.cat((x, uu), dim=1)
+                pair_fts = x
 
         if self.mode == "concat":
             elements = self.embed(pair_fts)  # (batch, embed_dim, num_elements)
         elif self.mode == "sum":
-            if x is None:
-                elements = self.fts_embed(uu)
-            elif uu is None:
-                elements = self.embed(x)
-            else:
-                elements = self.embed(x) + self.fts_embed(uu)
+            elements = self.embed(x)
 
         if self.is_symmetric and not self.for_onnx:
             y = torch.zeros(batch_size, self.out_dim, seq_len, seq_len, dtype=elements.dtype, device=elements.device)
@@ -553,7 +484,6 @@ class ParticleTransformer(nn.Module):
             print(" num_classes = %i" % num_classes)
         super().__init__(**kwargs)
 
-        self.trimmer = SequenceTrimmer(enabled=trim and not for_inference)
         self.for_inference = for_inference
         self.use_amp = use_amp
 
@@ -636,46 +566,30 @@ class ParticleTransformer(nn.Module):
             "cls_token",
         }
 
-    def forward(self, x, v=None, mask=None, uu=None, uu_idx=None):
-        # x: (N, C, P)
-        # v: (N, 4, P) [px,py,pz,energy]
-        # mask: (N, 1, P) -- real particle = 1, padded = 0
-        # for pytorch: uu (N, C', num_pairs), uu_idx (N, 2, num_pairs)
-        # for onnx: uu (N, C', P, P), uu_idx=None
-        if self.verbosity >= 3:
-            print("<ParticleTransformer::forward>:")
-            print_param("x", x)
-            print_param("v", v)
-            print_param("mask", mask)
-            print_param("uu", uu)
-            print_param("uu_idx", uu_idx)
-
-        with torch.no_grad():
-            if not self.for_inference:
-                if uu_idx is not None:
-                    uu = build_sparse_tensor(uu, uu_idx, x.size(-1))
-            x, v, mask, uu = self.trimmer(x, v, mask, uu)
-            padding_mask = ~mask.squeeze(1)  # (N, P)
-
+    def forward(self, cand_features, cand_kinematics_pxpypze=None, cand_mask=None):
+        # cand_features: (N=num_batches, C=num_features, P=num_particles)
+        # cand_kinematics_pxpypze: (N, 4, P) [px,py,pz,energy]
+        # cand_mask: (N, 1, P) -- real particle = 1, padded = 0
+        padding_mask = ~cand_mask.squeeze(1) # (N, 1, P) -> (N, P)
         with torch.cuda.amp.autocast(enabled=self.use_amp):
+            num_particles = cand_features.size(-1)
+
             # input embedding
-            x = self.embed(x).masked_fill(~mask.permute(2, 0, 1), 0)  # (P, N, C)
+            cand_features_embed = self.embed(cand_features).masked_fill(~cand_mask.permute(2, 0, 1), 0)  # (P, N, C)
             attn_mask = None
-            if (v is not None or uu is not None) and self.pair_embed is not None:
-                attn_mask = self.pair_embed(v, uu).view(-1, v.size(-1), v.size(-1))  # (N*num_heads, P, P)
+            if cand_kinematics_pxpypze is not None and self.pair_embed is not None:
+                attn_mask = self.pair_embed(cand_kinematics_pxpypze).view(-1, num_particles, num_particles) # (N*num_heads, P, P)
 
             # transform particles
             for block in self.blocks:
-                x = block(x, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
+                cand_features_embed = block(cand_features_embed, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
             
-            # transform class tokens (jet summary)
-            cls_tokens = self.cls_token.expand(1, x.size(1), -1)  # (1, N, C)
+            # transform per-jet class tokens
+            cls_tokens = self.cls_token.expand(1, cand_features_embed.size(1), -1)  # (1, N, C)
             for block in self.cls_blocks:
-                cls_tokens = block(x, x_cls=cls_tokens, padding_mask=padding_mask)
+                cls_tokens = block(cand_features_embed, x_cls=cls_tokens, padding_mask=padding_mask)
             x_cls = self.norm(cls_tokens).squeeze(0)
 
-            output = self.fc(x_cls) #(Nbatch, num_class)
-            if self.verbosity >= 3:
-                print_param("output", output)
+            output = self.fc(x_cls) #(N, num_class)
 
             return output

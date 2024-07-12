@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -p gpu
-#SBATCH --gres gpu:rtx
-#SBATCH --mem-per-gpu 40G
+#SBATCH --gres gpu:mig:1
+#SBATCH --mem-per-gpu 30G
 #SBATCH -o logs/slurm-%x-%j-%N.out
 
 env | grep CUDA
