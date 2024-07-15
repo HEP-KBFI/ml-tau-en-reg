@@ -1,102 +1,60 @@
-# Installation
+# End-to-end ML reconstruction and identification of hadronically decaying tau lepton.
 
-```
-git clone git@github.com:Laurits7/ml-tau-en-reg.git
-```
+The aim of this project is to develop and test end-to-end machine learning methods for reconstruction and identification of hadronically decaying tau lepton, while also providing a thouroughly validated and tested dataset for evaluating the performances of said algorithms.
 
-# Datasets
-
-The latest merged ntuples for training are here:
-```
-$ du -csh /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/*
-474M    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/qq_test.parquet
-1.9G    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/qq_train.parquet
-112M    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/zh_test.parquet
-445M    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/zh_train.parquet
-97M     /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/z_test.parquet
-386M    /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged/z_train.parquet
-```
-
-# Results
-```
-$ du -csh /local/joosep/ml-tau-en-reg/results/240626_train_on_z/*/*/*
-7.9M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/LorentzNet
-11M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/ParticleTransformer
-7.5M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/dm_multiclass/SimpleDNN
-9.2M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/jet_regression/LorentzNet
-12M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/jet_regression/ParticleTransformer
-8.3M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v1/jet_regression/SimpleDNN
-7.9M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v2/dm_multiclass/LorentzNet
-11M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v2/dm_multiclass/ParticleTransformer
-7.5M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v2/dm_multiclass/SimpleDNN
-9.2M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v2/jet_regression/LorentzNet
-12M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v2/jet_regression/ParticleTransformer
-8.4M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v2/jet_regression/SimpleDNN
-8.0M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/dm_multiclass/LorentzNet
-11M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/dm_multiclass/ParticleTransformer
-7.4M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/dm_multiclass/SimpleDNN
-9.3M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/jet_regression/LorentzNet
-12M     /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/jet_regression/ParticleTransformer
-8.6M    /local/joosep/ml-tau-en-reg/results/240626_train_on_z/v3/jet_regression/SimpleDNN
-
-```
-
-# Running
-
-All the necessary packages are installed to the singularity image used in the ```run.sh``` script.
-In order to run the scripts do:
-```bash
-./run.sh python3 [XYZ]
-```
+<p align="center" width="100%">
+    <img src='images/idea.png' width='750'>
+</p>
 
 
-# Training
+Tau leptons can decay both leptonically and hadronically, however only hadronic decays are targeted with this project:
 
-To test locally on a fraction of the data
-```
-./run.sh python3 enreg/scripts/trainModel.py output_dir=training-outputs/mytest fraction_train=0.1 fraction_valid=0.1 training.num_epochs=2 model_type=SimpleDNN training_type=jet_regression
-./run.sh python3 enreg/scripts/trainModel.py output_dir=training-outputs/mytest fraction_train=0.1 fraction_valid=0.1 training.num_epochs=2 model_type=SimpleDNN training_type=dm_multiclass
-```
-The configuration the models starts at `enreg/config/model_training.yaml`.
+<p align="center" width="100%">
+    <img src='images/tau_decays.png' width='500'>
+</p>
 
-To submit the training of the models to `gpu0`, check and run
-```
-./enreg/scripts/submit-pytorch-gpu-all.sh
-```
+## Future Dataset [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12664634.svg)](https://doi.org/10.5281/zenodo.12664634)
 
-# Plotting
+The dataset contains 2 signal samples (ZH->Ztautau and Z->tautau) and one background sample (Z->qq).
+While the validation plots can be reproduced with [this script](notebooks/data_intro.ipynb), here is a selection of these: 
 
-Change `enreg/config/benchmarking.yaml` and `enreg/config/metrics/regression.yaml` as needed.
+The generator-level hadronically decaying tau visible transverse momentum:
 
-```
-./run.sh python3 enreg/scripts/calculate_regression_metrics.py
-```
-and
-```
-notebooks/DM_CM.ipynb
-notebooks/losses.ipynb
-```
+<p align="center" width="100%">
+    <img src='images/gen_tau_visible_pt.png' width='500'>
+</p>
 
-## Notebooks
+The jet substructure of two neutral-hadronless decay modes:
 
-```
-./run.sh jupyter notebook --no-browser
-```
+<img src='images/jet_2D_shapes_ZH_DM0.png' width='450'>  <img src='images/jet_2D_shapes_ZH_DM3.png' width='450'>
 
-# Creating the input data
+---
+---
 
-## Simulation with Key4HEP
+## Papers:
+The results of these studies have been divided across two separate papers, with the first one covering tau identification and the latter covering both kinematic and decay mode reconstruction.
 
-Edit `sim/run_sim.sh` to change the output directory, then generate 100 events as follows:
-```
-cd sim
-./run_sim.sh 1 p8_ee_ZH_Htautau_ecm380.cmd 
-```
+### TauID [![DOI:10.1016/j.cpc.2024.109095](http://img.shields.io/badge/DOI-10.1016/j.cpc.2024.109095-f9f107.svg)](https://doi.org/10.1016/j.cpc.2024.109095) [![arXiv](https://img.shields.io/badge/arXiv-2307.07747-b31b1b.svg)](https://arxiv.org/abs/2307.07747)
 
-## Creating ML ntuples
 
-To produce the jet-based ML ntuples from the .root and .hepmc files 
-```
-./run.sh python3 enreg/scripts/ntupelize_edm4hep.py
-bash /home/joosep/tmp/NA7VJ17OVH/executables/execute0.sh  
-```
+
+**"Tau lepton identification and reconstruction: a new frontier for jet-tagging ML algorithms"**
+
+*[Published in: Comput.Phys.Commun. 298 (2024) 109095]*
+
+
+In this paper, we studied the performance of state-of-the-art methods and compared them with the ML architectures initially designed for jet-tagging.
+
+<img src='images/ROC.png' width='450'>  <img src='images/ParticleTransformer_tauClassifier.png' width='450'>
+
+---
+
+### Tau reconstruction [![arXiv](https://img.shields.io/badge/arXiv-2407.06788-b31b1b.svg)](https://arxiv.org/abs/2407.06788)
+**"A unified machine learning approach for reconstructing hadronically decaying tau leptons"**
+
+Here we demonstrated how three different types of models with a varying degree of expressiveness and priors can be employed for hadronically decaying tau kinematic reconstruction and decay mode reconstruction.
+
+<img src='images/zh_test_median.png' width='450'>  <img src='images/zh_test_iqr.png' width='450'>
+
+
+<img src='images/ZH_cm_ParticleTransformer.png' width='450'>  <img src='images/ZH_dm_precision.png' width='450'>
