@@ -524,7 +524,7 @@ class ParticleTransformer(nn.Module):
             self.to_ptXXXphim = None
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
-        self.pair_extra_dim = pair_extra_dim
+        self.pair_extra_dim = pair_extra_dim    
         self.embed = Embed(input_dim, embed_dims, activation=activation) if len(embed_dims) > 0 else nn.Identity()
         self.pair_embed = (
             PairEmbed(
@@ -549,6 +549,7 @@ class ParticleTransformer(nn.Module):
             for out_dim, drop_rate in fc_params:
                 fcs.append(nn.Sequential(nn.Linear(in_dim, out_dim), nn.ReLU(), nn.Dropout(drop_rate)))
                 in_dim = out_dim
+            print(in_dim, num_classes)
             fcs.append(nn.Linear(in_dim, num_classes))
             self.fc = nn.Sequential(*fcs)
         else:

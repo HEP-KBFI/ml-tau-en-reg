@@ -4,7 +4,7 @@ from gabbro.models.gpt_model import BackboneModel
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
 
-class OmniParT(nn.Module):
+class OmniParT(ParticleTransformer):
     def __init__(
         self,
         input_dim,
@@ -31,7 +31,30 @@ class OmniParT(nn.Module):
         verbosity=0,
         **kwargs
 ):
-        super().__init__()
+        super().__init__(input_dim=input_dim,
+            num_classes=num_classes,
+            # network configurations
+            pair_input_dim=pair_input_dim,
+            pair_extra_dim=pair_extra_dim,
+            remove_self_pair=remove_self_pair,
+            use_pre_activation_pair=use_pre_activation_pair,
+            embed_dims=embed_dims,
+            pair_embed_dims=pair_embed_dims,
+            num_heads=num_heads,
+            num_layers=num_layers,
+            num_cls_layers=num_cls_layers,
+            block_params=block_params,
+            cls_block_params=cls_block_params,
+            fc_params=fc_params,
+            activation=activation,
+            # misc
+            trim=trim,
+            for_inference=for_inference,
+            use_amp=use_amp,
+            metric=metric,
+            verbosity=verbosity,
+            **kwargs
+        )
         self.embed = EmbedParT()
         self.for_inference = for_inference
         self.use_amp = use_amp
@@ -45,13 +68,9 @@ class OmniParT(nn.Module):
         with torch.cuda.amp.autocast(enabled=self.use_amp):
             num_particles = cand_features.size(-1)
 
-            # input embedding
-            # cand_features_embed = self.embed(cand_features).masked_fill(~cand_mask.permute(2, 0, 1), 0)  # (P, N, C)
-
             parT_features = self.embed(tau_data_transf, cand_mask)
             cand_features_embed = parT_features
 
-            #####################################
             attn_mask = None
             if cand_kinematics_pxpypze is not None and self.pair_embed is not None:
                 attn_mask = self.pair_embed(cand_kinematics_pxpypze).view(-1, num_particles, num_particles) # (N*num_heads, P, P)
@@ -74,7 +93,6 @@ class OmniParT(nn.Module):
 class EmbedParT(nn.Module):
     def __init__(self):
         super().__init__()
-        device = 'cpu'
         ckpt_path = "/home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/checkpoints/vqvae_8192_tokens/model_ckpt.ckpt"
         # ckpt_path = cfg.ckpt_path
 
@@ -108,9 +126,5 @@ class EmbedParT(nn.Module):
             cand_omni_kinematics.permute(0, 2, 1), # To be in accordance with the order expected by the function
             torch.squeeze(cand_mask) # Get rid of the axis=1 
         )
-        # jets_padded_tokenized = ak.fill_none(ak.pad_none(vq_out, 128, clip=True), 0)  # cfg.num_particles=32
-        # jets_batch = ak.to_regular(jets_padded_tokenized)
-        # jets_batch = torch.tensor(jets_batch).long()
-        # padding_mask = jets_batch == 0
-        encoded_jets = self.bb_model(vq_out['q'], padding_mask=padding_mask)
+        encoded_jets = self.bb_model(torch.squeeze(vq_out['q'], axis=2), padding_mask=torch.squeeze(cand_mask))
         return encoded_jets
