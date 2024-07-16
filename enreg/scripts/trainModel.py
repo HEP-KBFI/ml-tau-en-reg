@@ -31,6 +31,7 @@ from enreg.tools.losses.initWeights import initWeights
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from enreg.tools.models.SimpleDNN import DeepSet
 from enreg.tools.models.LorentzNet import LorentzNet
+from enreg.tools.models.OmniParT import OmniParT
 
 from enreg.tools.data_management.features import FeatureStandardization
 

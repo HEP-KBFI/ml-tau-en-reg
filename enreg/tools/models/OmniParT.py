@@ -108,9 +108,9 @@ class EmbedParT(nn.Module):
             cand_omni_kinematics.permute(0, 2, 1), # To be in accordance with the order expected by the function
             torch.squeeze(cand_mask) # Get rid of the axis=1 
         )
-        jets_padded_tokenized = ak.fill_none(ak.pad_none(vq_out, 128, clip=True), 0)  # cfg.num_particles=32
-        jets_batch = ak.to_regular(jets_padded_tokenized)
-        jets_batch = torch.tensor(jets_batch).long()
-        padding_mask = jets_batch == 0
-        encoded_jets = self.bb_model(jets_batch, padding_mask=padding_mask)
+        # jets_padded_tokenized = ak.fill_none(ak.pad_none(vq_out, 128, clip=True), 0)  # cfg.num_particles=32
+        # jets_batch = ak.to_regular(jets_padded_tokenized)
+        # jets_batch = torch.tensor(jets_batch).long()
+        # padding_mask = jets_batch == 0
+        encoded_jets = self.bb_model(vq_out['q'], padding_mask=padding_mask)
         return encoded_jets
