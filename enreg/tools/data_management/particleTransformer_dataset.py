@@ -79,13 +79,22 @@ class ParticleTransformerDataset(IterableDataset):
             "cand_dxy_err": data.reco_cand_dxy_err
         })
 
+        # Kinematic variables for the OmniJet
+        cand_part_kinematics = ak.Array({
+            "part_pt": jet_constituent_p4s.pt,
+            "part_etarel": jet_constituent_p4s.eta - jet_p4s.eta,
+            "part_phirel": f.deltaPhi(jet_constituent_p4s.phi, jet_p4s.phi),
+        })
+
         cand_ParT_features_tensors = stack_and_pad_features(cand_ParT_features, self.cfg.max_cands)
         cand_kinematics_tensors = stack_and_pad_features(cand_kinematics, self.cfg.max_cands)
         cand_lifetimes_tensors = stack_and_pad_features(cand_lifetimes, self.cfg.max_cands)
+        cand_omni_kinematics_tensors = stack_and_pad_features(cand_part_kinematics, self.cfg.max_cands)
 
         cand_ParT_features_tensors = torch.tensor(cand_ParT_features_tensors, dtype=torch.float32)
         cand_kinematics_tensors = torch.tensor(cand_kinematics_tensors, dtype=torch.float32)
         cand_lifetimes_tensors = torch.tensor(cand_lifetimes_tensors, dtype=torch.float32)
+        cand_omni_kinematics_tensors = torch.tensor(cand_omni_kinematics_tensors, dtype=torch.float32)
 
         node_mask_tensors = torch.unsqueeze(
             torch.tensor(
@@ -115,6 +124,7 @@ class ParticleTransformerDataset(IterableDataset):
                 "cand_kinematics": cand_kinematics_tensors,
                 "cand_ParT_features": cand_ParT_features_tensors,
                 "cand_lifetimes": cand_lifetimes_tensors,
+                "cand_omni_kinematics": cand_omni_kinematics_tensors,
                 "mask": node_mask_tensors,
                 "reco_jet_pt": reco_jet_pt,
             },

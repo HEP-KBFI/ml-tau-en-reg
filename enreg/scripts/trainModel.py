@@ -41,7 +41,8 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 import time
 
-def unpack_data(X, dev, feature_set):
+
+def unpack_data(X, dev, feature_set, model_type):
     # Create a dictionary for each feature
     features_as_dict = {
         feature: X[feature].to(device=dev) for feature in feature_set
@@ -52,7 +53,12 @@ def unpack_data(X, dev, feature_set):
 
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev).bool()
-    return particle_features, cand_kinematics, mask
+    if model_type == 'OmniParT':
+        cand_omni_kinematics = X["cand_omni_kinematics"]
+        return particle_features, cand_omni_kinematics, cand_kinematics, mask
+    else:
+        return particle_features, cand_kinematics, mask
+
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -420,7 +426,8 @@ def trainModel(cfg: DictConfig) -> None:
                 tensorboard,
                 feature_set,
                 num_classes,
-                kind=kind
+                kind=kind,
+                model_type=cfg.model_type
             )
             print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
             tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
@@ -440,6 +447,7 @@ def trainModel(cfg: DictConfig) -> None:
                     num_classes,
                     kind=kind,
                     train=False,
+                    model_type=cfg.model_type
                 )
 
             losses_train.append(loss_train)
