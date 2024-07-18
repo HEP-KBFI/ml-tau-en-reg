@@ -55,7 +55,7 @@ def unpack_data(X, dev, feature_set, model_type):
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev).bool()
     if model_type == 'OmniParT':
-        cand_omni_kinematics = X["cand_omni_kinematics"]
+        cand_omni_kinematics = X["cand_omni_kinematics"].to(device=dev)
         return particle_features, cand_omni_kinematics, cand_kinematics, mask
     else:
         return particle_features, cand_kinematics, mask
@@ -341,7 +341,7 @@ def trainModel(cfg: DictConfig) -> None:
             input_dim=input_dim,
             num_classes=num_classes,
             num_layers=cfg.models.OmniParT.hyperparameters.num_layers,
-            embed_dims=cfg.models.ParticleTransformer.hyperparameters.embed_dims,
+            embed_dims=cfg.models.OmniParT.hyperparameters.embed_dims,
             use_pre_activation_pair=False,
             for_inference=False,
             use_amp=False,
