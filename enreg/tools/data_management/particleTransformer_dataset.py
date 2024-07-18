@@ -89,7 +89,7 @@ class ParticleTransformerDataset(IterableDataset):
         cand_ParT_features_tensors = stack_and_pad_features(cand_ParT_features, self.cfg.max_cands)
         cand_kinematics_tensors = stack_and_pad_features(cand_kinematics, self.cfg.max_cands)
         cand_lifetimes_tensors = stack_and_pad_features(cand_lifetimes, self.cfg.max_cands)
-        # cand_omni_kinematics_tensors = stack_and_pad_features(cand_part_kinematics, self.cfg.max_cands)
+        cand_omni_kinematics_tensors = stack_and_pad_features(cand_part_kinematics, self.cfg.max_cands)
 
         cand_ParT_features_tensors = torch.tensor(cand_ParT_features_tensors, dtype=torch.float32)
         cand_kinematics_tensors = torch.tensor(cand_kinematics_tensors, dtype=torch.float32)

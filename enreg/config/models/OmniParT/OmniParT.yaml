@@ -1,4 +1,8 @@
 hyperparameters:
   num_layers: 2
+  embed_dims:
+    - 256
+    - 512
+    - 256
 defaults:
   - _self_

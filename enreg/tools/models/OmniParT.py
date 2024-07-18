@@ -4,6 +4,8 @@ from gabbro.models.gpt_model import BackboneModel
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
 from omegaconf import OmegaConf
+from pathlib import Path
+
 
 class OmniParT(ParticleTransformer):
     def __init__(
@@ -15,7 +17,7 @@ class OmniParT(ParticleTransformer):
         pair_extra_dim=0,
         remove_self_pair=False,
         use_pre_activation_pair=True,
-        embed_dims=[128, 512, 128],
+        embed_dims=[256, 512, 256],
         pair_embed_dims=[64, 64, 64],
         num_heads=8,
         num_layers=8,
