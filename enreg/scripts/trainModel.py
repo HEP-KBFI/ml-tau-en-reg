@@ -118,6 +118,7 @@ def train_loop(
     num_classes,
     kind="jet_regression",
     train=True,
+    model_type='ParticleTransformer'
 ):
     if train:
         print("::::: TRAIN LOOP :::::")
@@ -151,7 +152,7 @@ def train_loop(
 
     for idx_batch, (X, y, weight) in tqdm.tqdm(enumerate(dataloader_train), total=len(dataloader_train)):
         # Compute prediction and loss
-        model_inputs = unpack_data(X, dev, feature_set)
+        model_inputs = unpack_data(X, dev, feature_set, model_type)
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
@@ -335,6 +336,18 @@ def trainModel(cfg: DictConfig) -> None:
         ).to(device=dev)
     elif cfg.model_type == "SimpleDNN":
         model = DeepSet(input_dim, num_classes).to(device=dev)
+    elif cfg.model_type == "OmniParT":
+        model = OmniParT(
+            input_dim=input_dim,
+            num_classes=num_classes,
+            num_layers=cfg.models.ParticleTransformer.hyperparameters.num_layers,
+            # embed_dims=cfg.models.ParticleTransformer.hyperparameters.embed_dims,
+            use_pre_activation_pair=False,
+            for_inference=False,
+            use_amp=False,
+            metric='eta-phi',
+            verbosity=cfg.verbosity,
+        ).to(device=dev)
 
     initWeights(model)
     print("Finished building model:")
@@ -492,7 +505,7 @@ def trainModel(cfg: DictConfig) -> None:
             preds = []
             targets = []
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
-                model_inputs = unpack_data(X, dev, feature_set)
+                model_inputs = unpack_data(X, dev, feature_set, model_type)
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":

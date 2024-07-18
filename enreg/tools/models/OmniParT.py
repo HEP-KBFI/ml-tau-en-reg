@@ -69,7 +69,7 @@ class OmniParT(ParticleTransformer):
             num_particles = cand_features.size(-1)
 
             parT_features = self.embed(tau_data_transf, cand_mask)
-            cand_features_embed = parT_features
+            cand_features_embed = parT_features.permute(1, 0, 2)  # (N, P, C) -> (P, N, C)
 
             attn_mask = None
             if cand_kinematics_pxpypze is not None and self.pair_embed is not None:
@@ -99,14 +99,21 @@ class EmbedParT(nn.Module):
         bb_path = "/home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/checkpoints/generative_8192_tokens/OmniJet_generative_model_UnintentionalPinscher_59.ckpt"
         # bb_path = cfg.bb_path
 
-        self.vqvae_model = VQVAELightning.load_from_checkpoint(ckpt_path).to(device)
+        self.vqvae_model = VQVAELightning.load_from_checkpoint(ckpt_path).to(device='cpu')
         self.vqvae_model.eval()
 
         ckpt_cfg = OmegaConf.load(Path(ckpt_path).parent / "config.yaml")
         self.pp_dict = OmegaConf.to_container(ckpt_cfg.data.dataset_kwargs_common.feature_dict)
 
         loaded_bb_model = torch.load(bb_path, map_location=torch.device('cpu'))
-        self.bb_model = BackboneModel(256, 0.0, 8194, 128, 32, 3)  # Reason for the magic numbers (e.g. 8192+2)
+        self.bb_model = BackboneModel(
+            embedding_dim=256,
+            attention_dropout=0.0,
+            vocab_size=8194,
+            max_sequence_len=128,
+            n_heads=32,
+            n_GPT_blocks=3
+        )  # Reason for the magic numbers (e.g. 8192+2)
         gpt_state = {k.replace("module.", ""): v for k, v in loaded_bb_model["state_dict"].items() if k.startswith("module.")}
         self.bb_model.load_state_dict(gpt_state)
 
