@@ -3,3 +3,4 @@ defaults:
   - LorentzNet: LorentzNet
   - HPS: HPS
   - SimpleDNN: SimpleDNN
+  - OmniParT: OmniParT
