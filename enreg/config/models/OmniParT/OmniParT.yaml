@@ -1,0 +1,4 @@
+hyperparameters:
+  num_layers: 2
+defaults:
+  - _self_
