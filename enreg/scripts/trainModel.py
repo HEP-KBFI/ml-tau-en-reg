@@ -340,7 +340,7 @@ def trainModel(cfg: DictConfig) -> None:
         model = OmniParT(
             input_dim=input_dim,
             num_classes=num_classes,
-            num_layers=cfg.models.ParticleTransformer.hyperparameters.num_layers,
+            num_layers=cfg.models.OmniParT.hyperparameters.num_layers,
             # embed_dims=cfg.models.ParticleTransformer.hyperparameters.embed_dims,
             use_pre_activation_pair=False,
             for_inference=False,
