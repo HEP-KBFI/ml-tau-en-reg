@@ -3,6 +3,7 @@ import torch.nn as nn
 from gabbro.models.gpt_model import BackboneModel
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
+from omegaconf import OmegaConf
 
 class OmniParT(ParticleTransformer):
     def __init__(
