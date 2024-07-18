@@ -505,7 +505,7 @@ def trainModel(cfg: DictConfig) -> None:
             preds = []
             targets = []
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
-                model_inputs = unpack_data(X, dev, feature_set, model_type)
+                model_inputs = unpack_data(X, dev, feature_set, cfg.model_type)
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":
