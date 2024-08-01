@@ -43,7 +43,8 @@ dataset:
   min_jet_pt: 0
   max_jet_pt: 1000
   feature_set:
-    - cand_ParT_features
+    # - cand_ParT_features
+    - cand_omni_kinematics
 
 #number of output classes for different tasks
 num_classes:

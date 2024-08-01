@@ -479,7 +479,7 @@ class ParticleTransformer(nn.Module):
         **kwargs
     ) -> None:
         if verbosity >= 1:
-            print("<ParticleTransformer::ParticleTransformer>:")
+            # print("<ParticleTransformer::ParticleTransformer>:")
             print(" input_dim = %i" % input_dim)
             print(" num_classes = %i" % num_classes)
         super().__init__(**kwargs)
@@ -549,7 +549,6 @@ class ParticleTransformer(nn.Module):
             for out_dim, drop_rate in fc_params:
                 fcs.append(nn.Sequential(nn.Linear(in_dim, out_dim), nn.ReLU(), nn.Dropout(drop_rate)))
                 in_dim = out_dim
-            print(in_dim, num_classes)
             fcs.append(nn.Linear(in_dim, num_classes))
             self.fc = nn.Sequential(*fcs)
         else:

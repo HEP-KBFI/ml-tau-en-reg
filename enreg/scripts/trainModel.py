@@ -43,7 +43,7 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 import time
 
 
-def unpack_data(X, dev, feature_set, model_type):
+def unpack_data(X, dev, feature_set):
     # Create a dictionary for each feature
     features_as_dict = {
         feature: X[feature].to(device=dev) for feature in feature_set
@@ -54,11 +54,7 @@ def unpack_data(X, dev, feature_set, model_type):
 
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev).bool()
-    if model_type == 'OmniParT':
-        cand_omni_kinematics = X["cand_omni_kinematics"].to(device=dev)
-        return particle_features, cand_omni_kinematics, cand_kinematics, mask
-    else:
-        return particle_features, cand_kinematics, mask
+    return particle_features, cand_kinematics, mask
 
 
 class EarlyStopper:
@@ -110,6 +106,7 @@ def train_loop(
     model,
     dev,
     loss_fn,
+    cfg,
     use_per_jet_weights,
     optimizer,
     lr_scheduler,
@@ -118,7 +115,6 @@ def train_loop(
     num_classes,
     kind="jet_regression",
     train=True,
-    model_type='ParticleTransformer'
 ):
     if train:
         print("::::: TRAIN LOOP :::::")
@@ -152,10 +148,16 @@ def train_loop(
 
     for idx_batch, (X, y, weight) in tqdm.tqdm(enumerate(dataloader_train), total=len(dataloader_train)):
         # Compute prediction and loss
-        model_inputs = unpack_data(X, dev, feature_set, model_type)
+        model_inputs = unpack_data(X, dev, feature_set)
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
+        if cfg.model_type == 'OmniParT':
+            if idx_epoch == 0:
+                frost = 'freeze'
+            if idx_epoch > cfg.models.OmniParT.num_rounds_frozen_backbone:
+                frost = 'unfreeze'
+            model_inputs = model_inputs + (frost,)
         if kind == "jet_regression":
             pred = model(*model_inputs).to(device=dev)[:,0]
         elif kind == "dm_multiclass":
@@ -310,6 +312,7 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 13
     if 'cand_lifetimes' in feature_set:
         input_dim += 4
+    # TODO: other feature sets also?
     
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
@@ -339,6 +342,7 @@ def trainModel(cfg: DictConfig) -> None:
     elif cfg.model_type == "OmniParT":
         model = OmniParT(
             input_dim=input_dim,
+            cfg=cfg.models.OmniParT,
             num_classes=num_classes,
             num_layers=cfg.models.OmniParT.hyperparameters.num_layers,
             embed_dims=cfg.models.OmniParT.hyperparameters.embed_dims,
@@ -434,6 +438,7 @@ def trainModel(cfg: DictConfig) -> None:
                 model,
                 dev,
                 loss_fn,
+                cfg,
                 cfg.training.use_per_jet_weights,
                 optimizer,
                 lr_scheduler,
@@ -441,7 +446,6 @@ def trainModel(cfg: DictConfig) -> None:
                 feature_set,
                 num_classes,
                 kind=kind,
-                model_type=cfg.model_type
             )
             print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
             tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
@@ -453,6 +457,7 @@ def trainModel(cfg: DictConfig) -> None:
                     model,
                     dev,
                     loss_fn,
+                    cfg,
                     cfg.training.use_per_jet_weights,
                     None,
                     None,
@@ -461,7 +466,6 @@ def trainModel(cfg: DictConfig) -> None:
                     num_classes,
                     kind=kind,
                     train=False,
-                    model_type=cfg.model_type
                 )
 
             losses_train.append(loss_train)

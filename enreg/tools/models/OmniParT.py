@@ -11,6 +11,7 @@ class OmniParT(ParticleTransformer):
     def __init__(
         self,
         input_dim,
+        cfg,
         num_classes=None,
         # network configurations
         pair_input_dim=4,
@@ -58,12 +59,14 @@ class OmniParT(ParticleTransformer):
             verbosity=verbosity,
             **kwargs
         )
-        self.embed = EmbedParT()
+        self.cfg = cfg
+        self.embed = EmbedParT(self.cfg)
         self.for_inference = for_inference
         self.use_amp = use_amp
+        self.frozen_parameters = False
 
 
-    def forward(self, cand_features, tau_data_transf, cand_kinematics_pxpypze=None, cand_mask=None):
+    def forward(self, cand_features, cand_kinematics_pxpypze=None, cand_mask=None, frost='freeze'):
         # cand_features: (N=num_batches, C=num_features, P=num_particles)
         # cand_kinematics_pxpypze: (N, 4, P) [px,py,pz,energy]
         # cand_mask: (N, 1, P) -- real particle = 1, padded = 0
@@ -71,7 +74,18 @@ class OmniParT(ParticleTransformer):
         with torch.cuda.amp.autocast(enabled=self.use_amp):
             num_particles = cand_features.size(-1)
 
-            parT_features = self.embed(tau_data_transf, cand_mask)
+            if frost == 'freeze' and not self.frozen_parameters:
+                print("Freezing parameters")
+                for param in self.embed.parameters():
+                    param.requires_grad = False
+                self.frozen_parameters = True
+            elif frost == 'unfreeze' and self.frozen_parameters:
+                print("Unfreezing parameters")
+                for param in self.embed.parameters():
+                    param.requires_grad = True
+                self.frozen_parameters = False
+
+            parT_features = self.embed(cand_features, cand_mask)
             cand_features_embed = parT_features.permute(1, 0, 2)  # (N, P, C) -> (P, N, C)
 
             attn_mask = None
@@ -94,21 +108,16 @@ class OmniParT(ParticleTransformer):
 
 
 class EmbedParT(nn.Module):
-    def __init__(self):
+    def __init__(self, cfg):
         super().__init__()
-        ckpt_path = "/home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/checkpoints/vqvae_8192_tokens/model_ckpt.ckpt"
-        # ckpt_path = cfg.ckpt_path
 
-        bb_path = "/home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/checkpoints/generative_8192_tokens/OmniJet_generative_model_UnintentionalPinscher_59.ckpt"
-        # bb_path = cfg.bb_path
-
-        self.vqvae_model = VQVAELightning.load_from_checkpoint(ckpt_path).to(device='cpu')
+        self.vqvae_model = VQVAELightning.load_from_checkpoint(cfg.ckpt_path).to(device='cpu')
         self.vqvae_model.eval()
 
-        ckpt_cfg = OmegaConf.load(Path(ckpt_path).parent / "config.yaml")
+        ckpt_cfg = OmegaConf.load(Path(cfg.ckpt_path).parent / "config.yaml")
         self.pp_dict = OmegaConf.to_container(ckpt_cfg.data.dataset_kwargs_common.feature_dict)
 
-        loaded_bb_model = torch.load(bb_path, map_location=torch.device('cpu'))
+        loaded_bb_model = torch.load(cfg.bb_path, map_location=torch.device('cpu'))
         self.bb_model = BackboneModel(
             embedding_dim=256,
             attention_dropout=0.0,
