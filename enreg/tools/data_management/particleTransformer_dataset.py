@@ -46,7 +46,7 @@ class ParticleTransformerDataset(IterableDataset):
         gen_jet_tau_p4s = g.reinitialize_p4(data.gen_jet_tau_p4s)
         jet_p4s = g.reinitialize_p4(data.reco_jet_p4s)
 
-        #ParticleTransformer features from https://arxiv.org/pdf/2404.16091, table X
+        #ParticleTransformer features from https://arxiv.org/pdf/2202.03772, table 2
         cand_ParT_features = ak.Array({
             "cand_deta": f.deltaEta(jet_constituent_p4s.eta, jet_p4s.eta),
             "cand_dphi": f.deltaPhi(jet_constituent_p4s.phi, jet_p4s.phi),
@@ -61,6 +61,19 @@ class ParticleTransformerDataset(IterableDataset):
             "isPhoton": ak.values_astype(abs(data.reco_cand_pdg) == 22, np.float32),
             "isChargedHadron": ak.values_astype(abs(data.reco_cand_pdg) == 211, np.float32),
             "isNeutralHadron": ak.values_astype(abs(data.reco_cand_pdg) == 130, np.float32),
+        })
+
+        omni_features_wPID = ak.Array({
+            "part_pt": jet_constituent_p4s.pt,
+            "part_mass": jet_constituent_p4s.mass,
+            "part_etarel": f.deltaEta(jet_constituent_p4s.eta, jet_p4s.eta),
+            "part_phirel": f.deltaPhi(jet_constituent_p4s.phi, jet_p4s.phi),
+            "part_charge": data.reco_cand_charge,
+            "part_isElectron": ak.values_astype(abs(data.reco_cand_pdg) == 11, np.float32),
+            "part_isMuon": ak.values_astype(abs(data.reco_cand_pdg) == 13, np.float32),
+            "part_isPhoton": ak.values_astype(abs(data.reco_cand_pdg) == 22, np.float32),
+            "part_isChargedHadron": ak.values_astype(abs(data.reco_cand_pdg) == 211, np.float32),
+            "part_isNeutralHadron": ak.values_astype(abs(data.reco_cand_pdg) == 130, np.float32),
         })
 
         #raw particle kinematics, for LorentzNet and ParticleTransformer (attention matrix calculation)
@@ -90,11 +103,13 @@ class ParticleTransformerDataset(IterableDataset):
         cand_kinematics_tensors = stack_and_pad_features(cand_kinematics, self.cfg.max_cands)
         cand_lifetimes_tensors = stack_and_pad_features(cand_lifetimes, self.cfg.max_cands)
         cand_omni_kinematics_tensors = stack_and_pad_features(cand_part_kinematics, self.cfg.max_cands)
+        omni_features_wPID_tensors = stack_and_pad_features(omni_features_wPID, self.cfg.max_cands)
 
         cand_ParT_features_tensors = torch.tensor(cand_ParT_features_tensors, dtype=torch.float32)
         cand_kinematics_tensors = torch.tensor(cand_kinematics_tensors, dtype=torch.float32)
         cand_lifetimes_tensors = torch.tensor(cand_lifetimes_tensors, dtype=torch.float32)
         cand_omni_kinematics_tensors = torch.tensor(cand_omni_kinematics_tensors, dtype=torch.float32)
+        omni_features_wPID_tensors = torch.tensor(omni_features_wPID_tensors, dtype=torch.float32)
 
         node_mask_tensors = torch.unsqueeze(
             torch.tensor(
@@ -125,6 +140,7 @@ class ParticleTransformerDataset(IterableDataset):
                 "cand_ParT_features": cand_ParT_features_tensors,
                 "cand_lifetimes": cand_lifetimes_tensors,
                 "cand_omni_kinematics": cand_omni_kinematics_tensors,
+                "omni_features_wPID": omni_features_wPID_tensors,
                 "mask": node_mask_tensors,
                 "reco_jet_pt": reco_jet_pt,
             },
