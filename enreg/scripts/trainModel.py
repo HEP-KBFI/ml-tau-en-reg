@@ -153,9 +153,9 @@ def train_loop(
         weight = weight.to(device=dev)
 
         if cfg.model_type == 'OmniParT':
-            if idx_epoch == 0:
+            if idx_epoch < cfg.models.OmniParT.num_rounds_frozen_backbone:
                 frost = 'freeze'
-            if idx_epoch > cfg.models.OmniParT.num_rounds_frozen_backbone:
+            else:
                 frost = 'unfreeze'
             model_inputs = model_inputs + (frost,)
         if kind == "jet_regression":
