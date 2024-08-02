@@ -6,6 +6,8 @@ from omegaconf import DictConfig
 from enreg.tools import general as g
 from enreg.tools.metrics import energy_regression as er
 
+os.environ['NUMEXPR_MAX_THREADS'] = '8'
+os.environ['NUMEXPR_NUM_THREADS'] = '8'
 
 @hydra.main(config_path="../config", config_name="benchmarking", version_base=None)
 def main(cfg: DictConfig) -> None:

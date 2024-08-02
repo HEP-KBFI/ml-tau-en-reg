@@ -1,7 +1,13 @@
 # Installation
 
+```bash
+git clone git@github.com:HEP-KBFI/ml-tau-en-reg.git --recursive
 ```
-git clone git@github.com:HEP-KBFI/ml-tau-en-reg.git
+
+If, however, you forgot to pull the submodules using ```--recursive``, you need to initialize the submodules as such:
+
+```bash
+git submodule update --init
 ```
 
 # Datasets

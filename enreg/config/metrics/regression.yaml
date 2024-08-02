@@ -14,7 +14,7 @@ regression:
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
-      marker: "v"
+      marker: "*"
       hatch: "//"
       color: "tab:purple"
     LorentzNet:
@@ -22,8 +22,8 @@ regression:
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
-      marker: "v"
-      hatch: "//"
+      marker: "D"
+      hatch: "\\\\"
       color: "tab:green"
     DeepSet:
       ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240701_lowered_ptcut_merged/v1/jet_regression/SimpleDNN/
@@ -31,8 +31,16 @@ regression:
       load_from_json: False
       compare: True
       marker: "v"
-      hatch: "//"
+      hatch: "."
       color: "black"
+    OmniParT:
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/240718_OmniParT/v1/jet_regression/OmniParT
+      json_metrics_path: plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "^"
+      hatch: "||"
+      color: "blue"
 
 defaults:
   - _self_

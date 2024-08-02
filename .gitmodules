@@ -1,0 +1,3 @@
+[submodule "enreg/omnijet_alpha"]
+	path = enreg/omnijet_alpha
+	url = https://github.com/uhh-pd-ml/omnijet_alpha.git

@@ -1,4 +1,4 @@
-output_dir: outputs/regression_plots
+output_dir: outputs/240801_regression_plots
 plot_samples_separately: True
 load_from_json: False
 

@@ -479,7 +479,7 @@ class ParticleTransformer(nn.Module):
         **kwargs
     ) -> None:
         if verbosity >= 1:
-            print("<ParticleTransformer::ParticleTransformer>:")
+            # print("<ParticleTransformer::ParticleTransformer>:")
             print(" input_dim = %i" % input_dim)
             print(" num_classes = %i" % num_classes)
         super().__init__(**kwargs)
@@ -524,7 +524,7 @@ class ParticleTransformer(nn.Module):
             self.to_ptXXXphim = None
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
-        self.pair_extra_dim = pair_extra_dim
+        self.pair_extra_dim = pair_extra_dim    
         self.embed = Embed(input_dim, embed_dims, activation=activation) if len(embed_dims) > 0 else nn.Identity()
         self.pair_embed = (
             PairEmbed(

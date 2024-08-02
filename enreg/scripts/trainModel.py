@@ -31,6 +31,7 @@ from enreg.tools.losses.initWeights import initWeights
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from enreg.tools.models.SimpleDNN import DeepSet
 from enreg.tools.models.LorentzNet import LorentzNet
+from enreg.tools.models.OmniParT import OmniParT
 
 from enreg.tools.data_management.features import FeatureStandardization
 
@@ -40,6 +41,7 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrain
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 import time
+
 
 def unpack_data(X, dev, feature_set):
     # Create a dictionary for each feature
@@ -53,6 +55,7 @@ def unpack_data(X, dev, feature_set):
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev).bool()
     return particle_features, cand_kinematics, mask
+
 
 class EarlyStopper:
     def __init__(self, patience=1, min_delta=0):
@@ -103,6 +106,7 @@ def train_loop(
     model,
     dev,
     loss_fn,
+    cfg,
     use_per_jet_weights,
     optimizer,
     lr_scheduler,
@@ -148,6 +152,12 @@ def train_loop(
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
+        if cfg.model_type == 'OmniParT':
+            if idx_epoch < cfg.models.OmniParT.num_rounds_frozen_backbone:
+                frost = 'freeze'
+            else:
+                frost = 'unfreeze'
+            model_inputs = model_inputs + (frost,)
         if kind == "jet_regression":
             pred = model(*model_inputs).to(device=dev)[:,0]
         elif kind == "dm_multiclass":
@@ -302,6 +312,7 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 13
     if 'cand_lifetimes' in feature_set:
         input_dim += 4
+    # TODO: other feature sets also?
     
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
@@ -328,6 +339,19 @@ def trainModel(cfg: DictConfig) -> None:
         ).to(device=dev)
     elif cfg.model_type == "SimpleDNN":
         model = DeepSet(input_dim, num_classes).to(device=dev)
+    elif cfg.model_type == "OmniParT":
+        model = OmniParT(
+            input_dim=input_dim,
+            cfg=cfg.models.OmniParT,
+            num_classes=num_classes,
+            num_layers=cfg.models.OmniParT.hyperparameters.num_layers,
+            embed_dims=cfg.models.OmniParT.hyperparameters.embed_dims,
+            use_pre_activation_pair=False,
+            for_inference=False,
+            use_amp=False,
+            metric='eta-phi',
+            verbosity=cfg.verbosity,
+        ).to(device=dev)
 
     initWeights(model)
     print("Finished building model:")
@@ -414,13 +438,14 @@ def trainModel(cfg: DictConfig) -> None:
                 model,
                 dev,
                 loss_fn,
+                cfg,
                 cfg.training.use_per_jet_weights,
                 optimizer,
                 lr_scheduler,
                 tensorboard,
                 feature_set,
                 num_classes,
-                kind=kind
+                kind=kind,
             )
             print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
             tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
@@ -432,6 +457,7 @@ def trainModel(cfg: DictConfig) -> None:
                     model,
                     dev,
                     loss_fn,
+                    cfg,
                     cfg.training.use_per_jet_weights,
                     None,
                     None,
@@ -483,7 +509,7 @@ def trainModel(cfg: DictConfig) -> None:
             preds = []
             targets = []
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
-                model_inputs = unpack_data(X, dev, feature_set)
+                model_inputs = unpack_data(X, dev, feature_set, cfg.model_type)
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":
