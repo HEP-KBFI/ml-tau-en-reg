@@ -44,8 +44,8 @@ dataset:
   min_jet_pt: 0
   max_jet_pt: 1000
   feature_set:
-    # - cand_ParT_features
-    - cand_omni_kinematics
+    - cand_ParT_features
+    # - cand_omni_kinematics
 
 #number of output classes for different tasks
 num_classes:
@@ -72,13 +72,13 @@ training:
 
 #disable creation of the outputs dir which we don't use
 #https://stackoverflow.com/questions/65104134/disable-file-output-of-hydra
-defaults:  
+defaults:
   - models: models
-  - _self_ 
-  - override hydra/hydra_logging: disabled  
-  - override hydra/job_logging: disabled  
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
 
-hydra:  
-  output_subdir: null  
-  run:  
+hydra:
+  output_subdir: null
+  run:
     dir: .

@@ -43,18 +43,20 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 import time
 
 
-def unpack_data(X, dev, feature_set):
+def unpack_data(X, dev, feature_set, model_type):
     # Create a dictionary for each feature
     features_as_dict = {
         feature: X[feature].to(device=dev) for feature in feature_set
     }
-
     # Concatenate chosen features
     particle_features = torch.cat([features_as_dict[feat] for feat in feature_set], axis=1)
-
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev).bool()
-    return particle_features, cand_kinematics, mask
+    if model_type == 'OmniParT':
+        cand_part_kinematics = X["cand_omni_kinematics"].to(device=dev)
+        return particle_features, cand_part_kinematics, cand_kinematics, mask
+    else:
+        return particle_features, cand_kinematics, mask
 
 
 class EarlyStopper:
@@ -148,7 +150,7 @@ def train_loop(
 
     for idx_batch, (X, y, weight) in tqdm.tqdm(enumerate(dataloader_train), total=len(dataloader_train)):
         # Compute prediction and loss
-        model_inputs = unpack_data(X, dev, feature_set)
+        model_inputs = unpack_data(X, dev, feature_set, cfg.model_type)
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
@@ -313,7 +315,7 @@ def trainModel(cfg: DictConfig) -> None:
     if 'cand_lifetimes' in feature_set:
         input_dim += 4
     # TODO: other feature sets also?
-    
+
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
         model = ParticleTransformer(
@@ -340,10 +342,17 @@ def trainModel(cfg: DictConfig) -> None:
     elif cfg.model_type == "SimpleDNN":
         model = DeepSet(input_dim, num_classes).to(device=dev)
     elif cfg.model_type == "OmniParT":
+        if cfg.models.OmniParT.version == "v1.1":
+            block_embed_dim = 256  # OmniJet_embed(256) = 256
+        elif cfg.models.OmniParT.version == "v2.1":
+            block_embed_dim = 272  # OmniJet_embed(256) + ParT_features(13) = 269
+        elif cfg.models.OmniParT.version == "v2.2":
+            block_embed_dim = 512  # OmniJet_embed(256) + ParT_embed(256) = 512
         model = OmniParT(
             input_dim=input_dim,
             cfg=cfg.models.OmniParT,
             num_classes=num_classes,
+            embed_dim=block_embed_dim,
             num_layers=cfg.models.OmniParT.hyperparameters.num_layers,
             embed_dims=cfg.models.OmniParT.hyperparameters.embed_dims,
             use_pre_activation_pair=False,
@@ -359,7 +368,7 @@ def trainModel(cfg: DictConfig) -> None:
     model_params = filter(lambda p: p.requires_grad, model.parameters())
     num_trainable_weights = sum([np.prod(p.size()) for p in model_params])
     print("#trainable parameters = {}".format(num_trainable_weights))
-    
+
     best_model_output_path = os.path.join(model_output_path, "model_best.pt")
 
     if cfg.train:
