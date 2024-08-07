@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 from gabbro.models.gpt_model import BackboneModel
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
+from enreg.tools.models.ParticleTransformer import Embed as EmbedParT
 from gabbro.models.vqvae import VQVAELightning
 from omegaconf import OmegaConf
 from pathlib import Path
+import torch.nn.functional as F
 
 
 class OmniParT(ParticleTransformer):
@@ -60,13 +62,14 @@ class OmniParT(ParticleTransformer):
             **kwargs
         )
         self.cfg = cfg
-        self.embed = EmbedParT(self.cfg)
+        self.embed_OmniJet = EmbedOmniJet(self.cfg)
+        self.embed_ParT = EmbedParT(input_dim, embed_dims, activation=activation) if len(embed_dims) > 0 else nn.Identity()
         self.for_inference = for_inference
         self.use_amp = use_amp
         self.frozen_parameters = False
 
 
-    def forward(self, cand_features, cand_kinematics_pxpypze=None, cand_mask=None, frost='freeze'):
+    def forward(self, cand_features, omni_cand_part_kinematics, cand_kinematics_pxpypze=None, cand_mask=None, frost='freeze'):
         # cand_features: (N=num_batches, C=num_features, P=num_particles)
         # cand_kinematics_pxpypze: (N, 4, P) [px,py,pz,energy]
         # cand_mask: (N, 1, P) -- real particle = 1, padded = 0
@@ -85,8 +88,19 @@ class OmniParT(ParticleTransformer):
                     param.requires_grad = True
                 self.frozen_parameters = False
 
-            parT_features = self.embed(cand_features, cand_mask)
-            cand_features_embed = parT_features.permute(1, 0, 2)  # (N, P, C) -> (P, N, C)
+            omniJet_embedding = self.embed_OmniJet(omni_cand_part_kinematics, cand_mask)
+            omnijet_features_embedding = omniJet_embedding.permute(1, 0, 2)  # (N, P, C) -> (P, N, C)
+
+            if self.cfg.version == "v1.1":
+                cand_features_embed = omnijet_features_embedding
+            elif self.cfg.version == "v2.1":
+                parT_features = cand_features.permute(2, 0, 1)
+                for i in range(3):  # Zero-padding so the embed_dim would be divisible by num_heads
+                    parT_features = F.pad(parT_features, (0, 1), "constant", 0)
+                cand_features_embed = torch.cat((omnijet_features_embedding, parT_features), 2)
+            elif self.cfg.version == "v2.2":
+                parT_features_embedding = self.embed_ParT(cand_features).masked_fill(~cand_mask.permute(2, 0, 1), 0)  # (P, N, C))
+                cand_features_embed = torch.cat((omnijet_features_embedding, parT_features_embedding), 2)
 
             attn_mask = None
             if cand_kinematics_pxpypze is not None and self.pair_embed is not None:
@@ -95,7 +109,7 @@ class OmniParT(ParticleTransformer):
             # transform particles
             for block in self.blocks:
                 cand_features_embed = block(cand_features_embed, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
-            
+
             # transform per-jet class tokens
             cls_tokens = self.cls_token.expand(1, cand_features_embed.size(1), -1)  # (1, N, C)
             for block in self.cls_blocks:
@@ -107,7 +121,7 @@ class OmniParT(ParticleTransformer):
             return output
 
 
-class EmbedParT(nn.Module):
+class EmbedOmniJet(nn.Module):
     def __init__(self, cfg):
         super().__init__()
 
@@ -122,7 +136,7 @@ class EmbedParT(nn.Module):
             embedding_dim=256,
             attention_dropout=0.0,
             vocab_size=8194,
-            max_sequence_len=128,
+            max_sequence_len=256,  # 128
             n_heads=32,
             n_GPT_blocks=3
         )  # Reason for the magic numbers (e.g. 8192+2)
@@ -130,7 +144,6 @@ class EmbedParT(nn.Module):
         self.bb_model.load_state_dict(gpt_state)
 
     def forward(self, cand_omni_kinematics, cand_mask):
-        
         # preprocess according to self.pp_dict
         cand_omni_kinematics[:, 0] = torch.nan_to_num(
             torch.log(cand_omni_kinematics[:, 0]) - self.pp_dict['part_pt']['subtract_by'] * self.pp_dict['part_pt']['multiply_by'],

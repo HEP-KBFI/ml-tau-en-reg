@@ -459,6 +459,7 @@ class ParticleTransformer(nn.Module):
         # network configurations
         pair_input_dim=4,
         pair_extra_dim=0,
+        embed_dim=None,
         remove_self_pair=False,
         use_pre_activation_pair=True,
         embed_dims=[128, 512, 128],
@@ -486,8 +487,8 @@ class ParticleTransformer(nn.Module):
 
         self.for_inference = for_inference
         self.use_amp = use_amp
-
-        embed_dim = embed_dims[-1] if len(embed_dims) > 0 else input_dim
+        if embed_dim is None:
+            embed_dim = embed_dims[-1] if len(embed_dims) > 0 else input_dim
         default_cfg = dict(
             embed_dim=embed_dim,
             num_heads=num_heads,
@@ -524,7 +525,7 @@ class ParticleTransformer(nn.Module):
             self.to_ptXXXphim = None
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
-        self.pair_extra_dim = pair_extra_dim    
+        self.pair_extra_dim = pair_extra_dim
         self.embed = Embed(input_dim, embed_dims, activation=activation) if len(embed_dims) > 0 else nn.Identity()
         self.pair_embed = (
             PairEmbed(

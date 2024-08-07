@@ -1,6 +1,7 @@
 ckpt_path: /home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/checkpoints/vqvae_8192_tokens/model_ckpt.ckpt
 bb_path: /home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/checkpoints/generative_8192_tokens/OmniJet_generative_model_UnintentionalPinscher_59.ckpt
 num_rounds_frozen_backbone: 30
+version: v2.2  # Possible options [v1.1]: Only OmniJet embedding; [v2.1]: OmniJet embedding + ParT features; [v.2.2] OmniJet embedding + ParT features ParT embedding
 hyperparameters:
   num_layers: 2
   embed_dims:
