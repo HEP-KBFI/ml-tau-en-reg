@@ -312,6 +312,8 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 13
     if 'cand_lifetimes' in feature_set:
         input_dim += 4
+    if 'cand_omni_kinematics' in feature_set:
+        input_dim += 3
     # TODO: other feature sets also?
     
     num_classes = cfg.num_classes[kind]
