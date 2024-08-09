@@ -312,6 +312,8 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 13
     if 'cand_lifetimes' in feature_set:
         input_dim += 4
+    if 'cand_omni_kinematics' in feature_set:
+        input_dim += 3
     # TODO: other feature sets also?
     
     num_classes = cfg.num_classes[kind]
@@ -489,7 +491,7 @@ def trainModel(cfg: DictConfig) -> None:
 
     if cfg.test:
         print("Loading best state from {}".format(best_model_output_path))
-        model.load_state_dict(torch.load(best_model_output_path))
+        model.load_state_dict(torch.load(best_model_output_path, map_location=dev))
         model.eval()
 
         print("Evaluating on test samples")
@@ -500,16 +502,18 @@ def trainModel(cfg: DictConfig) -> None:
                 row_groups=data,
                 cfg=cfg.dataset,
             )
+
+            # test dataloader must NOT specify num_workers or prefetch,
+            # otherwise the order of jets in the dataset can change
+            # and thus make subsequent evaluation incorrect
             dataloader_full = DataLoader(
                 dataset_full,
                 batch_size=cfg.training.batch_size,
-                num_workers=cfg.training.num_dataloader_workers,
-                prefetch_factor=cfg.training.prefetch_factor,
             )
             preds = []
             targets = []
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
-                model_inputs = unpack_data(X, dev, feature_set, cfg.model_type)
+                model_inputs = unpack_data(X, dev, feature_set)
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":
