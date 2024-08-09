@@ -6,7 +6,7 @@ test: True
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: training-outputs/240801_fix_eval
+output_dir: training-outputs/240809_nw1
 data_path: /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged
 
 #override this using command line args

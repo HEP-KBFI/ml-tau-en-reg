@@ -500,6 +500,10 @@ def trainModel(cfg: DictConfig) -> None:
                 row_groups=data,
                 cfg=cfg.dataset,
             )
+
+            # test dataloader must NOT specify num_workers or prefetch,
+            # otherwise the order of jets in the dataset can change
+            # and thus make subsequent evaluation incorrect
             dataloader_full = DataLoader(
                 dataset_full,
                 batch_size=cfg.training.batch_size,
