@@ -9,7 +9,7 @@ regression:
       Medium: 0.967
       Tight: 0.975
   algorithms:
-    ParticleTransformer:
+    240701_pt_paper:
       ntuples_dir: /local/joosep/ml-tau-en-reg/results/20240701_lowered_ptcut_merged/v1/jet_regression/ParticleTransformer/
       json_metrics_path: plotting_data.json
       load_from_json: False
@@ -17,24 +17,24 @@ regression:
       marker: "*"
       hatch: "//"
       color: "tab:purple"
-    LorentzNet:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/20240701_lowered_ptcut_merged/v1/jet_regression/LorentzNet/
+    240809_pt_retrain:
+      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_particletransformer_vars/jet_regression/ParticleTransformer/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "D"
       hatch: "\\\\"
       color: "tab:green"
-    DeepSet:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/20240701_lowered_ptcut_merged/v1/jet_regression/SimpleDNN/
+    240809_pt_3var:
+      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_3var_kinematics/jet_regression/ParticleTransformer/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "v"
       hatch: "."
       color: "black"
-    OmniParT:
-      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/240718_OmniParT/v1/jet_regression/OmniParT
+    240809_omnipart_3var:
+      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_3var_kinematics/jet_regression/OmniParT/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
