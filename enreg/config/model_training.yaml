@@ -6,7 +6,7 @@ test: True
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: training-outputs/240801_fix_eval
+output_dir: training-outputs/240809_3var_kinematics
 data_path: /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged
 
 #override this using command line args
@@ -44,8 +44,8 @@ dataset:
   min_jet_pt: 0
   max_jet_pt: 1000
   feature_set:
-    - cand_ParT_features
-    # - cand_omni_kinematics
+    # - cand_ParT_features
+    - cand_omni_kinematics
 
 #number of output classes for different tasks
 num_classes:

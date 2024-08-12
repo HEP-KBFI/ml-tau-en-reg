@@ -312,6 +312,8 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 13
     if 'cand_lifetimes' in feature_set:
         input_dim += 4
+    if 'cand_omni_kinematics' in feature_set:
+        input_dim += 3
     # TODO: other feature sets also?
     
     num_classes = cfg.num_classes[kind]
@@ -500,6 +502,10 @@ def trainModel(cfg: DictConfig) -> None:
                 row_groups=data,
                 cfg=cfg.dataset,
             )
+
+            # test dataloader must NOT specify num_workers or prefetch,
+            # otherwise the order of jets in the dataset can change
+            # and thus make subsequent evaluation incorrect
             dataloader_full = DataLoader(
                 dataset_full,
                 batch_size=cfg.training.batch_size,
