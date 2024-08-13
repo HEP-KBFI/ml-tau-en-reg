@@ -32,6 +32,7 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from enreg.tools.models.SimpleDNN import DeepSet
 from enreg.tools.models.LorentzNet import LorentzNet
 from enreg.tools.models.OmniParT import OmniParT
+from enreg.tools.models.OmniFeedforward import OmniFeedforward
 
 from enreg.tools.data_management.features import FeatureStandardization
 
@@ -158,6 +159,13 @@ def train_loop(
             else:
                 frost = 'unfreeze'
             model_inputs = model_inputs + (frost,)
+        if cfg.model_type == 'OmniFeedforward':
+            if idx_epoch < cfg.models.OmniFeedforward.num_rounds_frozen_backbone:
+                frost = 'freeze'
+            else:
+                frost = 'unfreeze'
+            model_inputs = model_inputs + (frost,)
+
         if kind == "jet_regression":
             pred = model(*model_inputs).to(device=dev)[:,0]
         elif kind == "dm_multiclass":
@@ -353,6 +361,13 @@ def trainModel(cfg: DictConfig) -> None:
             use_amp=False,
             metric='eta-phi',
             verbosity=cfg.verbosity,
+        ).to(device=dev)
+    elif cfg.model_type == "OmniFeedforward":
+        model = OmniFeedforward(
+            input_dim=input_dim,
+            cfg=cfg.models.OmniParT,
+            num_classes=num_classes,
+            use_amp=False,
         ).to(device=dev)
 
     initWeights(model)

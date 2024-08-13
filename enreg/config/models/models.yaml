@@ -4,3 +4,4 @@ defaults:
   - HPS: HPS
   - SimpleDNN: SimpleDNN
   - OmniParT: OmniParT
+  - OmniFeedforward: OmniFeedforward
