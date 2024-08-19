@@ -5,7 +5,7 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
 from enreg.tools.models.OmniParT import EmbedParT
 
-class OmniFeedforward(nn.Module):
+class OmniDeepSet(nn.Module):
     def __init__(
         self,
         input_dim,
