@@ -32,7 +32,7 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from enreg.tools.models.SimpleDNN import DeepSet
 from enreg.tools.models.LorentzNet import LorentzNet
 from enreg.tools.models.OmniParT import OmniParT
-from enreg.tools.models.OmniFeedforward import OmniFeedforward
+from enreg.tools.models.OmniDeepSet import OmniDeepSet
 
 from enreg.tools.data_management.features import FeatureStandardization
 
@@ -159,8 +159,8 @@ def train_loop(
             else:
                 frost = 'unfreeze'
             model_inputs = model_inputs + (frost,)
-        if cfg.model_type == 'OmniFeedforward':
-            if idx_epoch < cfg.models.OmniFeedforward.num_rounds_frozen_backbone:
+        if cfg.model_type == 'OmniDeepSet':
+            if idx_epoch < cfg.models.OmniDeepSet.num_rounds_frozen_backbone:
                 frost = 'freeze'
             else:
                 frost = 'unfreeze'
@@ -362,8 +362,8 @@ def trainModel(cfg: DictConfig) -> None:
             metric='eta-phi',
             verbosity=cfg.verbosity,
         ).to(device=dev)
-    elif cfg.model_type == "OmniFeedforward":
-        model = OmniFeedforward(
+    elif cfg.model_type == "OmniDeepSet":
+        model = OmniDeepSet(
             input_dim=input_dim,
             cfg=cfg.models.OmniParT,
             num_classes=num_classes,
