@@ -4,6 +4,7 @@ from gabbro.models.gpt_model import BackboneModel
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
 from enreg.tools.models.OmniParT import EmbedParT
+from enreg.tools.models.SimpleDNN import ffn
 
 class OmniDeepSet(nn.Module):
     def __init__(
@@ -21,11 +22,12 @@ class OmniDeepSet(nn.Module):
         #Omnijet backbone
         self.embed = EmbedParT(self.cfg)
 
-        #Feedforward output
-        fcs = []
-        in_dim = 256
-        fcs.append(nn.Linear(in_dim, num_classes))
-        self.fc = nn.Sequential(*fcs)
+        self.act = nn.GELU
+        self.act_obj = self.act()
+        self.dropout = 0.1
+        self.width = 128
+
+        self.nn_pred = ffn(256, num_classes, self.width, self.act, self.dropout)
     
     def forward(self, cand_features, cand_kinematics_pxpypze=None, cand_mask=None, frost='freeze'):
         padding_mask = ~cand_mask.squeeze(1) # (N, 1, P) -> (N, P)
@@ -43,7 +45,8 @@ class OmniDeepSet(nn.Module):
                     param.requires_grad = True
                 self.frozen_parameters = False
             parT_features = self.embed(cand_features, cand_mask)
+
             num_pfs = torch.sum(cand_mask, axis=-1)
-            jet_encoded = torch.sum(parT_features, axis=1)/num_pfs
-            output = self.fc(jet_encoded)
-            return output
+            jet_encoded1 = self.act_obj(torch.sum(parT_features, axis=1)/num_pfs)
+            ret = self.nn_pred(jet_encoded1)
+            return ret
