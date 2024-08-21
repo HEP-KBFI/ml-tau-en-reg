@@ -28,8 +28,8 @@ def build_taus(cfg: DictConfig) -> None:
         builder = LorentzNetTauBuilder(cfg=cfg.models.LorentzNet)
     elif cfg.builder == "HPS":
         builder = HPSTauBuilder(cfg=cfg.models.HPS)
-    elif cfg.builder == "SimpleDNN":
-        builder = DeepSetTauBuilder(cfg=cfg.models.SimpleDNN)
+    elif cfg.builder == "DeepSet":
+        builder = DeepSetTauBuilder(cfg=cfg.models.DeepSet)
     else:
         raise NotImplementedError(f"Please implement the tau builder for [{cfg.builder}] algorithm")
     builder.print_config()

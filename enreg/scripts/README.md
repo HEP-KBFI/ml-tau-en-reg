@@ -13,7 +13,7 @@ The input data files for the training should be located either in `/scratch/pers
 - **split_to_independent_datasets.py** - does the train-val-test split for all input files
 - **submit_builder_batchJobs.sh** - executes all slurm submission scripts.
 - **train-pytorch-gpu.sh** - script used to submit the ML training to GPU queue
-- **train[LorentzNet/ParticleTransformer/SimpleDNN]** - training scripts for the respective models.
+- **train[LorentzNet/ParticleTransformer/DeepSet]** - training scripts for the respective models.
 
 
 ![Workflow](workflow.png)

@@ -17,7 +17,7 @@ training_type: dm_multiclass
 #override this using command line args
 model_type: ParticleTransformer
 # model_type: LorentzNet
-# model_type: SimpleDNN
+# model_type: DeepSet
 
 #these samples can be used for training and validation
 #qq is added back using command line flags for the binary classification task

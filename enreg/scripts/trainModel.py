@@ -29,7 +29,7 @@ from enreg.tools.models.Lookahead import Lookahead
 from enreg.tools.losses.initWeights import initWeights
 
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
-from enreg.tools.models.SimpleDNN import DeepSet
+from enreg.tools.models.DeepSet import DeepSet
 from enreg.tools.models.LorentzNet import LorentzNet
 from enreg.tools.models.OmniParT import OmniParT
 from enreg.tools.models.OmniDeepSet import OmniDeepSet
@@ -347,7 +347,7 @@ def trainModel(cfg: DictConfig) -> None:
             c_weight=cfg.models.LorentzNet.hyperparameters.c_weight,
             verbosity=cfg.verbosity,
         ).to(device=dev)
-    elif cfg.model_type == "SimpleDNN":
+    elif cfg.model_type == "DeepSet":
         model = DeepSet(input_dim, num_classes).to(device=dev)
     elif cfg.model_type == "OmniParT":
         model = OmniParT(

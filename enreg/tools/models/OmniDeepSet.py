@@ -4,7 +4,7 @@ from gabbro.models.gpt_model import BackboneModel
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
 from enreg.tools.models.OmniParT import EmbedParT
-from enreg.tools.models.SimpleDNN import ffn
+from enreg.tools.models.DeepSet import ffn
 
 class OmniDeepSet(nn.Module):
     def __init__(

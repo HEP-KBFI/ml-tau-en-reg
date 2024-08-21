@@ -10,25 +10,25 @@ if false; then
     # ==== JET_REGRESSION with SIMPLEDNN ====
     if false; then
         # First training with all the features
-        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats_lifetimes training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=SimpleDNN dataset.feature_set=[cand_kinematics,cand_features,cand_lifetimes]
+        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats_lifetimes training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=DeepSet dataset.feature_set=[cand_kinematics,cand_features,cand_lifetimes]
 
         # Second training with kinematics and features
-        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=SimpleDNN dataset.feature_set=[cand_kinematics,cand_features]
+        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=DeepSet dataset.feature_set=[cand_kinematics,cand_features]
 
         # Third training with only kinematics
-        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=SimpleDNN dataset.feature_set=[cand_kinematics]
+        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=DeepSet dataset.feature_set=[cand_kinematics]
     fi
 
     # ==== DM_MULTICLASS with SIMPLEDNN ====
     if false; then
         # First training with all the features
-        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats_lifetimes training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=SimpleDNN dataset.feature_set=[cand_kinematics,cand_features,cand_lifetimes]
+        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats_lifetimes training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=DeepSet dataset.feature_set=[cand_kinematics,cand_features,cand_lifetimes]
 
         # Second training with kinematics and features
-        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=SimpleDNN dataset.feature_set=[cand_kinematics,cand_features]
+        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=DeepSet dataset.feature_set=[cand_kinematics,cand_features]
 
         # Third training with only kinematics
-        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=SimpleDNN dataset.feature_set=[cand_kinematics]
+        sbatch enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=DeepSet dataset.feature_set=[cand_kinematics]
     fi
 fi
 
@@ -40,11 +40,11 @@ if true; then
     export OUTDIR=training-outputs/240626_train_on_z/v1
     
     # First training with all the features
-    sbatch --mem-per-gpu 150G enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats_lifetimes training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=binary_classification model_type=SimpleDNN dataset.feature_set=[cand_kinematics,cand_features,cand_lifetimes]
+    sbatch --mem-per-gpu 150G enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats_lifetimes training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=binary_classification model_type=DeepSet dataset.feature_set=[cand_kinematics,cand_features,cand_lifetimes]
 
     # Second training with kinematics and features
-    sbatch --mem-per-gpu 150G enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=binary_classification model_type=SimpleDNN dataset.feature_set=[cand_kinematics,cand_features]
+    sbatch --mem-per-gpu 150G enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin_feats training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=binary_classification model_type=DeepSet dataset.feature_set=[cand_kinematics,cand_features]
 
     # Third training with only kinematics
-    sbatch --mem-per-gpu 150G enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=binary_classification model_type=SimpleDNN dataset.feature_set=[cand_kinematics]
+    sbatch --mem-per-gpu 150G enreg/scripts/train-pytorch-gpu.sh output_dir=$OUTDIR/feats_kin training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=binary_classification model_type=DeepSet dataset.feature_set=[cand_kinematics]
 fi
