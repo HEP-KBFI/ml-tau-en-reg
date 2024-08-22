@@ -140,7 +140,7 @@ class ParticleTransformerDataset(IterableDataset):
                 "cand_ParT_features": cand_ParT_features_tensors,
                 "cand_lifetimes": cand_lifetimes_tensors,
                 "cand_omni_kinematics": cand_omni_kinematics_tensors,
-                "omni_features_wPID": omni_features_wPID_tensors,
+                "cand_omni_features_wPID": omni_features_wPID_tensors,
                 "mask": node_mask_tensors,
                 "reco_jet_pt": reco_jet_pt,
             },

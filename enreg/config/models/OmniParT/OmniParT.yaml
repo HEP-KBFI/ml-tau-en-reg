@@ -1,6 +1,7 @@
 ckpt_path: /local/joosep/omnijet_alpha/checkpoints/vqvae_8192_tokens/model_ckpt.ckpt
 bb_path: /local/joosep/omnijet_alpha/checkpoints/generative_8192_tokens/OmniJet_generative_model_UnintentionalPinscher_59.ckpt
 num_rounds_frozen_backbone: 30
+version: v3.1
 hyperparameters:
   num_layers: 2
   embed_dims:

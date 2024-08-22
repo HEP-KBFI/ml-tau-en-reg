@@ -247,7 +247,10 @@ def train_loop(
         )
     tensorboard.flush()
     print("Loss = {}".format(loss_train))
-    return loss_train
+    if kind == "jet_regression":
+        return loss_train, iqr_reco_gen_ratio
+    else:
+        return loss_train
 
 
 def run_command(cmd):
@@ -445,11 +448,14 @@ def trainModel(cfg: DictConfig) -> None:
         # early_stopper = EarlyStopper(patience=10)
         losses_train = []
         losses_validation = []
+        if kind == "jet_regression":
+            iqr_train = []
+            iqr_validation = []
         for idx_epoch in range(cfg.training.num_epochs):
             print("Processing epoch #%i" % idx_epoch)
             print(" current time:", datetime.datetime.now())
 
-            loss_train = train_loop(
+            train_output = train_loop(
                 idx_epoch,
                 dataloader_train,
                 model,
@@ -464,11 +470,16 @@ def trainModel(cfg: DictConfig) -> None:
                 num_classes,
                 kind=kind,
             )
+            if kind == "jet_regression":
+                iqr_train.append(train_output[1])
+                losses_train.append(train_output[0])
+            else:
+                losses_train.append(train_output)
             print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
             tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
             with torch.no_grad():
-                loss_validation = train_loop(
+                validation_output = train_loop(
                     idx_epoch,
                     dataloader_validation,
                     model,
@@ -484,9 +495,13 @@ def trainModel(cfg: DictConfig) -> None:
                     kind=kind,
                     train=False,
                 )
-
-            losses_train.append(loss_train)
-            losses_validation.append(loss_validation)
+            if kind == "jet_regression":
+                loss_validation = validation_output[1]
+                iqr_validation.append(loss_validation)
+                losses_validation.append(validation_output[0])
+            else:
+                loss_validation = validation_output
+                losses_validation.append(loss_validation)
 
             if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
                 print("Saving best model to file {}".format(best_model_output_path))
@@ -494,9 +509,18 @@ def trainModel(cfg: DictConfig) -> None:
                 min_loss_validation = loss_validation
             process = psutil.Process(os.getpid())
             print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
-
+            history_data = {
+                "losses_train": losses_train,
+                "losses_validation": losses_validation,
+            }
+            if kind == 'jet_regression':
+                history_data.update({"iqr_train": iqr_train, "iqr_validation": iqr_validation})
             with open(os.path.join(model_output_path, "history.json"), "w") as fi:
-                json.dump({"losses_train": losses_train, "losses_validation": losses_validation}, fi, indent=4)
+                json.dump(
+                    history_data,
+                    fi,
+                    indent=4
+                )
             # if early_stopper.early_stop(loss_validation):
             #     break
         print("Finished training.")

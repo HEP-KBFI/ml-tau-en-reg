@@ -85,16 +85,19 @@ class OmniParT(ParticleTransformer):
                     param.requires_grad = True
                 self.frozen_parameters = False
 
-            parT_features = self.embed(cand_features, cand_mask)
-            cand_features_embed = parT_features.permute(1, 0, 2)  # (N, P, C) -> (P, N, C)
+            if self.cfg.version == "v3.1":
+                cand_features_embed = self.embed(cand_features, cand_mask).permute(1, 0, 2)
+            else:
+                parT_features = self.embed(cand_features, cand_mask)
+                cand_features_embed = parT_features.permute(1, 0, 2)  # (N, P, C) -> (P, N, C)
 
-            attn_mask = None
-            if cand_kinematics_pxpypze is not None and self.pair_embed is not None:
-                attn_mask = self.pair_embed(cand_kinematics_pxpypze).view(-1, num_particles, num_particles) # (N*num_heads, P, P)
+                attn_mask = None
+                if cand_kinematics_pxpypze is not None and self.pair_embed is not None:
+                    attn_mask = self.pair_embed(cand_kinematics_pxpypze).view(-1, num_particles, num_particles) # (N*num_heads, P, P)
 
-            # transform particles
-            for block in self.blocks:
-                cand_features_embed = block(cand_features_embed, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
+                # transform particles
+                for block in self.blocks:
+                    cand_features_embed = block(cand_features_embed, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
             
             # transform per-jet class tokens
             cls_tokens = self.cls_token.expand(1, cand_features_embed.size(1), -1)  # (1, N, C)

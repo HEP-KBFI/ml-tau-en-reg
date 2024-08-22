@@ -46,6 +46,7 @@ dataset:
   feature_set:
     # - cand_ParT_features
     - cand_omni_kinematics
+    # - cand_omni_features_wPID
 
 #number of output classes for different tasks
 num_classes:
