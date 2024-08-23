@@ -124,7 +124,7 @@ class EmbedParT(nn.Module):
         self.bb_model = BackboneModel(
             embedding_dim=256,
             attention_dropout=0.0,
-            vocab_size=8194,
+            vocab_size=32002,
             max_sequence_len=128,
             n_heads=32,
             n_GPT_blocks=3
@@ -133,7 +133,7 @@ class EmbedParT(nn.Module):
         self.bb_model.load_state_dict(gpt_state)
 
     def forward(self, cand_omni_kinematics, cand_mask):
-        
+
         # preprocess according to self.pp_dict
         cand_omni_kinematics[:, 0] = torch.nan_to_num(
             torch.log(cand_omni_kinematics[:, 0]) - self.pp_dict['part_pt']['subtract_by'] * self.pp_dict['part_pt']['multiply_by'],

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-
+# from comet_ml import Experiment
+# from comet_ml.integration.pytorch import log_model
 import os
 import glob
 import json
@@ -43,6 +44,9 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 import time
 
+
+# experiment = Experiment()
+# experiment.set_name('Test4')
 
 def unpack_data(X, dev, feature_set):
     # Create a dictionary for each feature
@@ -207,6 +211,11 @@ def train_loop(
             lr_scheduler.step()
 
     loss_train /= normalization
+    # if train:
+    #     experiment.log_metric(name="loss_train", value=loss_train, step=idx_epoch)
+    # else:
+    #     experiment.log_metric(name="loss_validation", value=loss_train, step=idx_epoch)
+
     if kind == "binary_classification":
         accuracy_train /= accuracy_normalization_train
         logTrainingProgress(
@@ -325,8 +334,10 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 4
     if 'cand_omni_kinematics' in feature_set:
         input_dim += 3
-    # TODO: other feature sets also?
-    
+    if 'cand_omni_features_wPID' in feature_set:
+        input_dim += 10
+
+
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
         model = ParticleTransformer(
