@@ -37,6 +37,21 @@ class RandomDrop(nn.Module):
         return x
 
 
+class LayerScale(nn.Module):
+    def __init__(self, init_values, projection_dim):
+        super(LayerScale, self).__init__()
+        self.init_values = init_values
+        self.projection_dim = projection_dim
+        self.gamma = nn.Parameter(torch.full((self.projection_dim,), self.init_values))
+
+    def forward(self, inputs, mask=None):
+        # Element-wise multiplication of inputs and gamma
+        if mask is not None:
+            return inputs * self.gamma * mask
+        else:
+            return inputs * self.gamma
+
+
 class SimpleHeadAttention(nn.Module):
     """Simple MHA where masks can be directly added to the inputs.
     Args:
@@ -57,88 +72,6 @@ class SimpleHeadAttention(nn.Module):
         self.proj = nn.Linear(projection_dim)
         self.proj_drop = nn.Dropout(dropout_rate)
         self.softmax = nn.Softmax(dim=-1)
-
-    # def forward(self, x, int_matrix=None, mask=None, training=False):
-
-    #     # What do B, N and C correspond to.
-
-    #     B, N, C = tf.shape(x)[0], tf.shape(x)[1], tf.shape(x)[2]
-    #     # Project the inputs all at once.
-    #     qkv = self.qkv(x)
-
-
-    #     # Reshape the projected output so that they're segregated in terms of
-    #     # query, key, and value projections.
-    #     qkv = tf.reshape(qkv, (B, N, 3, self.num_heads, C // self.num_heads))
-
-    #     # Transpose so that the `num_heads` becomes the leading dimensions.
-    #     # Helps to better segregate the representation sub-spaces.
-    #     qkv = tf.transpose(qkv, perm=[2, 0, 3, 1, 4])
-    #     scale = tf.cast(self.scale, dtype=qkv.dtype)
-    #     q, k, v = qkv[0] * scale, qkv[1], qkv[2]
-
-    #     # Obtain the raw attention scores.
-    #     attn = tf.matmul(q, k, transpose_b = True)
-
-    #     # Normalize the attention scores.
-
-    #     if int_matrix is not None:
-    #         attn += int_matrix
-
-    #     if mask is not None:
-    #         mask = tf.cast(mask, dtype=attn.dtype)
-    #         mask = tf.tile(mask, [1, tf.shape(attn)[1], 1, 1])
-    #         attn += (1.0 - mask)*-1e9
-
-    #     attn = self.softmax(attn)
-
-    #     # Final set of projections as done in the vanilla attention mechanism.
-    #     x = tf.matmul(attn, v)
-    #     x = tf.transpose(x, perm=[0, 2, 1, 3])
-    #     x = tf.reshape(x, (B, N, C))
-        
-    #     x = self.proj(x)
-    #     x = self.proj_drop(x, training=training)
-    #     return x, attn
-
-
-# class LayerScale(layers.Layer):
-#     def __init__(self, init_values, projection_dim, **kwargs):
-#         super(LayerScale, self).__init__(**kwargs)
-#         self.init_values = init_values
-#         self.projection_dim = projection_dim
-#         self.gamma_initializer = tf.keras.initializers.Constant(self.init_values)
-
-#     def build(self, input_shape):
-#         # Ensure the layer is properly built by defining its weights in the build method
-#         self.gamma = self.add_weight(
-#             shape=(self.projection_dim,),
-#             initializer=self.gamma_initializer,
-#             trainable=True,
-#             name='gamma'
-#         )
-#         super(LayerScale, self).build(input_shape)
-
-#     def call(self, inputs,mask=None):
-#         # Element-wise multiplication of inputs and gamma
-#         if mask is not None:
-#             return inputs * self.gamma* mask
-#         else:
-#             return inputs * self.gamma
-
-class LayerScale(nn.Module):
-    def __init__(self, init_values, projection_dim):
-        super(LayerScale, self).__init__()
-        self.init_values = init_values
-        self.projection_dim = projection_dim
-        self.gamma = nn.Parameter(torch.full((self.projection_dim,), self.init_values))
-
-    def forward(self, inputs, mask=None):
-        # Element-wise multiplication of inputs and gamma
-        if mask is not None:
-            return inputs * self.gamma * mask
-        else:
-            return inputs * self.gamma
 
 
 
