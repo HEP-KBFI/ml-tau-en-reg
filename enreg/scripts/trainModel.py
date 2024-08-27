@@ -1,6 +1,6 @@
 #!/usr/bin/python3
-# from comet_ml import Experiment
-# from comet_ml.integration.pytorch import log_model
+from comet_ml import Experiment
+from comet_ml.integration.pytorch import log_model
 import os
 import glob
 import json
@@ -45,8 +45,12 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 import time
 
 
-# experiment = Experiment()
-# experiment.set_name('Test4')
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
+
 
 def unpack_data(X, dev, feature_set):
     # Create a dictionary for each feature
@@ -120,6 +124,8 @@ def train_loop(
     num_classes,
     kind="jet_regression",
     train=True,
+    use_comet=True,
+    experiment=None
 ):
     if train:
         print("::::: TRAIN LOOP :::::")
@@ -211,14 +217,27 @@ def train_loop(
             lr_scheduler.step()
 
     loss_train /= normalization
-    # if train:
-    #     experiment.log_metric(name="loss_train", value=loss_train, step=idx_epoch)
-    # else:
-    #     experiment.log_metric(name="loss_validation", value=loss_train, step=idx_epoch)
+    if use_comet:
+        if train:
+            experiment.log_metric(name="loss_train", value=loss_train, step=idx_epoch)
+            if kind == "dm_multiclass":
+                experiment.log_confusion_matrix(
+                    y_true=None,
+                    y_predicted=None,
+                    matrix=None,
+                    labels=None,
+                    title="Confusion Matrix",
+                    row_label="Actual Category",
+                    column_label="Predicted Category",
+                    step=idx_epoch
+                )
+
+        else:
+            experiment.log_metric(name="loss_validation", value=loss_train, step=idx_epoch)
 
     if kind == "binary_classification":
         accuracy_train /= accuracy_normalization_train
-        logTrainingProgress(
+        logging_data = logTrainingProgress(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
@@ -233,7 +252,7 @@ def train_loop(
         median_reco_gen_ratio = np.median(np.abs(ratios))
         stdev_reco_gen_ratio = np.std(np.abs(ratios))
         iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
-        logTrainingProgress_regression(
+        logging_data = logTrainingProgress_regression(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
@@ -246,7 +265,7 @@ def train_loop(
             np.array(ratios)
         )
     elif kind == "dm_multiclass":
-        logTrainingProgress_decaymode(
+        logging_data = logTrainingProgress_decaymode(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
@@ -256,22 +275,28 @@ def train_loop(
         )
     tensorboard.flush()
     print("Loss = {}".format(loss_train))
-    if kind == "jet_regression":
-        return loss_train, iqr_reco_gen_ratio
-    else:
-        return loss_train
-
-
-def run_command(cmd):
-    result = subprocess.run(cmd.split(" "), stdout=subprocess.PIPE, universal_newlines=True)
-    print(result.stdout)
+    return loss_train, logging_data
 
 
 @hydra.main(config_path="../config", config_name="model_training", version_base=None)
 def trainModel(cfg: DictConfig) -> None:
     print("<trainModel>:")
+    experiment = None
+    try:
+        experiment = Experiment()
+        if cfg.comet.experiment is None:
+            now = datetime.datetime.now()
+            experiment_name = now.strftime("%d/%m/%Y, %H:%M:%S")
+        else:
+            experiment_name = cfg.comet.experiment
+        experiment.set_name(experiment_name)
+        use_comet = True
+        print(f"Using CometML for logging. Experiment name {cfg.comet.experiment}")
+    except ValueError:
+        use_comet = False
+        print("CometML API key not found, not logging to CometML")
 
-    #because we are doing plots for tensorboard, we don't want anything to crash
+    # because we are doing plots for tensorboard, we don't want anything to crash
     plt.switch_backend('agg')
 
     feature_set = cfg.dataset.feature_set
@@ -457,8 +482,6 @@ def trainModel(cfg: DictConfig) -> None:
         tensorboard = SummaryWriter(os.path.join(model_output_path,"tensorboard_logs"))
         min_loss_validation = -1.0
         # early_stopper = EarlyStopper(patience=10)
-        losses_train = []
-        losses_validation = []
         if kind == "jet_regression":
             iqr_train = []
             iqr_validation = []
@@ -466,7 +489,7 @@ def trainModel(cfg: DictConfig) -> None:
             print("Processing epoch #%i" % idx_epoch)
             print(" current time:", datetime.datetime.now())
 
-            train_output = train_loop(
+            train_loss, train_logging_data = train_loop(
                 idx_epoch,
                 dataloader_train,
                 model,
@@ -480,17 +503,14 @@ def trainModel(cfg: DictConfig) -> None:
                 feature_set,
                 num_classes,
                 kind=kind,
+                use_comet=use_comet,
+                experiment=experiment
             )
-            if kind == "jet_regression":
-                iqr_train.append(train_output[1])
-                losses_train.append(train_output[0])
-            else:
-                losses_train.append(train_output)
             print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
             tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
             with torch.no_grad():
-                validation_output = train_loop(
+                loss_validation, val_logging_data = train_loop(
                     idx_epoch,
                     dataloader_validation,
                     model,
@@ -505,33 +525,41 @@ def trainModel(cfg: DictConfig) -> None:
                     num_classes,
                     kind=kind,
                     train=False,
+                    use_comet=use_comet,
+                    experiment=experiment
                 )
-            if kind == "jet_regression":
-                loss_validation = validation_output[1]
-                iqr_validation.append(loss_validation)
-                losses_validation.append(validation_output[0])
-            else:
-                loss_validation = validation_output
-                losses_validation.append(loss_validation)
 
             if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
                 print("Saving best model to file {}".format(best_model_output_path))
                 torch.save(model.state_dict(), best_model_output_path)
                 min_loss_validation = loss_validation
-            process = psutil.Process(os.getpid())
-            print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
-            history_data = {
-                "losses_train": losses_train,
-                "losses_validation": losses_validation,
-            }
-            if kind == 'jet_regression':
-                history_data.update({"iqr_train": iqr_train, "iqr_validation": iqr_validation})
-            with open(os.path.join(model_output_path, "history.json"), "w") as fi:
+
+            new_history_data = {}
+            for key, value in val_logging_data.items():
+                new_history_data[key + "_validation"] = value
+            for key, value in train_logging_data.items():
+                new_history_data[key + "_train"] = value
+
+            history_data_path = os.path.join(model_output_path, "history.json")
+            if os.path.exists(history_data_path):
+                with open(history_data_path, "rt") as in_file:
+                    history_data = json.load(in_file)
+                for key, value in new_history_data.items():
+                    history_data[key].append(value)
+            else:
+                history_data = {}
+                for key, value in new_history_data.items():
+                    history_data[key] = []
+                    history_data[key].append(value)
+
+            with open(history_data_path, "wt") as out_file:
                 json.dump(
                     history_data,
-                    fi,
-                    indent=4
+                    out_file,
+                    indent=4,
+                    cls=NumpyEncoder
                 )
+
             # if early_stopper.early_stop(loss_validation):
             #     break
         print("Finished training.")

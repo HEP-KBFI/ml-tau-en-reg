@@ -1,8 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, ConfusionMatrixDisplay
+from sklearn.metrics import precision_score, roc_auc_score, roc_curve, ConfusionMatrixDisplay
 
-def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true, pred_probas, weights):
+
+def logTrainingProgress(
+    tensorboard,
+    idx_epoch,
+    mode,
+    loss,
+    accuracy,
+    class_true,
+    pred_probas,
+    weights
+):
     class_pred = np.argmax(pred_probas, axis=-1)
     signal_proba = pred_probas[:, 1]
     assert len(class_true) == len(class_pred) and len(class_true) == len(weights)
@@ -54,6 +64,19 @@ def logTrainingProgress(tensorboard, idx_epoch, mode, loss, accuracy, class_true
     plt.xlabel("TPR")
     plt.ylabel("FPR")
     tensorboard.add_figure("roc/{}".format(mode), fig, global_step=idx_epoch)
+    logging_data = {
+        "F1": float(F1_score),
+        "recall": float(recall),
+        "precision": float(precision),
+        "false_positives": float(false_positive_rate),
+        "false_negatives": float(false_negative_rate),
+        "accuracy": float(accuracy),
+        "loss": float(loss)
+        # "AUC": 
+    }
+
+    return logging_data
+
 
 def logTrainingProgress_regression(
     tensorboard,
@@ -72,13 +95,23 @@ def logTrainingProgress_regression(
     tensorboard.add_scalar("Median ratio/%s" % mode, median_reco_gen_ratio, global_step=idx_epoch)
     tensorboard.add_scalar("Stdev ratio/%s" % mode, stdev_reco_gen_ratio, global_step=idx_epoch)
     tensorboard.add_scalar("IQR ratio/%s" % mode, iqr_reco_gen_ratio, global_step=idx_epoch)
-    tensorboard.add_scalar("IQR ratio/%s" % mode, iqr_reco_gen_ratio, global_step=idx_epoch)
 
     fig = plt.figure(figsize=(5,5))
     plt.hist(ratios, bins=np.linspace(0.5, 1.5, 100), histtype="step", lw=2)
     plt.xlabel("reco pt / gen tau pt")
     plt.ylabel("number of jets / bin")
     tensorboard.add_figure("ratio/{}".format(mode), fig, global_step=idx_epoch)
+
+    logging_data = {
+        "IQR": float(iqr_reco_gen_ratio),
+        "median": float(median_reco_gen_ratio),
+        "stdev": float(stdev_reco_gen_ratio),
+        "mean": float(mean_reco_gen_ratio),
+        "loss": float(loss)
+    }
+
+    return logging_data
+
 
 
 def logTrainingProgress_decaymode(
@@ -95,3 +128,48 @@ def logTrainingProgress_decaymode(
     disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_norm, display_labels=range(confusion_matrix.shape[0]))
     disp.plot(values_format=".2f", cmap="Blues", text_kw={"fontsize": 6})
     tensorboard.add_figure("confusion_matrix/{}".format(mode), disp.figure_, global_step=idx_epoch)
+
+
+    class_FPR = (confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)) / confusion_matrix.sum()
+    class_FNR = (confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)) / confusion_matrix.sum()
+    class_TPR = (np.diag(confusion_matrix)) / confusion_matrix.sum()
+    class_TNR = (confusion_matrix.sum() - (class_FPR + class_FNR + class_TPR)) / confusion_matrix.sum()
+    class_precision = class_TPR / (class_TPR + class_FPR)
+    class_recall = class_TPR / (class_TPR + class_FNR)
+    class_F1 = 2 * class_precision * class_recall / (class_precision + class_recall)
+    class_accuracy = (class_TPR + class_TNR) / (class_TPR + class_TNR, class_FPR, class_FNR)
+
+    FPR = np.sum(class_FPR) / len(class_FPR)
+    FNR = np.sum(class_FNR) / len(class_FNR)
+    TPR = np.sum(class_TPR) / len(class_TPR)
+    TNR = np.sum(class_TNR) / len(class_TNR)
+
+    precision = TPR / (TPR + FPR)
+    recall = TPR / (TPR + FNR)
+    F1 = 2 * precision * recall / (precision + recall)
+    accuracy = (TPR + TNR) / (TPR + TNR + FPR + FNR)
+
+    logging_data = {
+        "confusion_matrix": confusion_matrix,
+        "loss": loss,
+
+        # "class_AUC":
+        "class_FPR": class_FPR,
+        "class_FNR": class_FNR,
+        "class_TPR": class_TPR,
+        "class_TNR": class_TNR,
+        "class_precision": class_precision,
+        "class_recall": class_recall,
+        "class_F1": class_F1,
+
+        # "AUC": 
+        "FPR": FPR,
+        "FNR": FNR,
+        "TPR": TPR,
+        "TNR": TNR,
+        "precision": precision,
+        "accuracy": accuracy,
+        "recall": recall,
+        "F1": F1,
+    }
+    return logging_data

@@ -70,6 +70,19 @@ To submit the training of the models to `gpu0`, check and run
 ./enreg/scripts/submit-pytorch-gpu-all.sh
 ```
 
+## Logging with comet-ml
+For comet-ml logging one needs to create an account at https://www.comet.com/ and get the API key.
+```bash
+comet login
+```
+This will prompt you to enter the API key and will create a file in ```~/.comet.config```, where you should add the workspace name and project, such that the config file will look as such:
+```
+[comet]
+api_key = YOUR_API_KEY
+project_name = YOUR_PROJECT
+workspace = YOUR_WORKSPACE
+```
+
 # Plotting
 
 Change `enreg/config/benchmarking.yaml` and `enreg/config/metrics/regression.yaml` as needed.
