@@ -144,6 +144,9 @@ def logTrainingProgress_decaymode(
     TPR = np.sum(class_TPR) / len(class_TPR)
     TNR = np.sum(class_TNR) / len(class_TNR)
 
+
+    # This here is 
+    # TODO: If reporting macro-average then in cases of 3 or more classes, std should also be reported.
     precision = TPR / (TPR + FPR)
     recall = TPR / (TPR + FNR)
     F1 = 2 * precision * recall / (precision + recall)

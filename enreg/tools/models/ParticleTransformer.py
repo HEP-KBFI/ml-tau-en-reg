@@ -524,7 +524,7 @@ class ParticleTransformer(nn.Module):
             self.to_ptXXXphim = None
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
-        self.pair_extra_dim = pair_extra_dim    
+        self.pair_extra_dim = pair_extra_dim
         self.embed = Embed(input_dim, embed_dims, activation=activation) if len(embed_dims) > 0 else nn.Identity()
         self.pair_embed = (
             PairEmbed(
@@ -592,4 +592,5 @@ class ParticleTransformer(nn.Module):
 
             output = self.fc(x_cls) #(N, num_class)
 
+            # Ideally here for binary (multiclass) we want sigmoid (softmax)
             return output

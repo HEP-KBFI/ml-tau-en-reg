@@ -1,46 +1,29 @@
 regression:
   ratio_plot:
     bin_edges:
-      zh_test: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
-      z_test: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
-  cls_wp: Tight
-  classifier_WPs:  # The values for ParticleTransformer from the previous paper
-      Loose: 0.930
-      Medium: 0.967
-      Tight: 0.975
+      zh: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
+      z: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
+    resolution_plot:
+      ylabel: "$p_T\\ resol.\\ (q_{75} - q_{25})/q_{50}$"
+      ylim: [0, 0.1]
+      xlabel: "$p_T^{gen}$"
+      xscale: "linear"
+      yscale: "log"
+    response_plot:
+      ylabel: "$p_T\\ scale\\ (q_{50})$"
+      ylim: [0.96, 1.04]
+      xlabel: "$p_T^{gen}$"
+      xscale: "linear"
+      yscale: "log"
   algorithms:
-    240701_pt_paper:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/20240701_lowered_ptcut_merged/v1/jet_regression/ParticleTransformer/
+    DeepSet:
+      ntuples_dir: /path/to/files
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "*"
       hatch: "//"
       color: "tab:purple"
-    240809_pt_retrain:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_particletransformer_vars/jet_regression/ParticleTransformer/
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "D"
-      hatch: "\\\\"
-      color: "tab:green"
-    240809_pt_3var:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_3var_kinematics/jet_regression/ParticleTransformer/
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "v"
-      hatch: "."
-      color: "black"
-    240809_omnipart_3var:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_3var_kinematics/jet_regression/OmniParT/
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "^"
-      hatch: "||"
-      color: "blue"
 
 defaults:
   - _self_

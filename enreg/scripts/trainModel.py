@@ -180,7 +180,7 @@ def train_loop(
             pred = model(*model_inputs).to(device=dev)[:,0]
         elif kind == "dm_multiclass":
             pred = model(*model_inputs).to(device=dev)
-            y_for_loss = torch.nn.functional.one_hot(y_for_loss, num_classes).float()
+            y_for_loss = torch.nn.functional.one_hot(y_for_loss, num_classes).float()  # TODO: Note num_classes actually < 16
         elif kind == "binary_classification":
             pred = model(*model_inputs).to(device=dev)
         loss = loss_fn(pred, y_for_loss)
@@ -482,9 +482,6 @@ def trainModel(cfg: DictConfig) -> None:
         tensorboard = SummaryWriter(os.path.join(model_output_path,"tensorboard_logs"))
         min_loss_validation = -1.0
         # early_stopper = EarlyStopper(patience=10)
-        if kind == "jet_regression":
-            iqr_train = []
-            iqr_validation = []
         for idx_epoch in range(cfg.training.num_epochs):
             print("Processing epoch #%i" % idx_epoch)
             print(" current time:", datetime.datetime.now())
@@ -596,16 +593,24 @@ def trainModel(cfg: DictConfig) -> None:
                 with torch.no_grad():
                     if kind == "jet_regression":
                         pred = model(*model_inputs)[:, 0]
+                        pred = torch.exp(pred.detach().cpu())*torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        y_for_loss = torch.exp(y_for_loss.detach().cpu())*torch.squeeze(y["reco_jet_pt"], axis=-1)
                     elif kind == "dm_multiclass":
                         pred = model(*model_inputs)
+                        pred = torch.softmax(pred, axis=-1)
                         pred = torch.argmax(pred, axis=-1)
                     elif kind == "binary_classification":
-                        pred = model(*model_inputs)[:, 1]
+                        pred = model(*model_inputs)# [:, 1]
+                        pred = torch.softmax(pred, axis=-1)[:, 1]
                 preds.extend(pred.detach().cpu().numpy())
                 targets.extend(y_for_loss.detach().cpu().numpy())
             preds = np.array(preds)
             targets = np.array(targets)
-            ak.to_parquet(ak.Record({kind: {"pred": preds, "target": targets}}), os.path.join(model_output_path, test_sample))
+            data_to_save = {
+                "pred": preds,
+                "target": targets,
+            }
+            ak.to_parquet(ak.Record({kind: data_to_save}), os.path.join(model_output_path, test_sample))
 
 
 if __name__ == "__main__":

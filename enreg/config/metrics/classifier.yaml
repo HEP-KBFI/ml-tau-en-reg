@@ -1,55 +1,47 @@
 classifier:
   plotting:
     output_dir: /home/laurits/CLIC_metrics_202300921
-    n_files: -1
-  sig_sample: Z_Ztautau
   algorithms:
-    ParticleTransformer:
-      sig_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Jun22_wLifetime/ParticleTransformer/ZH_Htautau
-      bkg_ntuples_dir: /scratch/persistent/veelken/CLIC_tau_ntuples/2023Jun22_wLifetime/ParticleTransformer/QCD
-      json_metrics_path: /foo/bar
-      compare: True
-  metrics:  # Are those still needed?
-    denominator: "pt >= 20 && |eta| < 2.3"
-    numerator: "pt >= 20 && |eta| < 2.3"
-    WPs:  # Are those still needed?
-      ParticleTransformer:
-      Loose: 0.975
-      Medium: 0.967
-      Tight: 0.930
+    DeepSet:
+      name: "DeepSet"
+      marker: "*"
+      hatch: "//"
+      color: "tab:purple"
+      linestyle: ""
+      marker_size: 15
+  performances:
     efficiency:
-      variables:
-        - name: pt
-          x_range: [20, 180]
-          n_bins: 9
-        - name: eta
-          x_range: [-2.6, 2.6]
-          n_bins: 9
-        - name: theta
-          x_range: [10, 90]
-          n_bins: 9
+      xlabel:
+        pt: "$p_T^{gen\\mathrm{-}\\tau_h}\\,\\, [GeV]$"
+        eta: "$\\eta^{gen\\mathrm{-}\\tau_h}\\,\\, [GeV]$"
+        theta: "$\\theta^{gen\\mathrm{-}\\tau_h}\\,\\, [ ^{o} ]$"
+      ylabel: "$\\varepsilon_{\\tau}$"
+      yscale: "linear"
+      ylim: (0, 1)
     fakerate:
-      variables:
-        - name: pt
-          x_range: [20, 180]
-          n_bins: 8
-        - name: eta
-          x_range: [-2.6, 2.6]
-          n_bins: 8
-        - name: theta
-          x_range: [10, 90]
-          n_bins: 8
-  markers:
-    ParticleTransformer: "v"
-  colors:
-    ParticleTransformer: "tab:purple"
+      xlabel:
+        pt: "$p_T^{gen\\mathrm{-}jet}\\,\\, [GeV]$"
+        eta: "$\\eta^{gen\\mathrm{-}jet}\\,\\, [GeV]$"
+        theta: "$\\theta^{gen\\mathrm{-}jet}\\,\\, [ ^{o} ]$"
+      ylabel: "$P_{misid}$"
+      yscale: "log"
+      ylim: [5e-6, 2e-2]
+  cuts:
+    min_pt: 20
+    min_theta: 10
+    max_theta: 170
+  metrics:
+    pt:
+      x_range: [20, 180]
+      n_bins: 9
+      x_maj_tick_spacing: 40
+    eta:
+      x_range: [-2.6, 2.6]
+      n_bins: 9
+      x_maj_tick_spacing: 20
+    theta:
+      x_range: [10, 90]
+      n_bins: 9
+      x_maj_tick_spacing: 20
   defaults:
-    - datasets: datasets
     - _self_
-  plotting_metrics:
-    ROC: True
-    fakerate: True
-    efficiency: True
-    tauClassifier: False
-    energy_resolution: False
-    decaymode: False

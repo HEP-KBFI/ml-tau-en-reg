@@ -33,6 +33,8 @@ def load_all_data(input_loc: str | list, n_files: int = None, columns: list = No
             input_files = glob.glob(os.path.join(input_loc, "*.parquet"))[:n_files]
         elif "*" in input_loc:
             input_files = glob.glob(input_loc)[:n_files]
+        elif os.path.isfile(input_loc):
+            input_files = [input_loc]
         else:
             raise ValueError(f"Unexpected input_loc")
     else:

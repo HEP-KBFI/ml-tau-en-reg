@@ -1,0 +1,5 @@
+dm_reconstruction:
+  output_path: metrics/dm_reconstruction/Results
+
+defaults:
+  - _self_
