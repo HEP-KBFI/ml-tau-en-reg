@@ -9,6 +9,20 @@ classifier:
       color: "tab:purple"
       linestyle: ""
       marker_size: 15
+    OmniParT:
+      name: "OmniParT"
+      marker: "^"
+      hatch: "."
+      color: "tab:green"
+      linestyle: ""
+      marker_size: 15
+    ParticleTransformer:
+      name: "ParticleTransformer"
+      marker: "v"
+      hatch: "\\\\"
+      color: "tab:red"
+      linestyle: ""
+      marker_size: 15
   performances:
     efficiency:
       xlabel:
@@ -17,7 +31,7 @@ classifier:
         theta: "$\\theta^{gen\\mathrm{-}\\tau_h}\\,\\, [ ^{o} ]$"
       ylabel: "$\\varepsilon_{\\tau}$"
       yscale: "linear"
-      ylim: (0, 1)
+      ylim: [0, 1]
     fakerate:
       xlabel:
         pt: "$p_T^{gen\\mathrm{-}jet}\\,\\, [GeV]$"

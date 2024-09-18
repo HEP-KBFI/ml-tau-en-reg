@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import mplhep as hep
 import boost_histogram as bh
@@ -99,6 +100,7 @@ class RegressionEvaluator:
         self.algorithm = algorithm
         self.ratios = prediction / truth
         self.resolution_function = IQR
+        self.sample = sample_name
         self.response_function = np.median
         self.bin_edges = np.array(self.cfg.ratio_plot.bin_edges[sample_name])
         self.bin_centers = calculate_bin_centers(self.bin_edges)[0]
@@ -111,10 +113,13 @@ class RegressionEvaluator:
                          range(1, len(self.bin_edges))]
         resolutions = np.array([self.resolution_function(ratios) for ratios in binned_ratios])
         responses = np.array([self.response_function(ratios) for ratios in binned_ratios])
-        return resolutions, responses, binned_ratios
+        return resolutions/responses, responses, binned_ratios
 
     def _get_overall_resoluton_response(self):
-        return self.resolution_function(self.ratios), self.response_function(self.ratios)
+        response = self.response_function(self.ratios)
+        resolution = self.resolution_function(self.ratios)
+        resolution = resolution / response
+        return resolution, response
 
     def print_results(self):
         print("----------------------------")
@@ -134,6 +139,8 @@ class RangeContentPlot:
         fig, rows = plt.subplots(nrows=3, ncols=4, sharex='col', figsize=(16, 9))
         axes = rows.flatten()
         for i, ax in enumerate(axes):
+            if i == (len(self.bin_edges) - 1):
+                break
             ax.set_title(r"$p_{\tau,true} \in$" + f"$[{self.bin_edges[i]}, {self.bin_edges[i + 1]}]\ GeV$", fontsize=12)
             ax.set_xlim(0.5, 1.5)
             ax.set_xlabel("$q$", fontsize=12)
@@ -156,13 +163,16 @@ class LinePlot:
             xlabel: str,
             ylabel: str,
             xscale: str = 'linear',
-            yscale: str = 'linear'
+            yscale: str = 'linear',
+            ymin: float = 0,
+            ymax: float = 1
     ):
         self.cfg = cfg
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.xscale = xscale
         self.yscale = yscale
+        self.ymin, self.ymax = ymin, ymax
         self.fig, self.ax = self.plot()
 
     def add_line(self, x_values, y_values, algorithm, label=""):
@@ -183,6 +193,7 @@ class LinePlot:
         ax.set_ylabel(self.ylabel)
         ax.set_yscale(self.yscale)
         ax.set_xscale(self.xscale)
+        ax.set_ylim((self.ymin, self.ymax))
         ax.grid()
         return fig, ax
 
@@ -229,32 +240,48 @@ class RegressionMultiEvaluator:
             xlabel=cfg.ratio_plot.response_plot.xlabel,
             ylabel=cfg.ratio_plot.response_plot.ylabel,
             xscale=cfg.ratio_plot.response_plot.xscale,
-            yscale=cfg.ratio_plot.response_plot.yscale
+            yscale=cfg.ratio_plot.response_plot.yscale,
+            ymin=cfg.ratio_plot.response_plot.ylim[0],
+            ymax=cfg.ratio_plot.response_plot.ylim[1],
         )
         self.resolution_lineplot = LinePlot(
             cfg=self.cfg,
             xlabel=cfg.ratio_plot.resolution_plot.xlabel,
             ylabel=cfg.ratio_plot.resolution_plot.ylabel,
             xscale=cfg.ratio_plot.resolution_plot.xscale,
-            yscale=cfg.ratio_plot.resolution_plot.yscale
+            yscale=cfg.ratio_plot.resolution_plot.yscale,
+            ymin=cfg.ratio_plot.resolution_plot.ylim[0],
+            ymax=cfg.ratio_plot.resolution_plot.ylim[1],
         )
-        self.bin_distributions_plot = RangeContentPlot(self.cfg, self.sample)
+        self.bin_distributions_plots = {}
         self.resolution_2d_plots = {}
+        self.resolution_performance_info = {}
 
     def combine_results(self, evaluators: list):
         for evaluator in evaluators:
             self.response_lineplot.add_line(evaluator.bin_centers, evaluator.responses, evaluator.algorithm, label="")
-            self.resolution_lineplot.add_line(evaluator.bin_centers, evaluator.resolutions, evaluator.algorithm, label="")
-            self.bin_distributions_plot.add_line(evaluator)
+            self.resolution_lineplot.add_line(evaluator.bin_centers, evaluator.resolutions, evaluator.algorithm,
+                                              label="")
             self.resolution_2d_plots[evaluator.algorithm] = Resolution2DPlot(self.cfg, self.sample, evaluator)
+            self.bin_distributions_plots[evaluator.algorithm] = RangeContentPlot(self.cfg, self.sample)
+            self.bin_distributions_plots[evaluator.algorithm].add_line(evaluator)
+            if evaluator.sample not in self.resolution_performance_info.keys():
+                self.resolution_performance_info[evaluator.sample] = {}
+            self.resolution_performance_info[evaluator.sample][evaluator.algorithm] = {
+                "resolution": evaluator.resolution,
+                "response": evaluator.response
+            }
 
     def save(self):
         responses_output_path = os.path.join(self.output_dir, "responses.pdf")
         self.response_lineplot.save(responses_output_path)
         resolutions_output_path = os.path.join(self.output_dir, "resolutions.pdf")
         self.resolution_lineplot.save(resolutions_output_path)
-        bin_distributions_plot_output_path = os.path.join(self.output_dir, "bin_contents.pdf")
-        self.bin_distributions_plot.save(bin_distributions_plot_output_path)
         for algorithm, res_2d_plot in self.resolution_2d_plots.items():
             res_2d_plot_output_path = os.path.join(self.output_dir, f"{algorithm}_{self.sample}_2D_resolution.pdf")
             res_2d_plot.save(res_2d_plot_output_path)
+            bin_distributions_plot_output_path = os.path.join(self.output_dir, f"{algorithm}_{self.sample}_bin_contents.pdf")
+            self.bin_distributions_plots[algorithm].save(bin_distributions_plot_output_path)
+        resolution_performance_info_path = os.path.join(self.output_dir, "performance_info.json")
+        with open(resolution_performance_info_path, "wt") as out_file:
+            json.dump(self.resolution_performance_info, out_file, indent=4)

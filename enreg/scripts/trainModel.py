@@ -1,14 +1,9 @@
 #!/usr/bin/python3
 from comet_ml import Experiment
-from comet_ml.integration.pytorch import log_model
 import os
-import glob
 import json
-import yaml
 import hydra
-import psutil
 import datetime
-import subprocess
 import numpy as np
 from omegaconf import DictConfig
 import tqdm
@@ -21,7 +16,6 @@ import matplotlib.pyplot as plt
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.tensorboard import SummaryWriter
 
 from enreg.tools import general as g
@@ -35,14 +29,10 @@ from enreg.tools.models.LorentzNet import LorentzNet
 from enreg.tools.models.OmniParT import OmniParT
 from enreg.tools.models.OmniDeepSet import OmniDeepSet
 
-from enreg.tools.data_management.features import FeatureStandardization
-
 from enreg.tools.data_management.particleTransformer_dataset import load_row_groups, ParticleTransformerDataset
 
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
-
-import time
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -91,15 +81,15 @@ def get_weights(train_dataset, validation_dataset, n_bins=20):
     train_gen_tau_pt = g.reinitialize_p4(train_dataset.gen_jet_tau_p4s).pt
     val_gen_tau_pt = g.reinitialize_p4(validation_dataset.gen_jet_tau_p4s).pt
     hist, bin_edges = np.histogram(train_gen_tau_pt, bins=n_bins, range=(0, 180))
-    weight_histogram = np.median(hist)/hist
+    weight_histogram = np.median(hist) / hist
 
     train_histo_location = np.digitize(train_gen_tau_pt, bins=bin_edges)
     val_histo_location = np.digitize(val_gen_tau_pt, bins=bin_edges)
     map_from = np.array(range(1, len(bin_edges)))
     map_to = weight_histogram
 
-    train_mask = train_histo_location[:,None] == map_from
-    val_mask = val_histo_location[:,None] == map_from
+    train_mask = train_histo_location[:, None] == map_from
+    val_mask = val_histo_location[:, None] == map_from
 
     train_values = map_to[np.argmax(train_mask, axis=1)]
     val_values = map_to[np.argmax(val_mask, axis=1)]
@@ -110,22 +100,22 @@ def get_weights(train_dataset, validation_dataset, n_bins=20):
 
 
 def train_loop(
-    idx_epoch,
-    dataloader_train,
-    model,
-    dev,
-    loss_fn,
-    cfg,
-    use_per_jet_weights,
-    optimizer,
-    lr_scheduler,
-    tensorboard,
-    feature_set,
-    num_classes,
-    kind="jet_regression",
-    train=True,
-    use_comet=True,
-    experiment=None
+        idx_epoch,
+        dataloader_train,
+        model,
+        dev,
+        loss_fn,
+        cfg,
+        use_per_jet_weights,
+        optimizer,
+        lr_scheduler,
+        tensorboard,
+        feature_set,
+        num_classes,
+        kind="jet_regression",
+        train=True,
+        use_comet=True,
+        experiment=None
 ):
     if train:
         print("::::: TRAIN LOOP :::::")
@@ -177,10 +167,11 @@ def train_loop(
             model_inputs = model_inputs + (frost,)
 
         if kind == "jet_regression":
-            pred = model(*model_inputs).to(device=dev)[:,0]
+            pred = model(*model_inputs).to(device=dev)[:, 0]
         elif kind == "dm_multiclass":
             pred = model(*model_inputs).to(device=dev)
-            y_for_loss = torch.nn.functional.one_hot(y_for_loss, num_classes).float()  # TODO: Note num_classes actually < 16
+            y_for_loss = torch.nn.functional.one_hot(y_for_loss,
+                                                     num_classes).float()  # TODO: Note num_classes actually < 16
         elif kind == "binary_classification":
             pred = model(*model_inputs).to(device=dev)
         loss = loss_fn(pred, y_for_loss)
@@ -196,9 +187,9 @@ def train_loop(
             class_true_train.extend(y_for_loss.detach().cpu().numpy())
             class_pred_train.extend(pred.detach().cpu().numpy())
         elif kind == "jet_regression":
-            pred_jet_pt = torch.exp(pred.detach().cpu())*torch.squeeze(y["reco_jet_pt"], axis=-1)
+            pred_jet_pt = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
             gen_tau_pt = torch.squeeze(y["gen_tau_pt"], axis=-1)
-            ratio = (pred_jet_pt/gen_tau_pt).numpy()
+            ratio = (pred_jet_pt / gen_tau_pt).numpy()
             ratio[np.isinf(ratio)] = 0
             ratio[np.isnan(ratio)] = 0
             ratios.extend(ratio)
@@ -313,24 +304,24 @@ def trainModel(cfg: DictConfig) -> None:
         # str(datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     )
 
-    #if we are going to train the model, ensure a model does not already exist (e.g. if doing testing as a separate step)
+    # if we are going to train the model, ensure a model does not already exist (e.g. if doing testing as a separate step)
     if cfg.train and os.path.isdir(model_output_path):
         raise Exception("Output directory exists while train=True: {}".format(model_output_path))
 
     # get the number of row groups (independently loadable chunks) in each input file
     data = sum([load_row_groups(os.path.join(cfg.data_path, fn)) for fn in cfg.training_samples], [])
 
-    #shuffle row groups
+    # shuffle row groups
     perm = np.random.permutation(len(data))
     data_reshuf = [data[p] for p in perm]
 
-    #take train and validation split from the row groups
-    ntrain = int(len(data_reshuf)*cfg.fraction_train)
-    nvalid = int(len(data_reshuf)*cfg.fraction_valid)
+    # take train and validation split from the row groups
+    ntrain = int(len(data_reshuf) * cfg.fraction_train)
+    nvalid = int(len(data_reshuf) * cfg.fraction_valid)
     training_data = data_reshuf[:ntrain]
-    validation_data = data_reshuf[ntrain:ntrain+nvalid]
+    validation_data = data_reshuf[ntrain:ntrain + nvalid]
     print(f"row groups: train={len(training_data)} validation={len(validation_data)}")
-    
+
     dataset_train = ParticleTransformerDataset(
         row_groups=training_data,
         cfg=cfg.dataset,
@@ -349,7 +340,7 @@ def trainModel(cfg: DictConfig) -> None:
 
     print("Building model...")
 
-    #configure the number of model input dimensions based on the input features 
+    # configure the number of model input dimensions based on the input features
     input_dim = 0
     if 'cand_kinematics' in feature_set:
         input_dim += 4
@@ -361,7 +352,6 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 3
     if 'cand_omni_features_wPID' in feature_set:
         input_dim += 10
-
 
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
@@ -415,7 +405,7 @@ def trainModel(cfg: DictConfig) -> None:
     model_params = filter(lambda p: p.requires_grad, model.parameters())
     num_trainable_weights = sum([np.prod(p.size()) for p in model_params])
     print("#trainable parameters = {}".format(num_trainable_weights))
-    
+
     best_model_output_path = os.path.join(model_output_path, "model_best.pt")
 
     if cfg.train:
@@ -474,12 +464,12 @@ def trainModel(cfg: DictConfig) -> None:
         print("#batches(train) = {}".format(num_batches_train))
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             base_optimizer,
-            T_max=len(dataloader_train)*cfg.training.num_epochs,
-            eta_min=cfg.training.lr*0.01
+            T_max=len(dataloader_train) * cfg.training.num_epochs,
+            eta_min=cfg.training.lr * 0.01
         )
         print("Starting training...")
         print(" current time:", datetime.datetime.now())
-        tensorboard = SummaryWriter(os.path.join(model_output_path,"tensorboard_logs"))
+        tensorboard = SummaryWriter(os.path.join(model_output_path, "tensorboard_logs"))
         min_loss_validation = -1.0
         # early_stopper = EarlyStopper(patience=10)
         for idx_epoch in range(cfg.training.num_epochs):
@@ -593,14 +583,14 @@ def trainModel(cfg: DictConfig) -> None:
                 with torch.no_grad():
                     if kind == "jet_regression":
                         pred = model(*model_inputs)[:, 0]
-                        pred = torch.exp(pred.detach().cpu())*torch.squeeze(y["reco_jet_pt"], axis=-1)
-                        y_for_loss = torch.exp(y_for_loss.detach().cpu())*torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        pred = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        y_for_loss = torch.exp(y_for_loss.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
                     elif kind == "dm_multiclass":
                         pred = model(*model_inputs)
                         pred = torch.softmax(pred, axis=-1)
                         pred = torch.argmax(pred, axis=-1)
                     elif kind == "binary_classification":
-                        pred = model(*model_inputs)# [:, 1]
+                        pred = model(*model_inputs)  # [:, 1]
                         pred = torch.softmax(pred, axis=-1)[:, 1]
                 preds.extend(pred.detach().cpu().numpy())
                 targets.extend(y_for_loss.detach().cpu().numpy())

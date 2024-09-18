@@ -8,13 +8,13 @@ regression:
       ylim: [0, 0.1]
       xlabel: "$p_T^{gen}$"
       xscale: "linear"
-      yscale: "log"
+      yscale: "linear"
     response_plot:
       ylabel: "$p_T\\ scale\\ (q_{50})$"
       ylim: [0.96, 1.04]
       xlabel: "$p_T^{gen}$"
       xscale: "linear"
-      yscale: "log"
+      yscale: "linear"
   algorithms:
     DeepSet:
       ntuples_dir: /path/to/files
@@ -24,6 +24,38 @@ regression:
       marker: "*"
       hatch: "//"
       color: "tab:purple"
+    HPS:
+      ntuples_dir: /path/to/files
+      json_metrics_path: plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "^"
+      hatch: "\\\\"
+      color: "tab:green"
+    RecoJet:
+      ntuples_dir: /path/to/files
+      json_metrics_path: plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "v"
+      hatch: "."
+      color: "tab:red"
+    LorentzNet:
+      ntuples_dir: /path/to/files
+      json_metrics_path: plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "D"
+      hatch: "."
+      color: "tab:orange"
+    ParticleTransformer:
+      ntuples_dir: /path/to/files
+      json_metrics_path: plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "X"
+      hatch: "."
+      color: "tab:blue"
 
 defaults:
   - _self_

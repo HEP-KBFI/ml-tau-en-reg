@@ -26,13 +26,13 @@ model_type: ParticleTransformer
 #qq is added back using command line flags for the binary classification task
 training_samples:
   - z_train.parquet
-#  - zh_train.parquet
+  #  - zh_train.parquet
   - qq_train.parquet
 
 #these are never used in the training code, only for the final evaluation
 test_samples:
   - z_test.parquet
-#  - zh_test.parquet
+  #  - zh_test.parquet
   - qq_test.parquet
 
 #the training sample will be further subdividied as follows to train and valid
@@ -77,13 +77,13 @@ training:
 
 #disable creation of the outputs dir which we don't use
 #https://stackoverflow.com/questions/65104134/disable-file-output-of-hydra
-defaults:  
+defaults:
   - models: models
-  - _self_ 
-  - override hydra/hydra_logging: disabled  
-  - override hydra/job_logging: disabled  
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
 
-hydra:  
-  output_subdir: null  
-  run:  
+hydra:
+  output_subdir: null
+  run:
     dir: .

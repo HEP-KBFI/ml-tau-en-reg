@@ -250,12 +250,12 @@ class EfficiencyPlot:
         ax.xaxis.set_major_locator(ticker.MultipleLocator(self.cfg.metrics[self.metric].x_maj_tick_spacing))
         ax.set_xlabel(rf"{self.cfg.performances.efficiency.xlabel[self.metric]}", fontsize=30)
         ax.set_ylabel(rf"{self.cfg.performances.efficiency.ylabel}", fontsize=30)
-        ax.set_yscale(self.cfg.performances.fakerate.yscale)
+        ax.set_yscale(self.cfg.performances.efficiency.yscale)
         if self.cfg.performances.efficiency.ylim is not None:
             ylim = tuple(self.cfg.performances.efficiency.ylim)
         else:
             ylim = self.cfg.performances.efficiency.ylim
-        ax.set_ylim(ylim)
+        ax.set_ylim(tuple(ylim))
         ax.tick_params(axis="x", labelsize=30)
         ax.tick_params(axis="y", labelsize=30)
         plt.grid()
