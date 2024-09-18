@@ -64,6 +64,15 @@ class OmniParT(ParticleTransformer):
         self.for_inference = for_inference
         self.use_amp = use_amp
         self.frozen_parameters = False
+        if self.cfg.version == "from_scratch":
+            # Train head & BB
+            print("Training OmniParT from scratch.")
+        if self.cfg.version == "fixed_backbone":
+            # Train only head, do not train the pre-trained BB
+            print("Training only OmniParT head. Backbone parameters are frozen.")
+        if self.cfg.version == "fine_tuning":
+            # Train head, fine tune BB after epoch 30.
+            print("Training OmniParT head. Backbone parameters are unfrozen after initial epochs.")
 
     def forward(self, cand_features, cand_kinematics_pxpypze=None, cand_mask=None, frost='freeze'):
         # cand_features: (N=num_batches, C=num_features, P=num_particles)
@@ -75,17 +84,14 @@ class OmniParT(ParticleTransformer):
 
             if self.cfg.version == "from_scratch":
                 # Train head & BB
-                print("Training OmniParT from scratch.")
                 for param in self.embed.bb_model.parameters():
                     param.requires_grad = True
             if self.cfg.version == "fixed_backbone":
                 # Train only head, do not train the pre-trained BB
-                print("Training only OmniParT head. Backbone parameters are frozen.")
                 for param in self.embed.bb_model.parameters():
                     param.requires_grad = False
             if self.cfg.version == "fine_tuning":
                 # Train head, fine tune BB after epoch 30.
-                print("Training OmniParT head. Backbone parameters are unfrozen after initial epochs.")
                 if frost == 'freeze' and not self.frozen_parameters:
                     print("Freezing parameters")
                     for param in self.embed.bb_model.parameters():
@@ -103,8 +109,7 @@ class OmniParT(ParticleTransformer):
 
             # Transformer part. In contrast to ParT we don't use particle attention here.
             for block in self.blocks:
-                cand_features_embed = block(cand_features_embed, x_cls=None, padding_mask=padding_mask,
-                                            attn_mask=attn_mask)
+                cand_features_embed = block(cand_features_embed, x_cls=None, padding_mask=padding_mask)
 
             # transform per-jet class tokens
             cls_tokens = self.cls_token.expand(1, cand_features_embed.size(1), -1)  # (1, N, C)
@@ -120,7 +125,7 @@ class OmniParT(ParticleTransformer):
 class EmbedParT(nn.Module):
     def __init__(self, cfg):
         super().__init__()
-
+        self.cfg = cfg
         self.vqvae_model = VQVAELightning.load_from_checkpoint(cfg.ckpt_path).to(device='cpu')
         self.vqvae_model.eval()
         # Freeze VQ-VAE parameters
@@ -133,7 +138,7 @@ class EmbedParT(nn.Module):
             embedding_dim=256,
             attention_dropout=0.0,
             vocab_size=32002,
-            max_sequence_len=256,
+            max_sequence_len=128,
             n_heads=32,
             n_GPT_blocks=3
         )

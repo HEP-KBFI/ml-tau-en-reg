@@ -296,10 +296,11 @@ def trainModel(cfg: DictConfig) -> None:
     kind = cfg.training_type
     model_config = cfg.models[cfg.model_type]
 
+    suffix = f"_{cfg.models.OmniParT.version}" if cfg.model_type == "OmniParT" else ""
     model_output_path = os.path.join(
         cfg.output_dir,
         cfg.training_type,
-        cfg.model_type,
+        cfg.model_type + suffix,
         # when running many jobs on the cluster, it's easier to not have a bunch of different dates for each model
         # str(datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     )
