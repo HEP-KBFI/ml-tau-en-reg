@@ -75,10 +75,10 @@ class DecayModeEvaluator:
         self.normalized_confusion_matrix = metrics.confusion_matrix(self.truth, self.predicted, normalize="true")
         self._decay_mode_name_mapping = {
             0: r"$h^{\pm}$",
-            1: r"$h^{\pm}\pi^{0}$",
-            2: r"$h^{\pm}\pi^{0}\pi^{0}$",
+            1: r"$h^{\pm}\pi^0$",
+            2: r"$h^{\pm}\pi^0\pi^0$",
             10: r"$h^{\pm}h^{\mp}h^{\pm}$",
-            11: r"$h^{\pm}h^{\mp}h^{\pm}\pi^{0}$",
+            11: r"$h^{\pm}h^{\mp}h^{\pm}\pi^0$",
             15: "Other",
         }
         self.categories = list(self._decay_mode_name_mapping.values())

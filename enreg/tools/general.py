@@ -40,7 +40,8 @@ def load_all_data(input_loc: str | list, n_files: int = None, columns: list = No
     else:
         raise ValueError(f"Unexpected input_loc")
     input_data = []
-    for i, file_path in enumerate(input_files):
+    # for file_path in tqdm.tqdm(sorted(input_files)):
+    for i, file_path in enumerate(sorted(input_files)):
         print(f"[{i+1}/{len(input_files)}] Loading from {file_path}")
         try:
             input_data.append(load_parquet(file_path, columns=columns))
@@ -148,18 +149,13 @@ def get_reduced_decaymodes(decaymodes: np.array):
         0: 0,
         1: 1,
         2: 2,
-        3: 15,
-        4: 15,
-        5: 15,
-        6: 15,
-        7: 15,
-        8: 15,
-        9: 15,
+        3: 2,
+        4: 2,
         10: 10,
         11: 11,
-        12: 15,
-        13: 15,
-        14: 15,
+        12: 11,
+        13: 11,
+        14: 11,
         15: 15,
         16: 16,
     }

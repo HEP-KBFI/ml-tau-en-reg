@@ -1,5 +1,17 @@
 dm_reconstruction:
   output_path: metrics/dm_reconstruction/Results
+  signal_samples:
+    - zh_test
+    - z_test
+  algorithms:
+    ParticleTransformer:
+      data_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/dm_multiclass/ParticleTransformer
+    LorentzNet:
+      data_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/dm_multiclass/LorentzNet
+    DeepSet:
+      data_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/dm_multiclass/DeepSet
+    HPS:
+      data_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/dm_multiclass/HPS
 
 defaults:
   - _self_

@@ -6,6 +6,7 @@ import boost_histogram as bh
 import matplotlib.pyplot as plt
 from omegaconf import DictConfig
 import matplotlib.colors as colors
+from enreg.tools.general import NpEncoder
 
 hep.style.use(hep.styles.CMS)
 
@@ -177,13 +178,14 @@ class LinePlot:
 
     def add_line(self, x_values, y_values, algorithm, label=""):
         if label == "":
-            label = algorithm
+            label = self.cfg.algorithms[algorithm].label
         self.ax.plot(
             x_values,
             y_values,
             label=label,
             marker=self.cfg.algorithms[algorithm].marker,
-            color=self.cfg.algorithms[algorithm].color
+            color=self.cfg.algorithms[algorithm].color,
+            ls=self.cfg.algorithms[algorithm].ls
         )
         self.ax.legend()
 
@@ -284,4 +286,4 @@ class RegressionMultiEvaluator:
             self.bin_distributions_plots[algorithm].save(bin_distributions_plot_output_path)
         resolution_performance_info_path = os.path.join(self.output_dir, "performance_info.json")
         with open(resolution_performance_info_path, "wt") as out_file:
-            json.dump(self.resolution_performance_info, out_file, indent=4)
+            json.dump(self.resolution_performance_info, out_file, indent=4, cls=NpEncoder)

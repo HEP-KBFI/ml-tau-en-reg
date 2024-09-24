@@ -520,7 +520,7 @@ def process_input_file(input_path: ak.Array, tree_path: str, branches: list, rem
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     #Get the generator-level truth from the HepMC file corresponding to the Key4HEP ROOT file
     hepmc_events = load_events_from_hepmc(input_path)
-    reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4, min_pt=5.0)
+    reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4, min_pt=0.0)
     stable_mc_p4, stable_mc_particles = retrieve_hepmc_gen_particles(hepmc_events)
     gen_jets, gen_jet_constituent_indices = cluster_jets(stable_mc_p4, min_pt=0.0)
     gen_jets, gen_jet_constituent_indices = filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles)

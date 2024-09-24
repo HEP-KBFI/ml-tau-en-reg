@@ -56,16 +56,16 @@ samples_to_process:
   - p8_ee_qq_ecm380
 samples:
   p8_ee_Z_Ztautau_ecm380:
-    input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240701_lowered_ptcut/p8_ee_Z_Ztautau_ecm380/
+    input_dir: /local/joosep/clic_edm4hep/2024_07/p8_ee_Z_Ztautau_ecm380/
+    output_dir: /local/laurits/ml-tau-en-reg/ntuples/20240924_lowered_recoPtCut/p8_ee_Z_Ztautau_ecm380/
     is_signal: True
   p8_ee_ZH_Htautau_ecm380:
-    input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240701_lowered_ptcut/p8_ee_ZH_Htautau_ecm380/
+    input_dir: /local/joosep/clic_edm4hep/2024_07/p8_ee_ZH_Htautau_ecm380/
+    output_dir: /local/laurits/ml-tau-en-reg/ntuples/20240924_lowered_recoPtCut/p8_ee_ZH_Htautau_ecm380/
     is_signal: True
   p8_ee_qq_ecm380:
-    input_dir: /local/joosep/clic_edm4hep/2024_03/p8_ee_qq_ecm380/
-    output_dir: /local/joosep/ml-tau-en-reg/ntuples/20240701_lowered_ptcut/p8_ee_qq_ecm380/
+    input_dir: /local/joosep/clic_edm4hep/2024_07/p8_ee_qq_ecm380/
+    output_dir: /local/laurits/ml-tau-en-reg/ntuples/20240924_lowered_recoPtCut/p8_ee_qq_ecm380/
     is_signal: False
 validation:
   output_dir: $HOME/CLIC_ntuple_validation

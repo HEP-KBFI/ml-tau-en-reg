@@ -1,8 +1,8 @@
 regression:
   ratio_plot:
     bin_edges:
-      zh: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
-      z: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
+      zh: [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
+      z: [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
     resolution_plot:
       ylabel: "$p_T\\ resol.\\ (q_{75} - q_{25})/q_{50}$"
       ylim: [0, 0.1]
@@ -17,13 +17,15 @@ regression:
       yscale: "linear"
   algorithms:
     DeepSet:
-      ntuples_dir: /path/to/files
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/DeepSet/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "*"
       hatch: "//"
       color: "tab:purple"
+      ls: "solid"
+      label: DeepSet
     HPS:
       ntuples_dir: /path/to/files
       json_metrics_path: plotting_data.json
@@ -32,30 +34,48 @@ regression:
       marker: "^"
       hatch: "\\\\"
       color: "tab:green"
-    RecoJet:
+      ls: "solid"
+      label: HPS
+    HPS_:
       ntuples_dir: /path/to/files
+      json_metrics_path: plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "^"
+      hatch: "\\\\"
+      color: "tab:green"
+      ls: "dashed"
+      label: ""
+    RecoJet:
+      ntuples_dir: /home/laurits/ntuples/20240924_lowered_recoPtCut/recoJet/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "v"
       hatch: "."
       color: "tab:red"
+      ls: "solid"
+      label: RecoJet
     LorentzNet:
-      ntuples_dir: /path/to/files
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/LorentzNet/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "D"
       hatch: "."
       color: "tab:orange"
+      ls: "solid"
+      label: LorentzNet
     ParticleTransformer:
-      ntuples_dir: /path/to/files
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/ParticleTransformer/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "X"
       hatch: "."
       color: "tab:blue"
+      ls: "solid"
+      label: ParticleTransformer
 
 defaults:
   - _self_

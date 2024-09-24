@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -p main
+#SBATCH -p short
 #SBATCH --job-name=HPS_processing
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=3

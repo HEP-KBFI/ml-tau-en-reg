@@ -10,7 +10,7 @@ comet:
 #everything that the user should modify is here
 #override these using command line args
 output_dir: training-outputs/240809_3var_kinematics
-data_path: /scratch/persistent/joosep/ml-tau/20240701_lowered_ptcut_merged
+data_path: /scratch/persistent/laurits/ml-tau/20240924_lowered_recoPtCut
 
 #override this using command line args
 training_type: dm_multiclass

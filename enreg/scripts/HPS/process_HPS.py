@@ -40,7 +40,8 @@ def main(cfg: DictConfig) -> None:
         "pred_pt": pred_pt,
         "true_pt": true_pt,
     }
-    random_file_name = f"{generate_run_id(10)}.parquet"
+    # random_file_name = f"{generate_run_id(10)}.parquet"
+    random_file_name = cfg.files[0]
     os.makedirs(cfg.output_dir, exist_ok=True)
     ak.to_parquet(ak.Record(data_to_save), os.path.join(cfg.output_dir, random_file_name))
 
