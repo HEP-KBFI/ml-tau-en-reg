@@ -6,8 +6,8 @@ import boost_histogram as bh
 import matplotlib.pyplot as plt
 from omegaconf import DictConfig
 import matplotlib.colors as colors
+import matplotlib.ticker as ticker
 from enreg.tools.general import NpEncoder
-
 hep.style.use(hep.styles.CMS)
 
 
@@ -151,9 +151,12 @@ class RangeContentPlot:
         bins = np.linspace(0.5, 1.5, 101)
         for ax, data in zip(self.axes, evaluator.binned_ratios):
             hep.histplot(to_bh(data, bins=bins), ax=ax, density=True, label=evaluator.algorithm)
+            ax.text(0.05, 0.95, f'IQR = {IQR(data):.3f}', transform=ax.transAxes, fontsize=8, va='top', ha='left')
+
+
 
     def save(self, output_path):
-        self.fig.savefig(output_path, format="pdf")
+        self.fig.savefig(output_path, bbox_inches='tight', format="pdf")
         plt.close("all")
 
 
@@ -166,13 +169,15 @@ class LinePlot:
             xscale: str = 'linear',
             yscale: str = 'linear',
             ymin: float = 0,
-            ymax: float = 1
+            ymax: float = 1,
+            nticks: int = 7
     ):
         self.cfg = cfg
         self.xlabel = xlabel
         self.ylabel = ylabel
         self.xscale = xscale
         self.yscale = yscale
+        self.nticks = nticks
         self.ymin, self.ymax = ymin, ymax
         self.fig, self.ax = self.plot()
 
@@ -185,7 +190,9 @@ class LinePlot:
             label=label,
             marker=self.cfg.algorithms[algorithm].marker,
             color=self.cfg.algorithms[algorithm].color,
-            ls=self.cfg.algorithms[algorithm].ls
+            ls=self.cfg.algorithms[algorithm].ls,
+            lw=self.cfg.algorithms[algorithm].lw,
+            ms=10
         )
         self.ax.legend()
 
@@ -197,10 +204,13 @@ class LinePlot:
         ax.set_xscale(self.xscale)
         ax.set_ylim((self.ymin, self.ymax))
         ax.grid()
+        start, end = ax.get_ylim()
+        ax.yaxis.set_ticks(np.linspace(start, end, self.nticks))
+        ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%0.2f'))
         return fig, ax
 
     def save(self, output_path: str):
-        self.fig.savefig(output_path, format="pdf")
+        self.fig.savefig(output_path, bbox_inches='tight', format="pdf")
         plt.close("all")
 
 
@@ -227,7 +237,7 @@ class Resolution2DPlot:
         return fig, ax
 
     def save(self, output_path: str):
-        self.fig.savefig(output_path, format="pdf")
+        self.fig.savefig(output_path, bbox_inches='tight', format="pdf")
         plt.close("all")
 
 
@@ -245,6 +255,7 @@ class RegressionMultiEvaluator:
             yscale=cfg.ratio_plot.response_plot.yscale,
             ymin=cfg.ratio_plot.response_plot.ylim[0],
             ymax=cfg.ratio_plot.response_plot.ylim[1],
+            nticks=cfg.ratio_plot.response_plot.nticks,
         )
         self.resolution_lineplot = LinePlot(
             cfg=self.cfg,
@@ -254,6 +265,7 @@ class RegressionMultiEvaluator:
             yscale=cfg.ratio_plot.resolution_plot.yscale,
             ymin=cfg.ratio_plot.resolution_plot.ylim[0],
             ymax=cfg.ratio_plot.resolution_plot.ylim[1],
+            nticks=cfg.ratio_plot.resolution_plot.nticks,
         )
         self.bin_distributions_plots = {}
         self.resolution_2d_plots = {}

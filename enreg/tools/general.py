@@ -145,7 +145,7 @@ def get_decaymode(pdg_ids):
 def get_reduced_decaymodes(decaymodes: np.array):
     """Maps the full set of decay modes into a smaller subset, setting the rarer decaymodes under "Other" (# 15)"""
     target_mapping = {
-        -1: -1,
+        -1: 15,  # As we are running DM classification only on signal sample, then HPS_dm of -1 = 15 (Rare)
         0: 0,
         1: 1,
         2: 2,
