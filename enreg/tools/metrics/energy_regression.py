@@ -7,11 +7,10 @@ import matplotlib
 import boost_histogram as bh
 import matplotlib.pyplot as plt
 from omegaconf import DictConfig
-import matplotlib.colors as colors
 from enreg.tools import general as g
-from enreg.tools.visualization import base as b
 
 hep.style.use(hep.styles.CMS)
+
 
 def plot_median_and_iqr(plotting_input, cfg):
     plot_median_iqr(plotting_input, cfg, "z_test", "iqr")

@@ -13,6 +13,7 @@ matplotlib
 mplhep
 notebook
 numba
+numpy
 pandas
 papermill
 pre-commit
@@ -27,3 +28,4 @@ tqdm
 uproot
 vector
 zenodo_get
+particle

@@ -6,6 +6,8 @@ n_files: -1
 slurm_run: False
 verbosity: 0
 use_multiprocessing: False
+files: []
+base_ntuple_dir: null
 use_slurm: True
 datasets_to_process:
   - test
@@ -15,7 +17,6 @@ samples_to_process:
   - ZH_Htautau
   - Z_Ztautau
 defaults:
-  - datasets: datasets
   - models: models
   - ntupelizer
   - _self_

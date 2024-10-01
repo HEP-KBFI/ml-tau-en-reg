@@ -524,7 +524,7 @@ class ParticleTransformer(nn.Module):
             self.to_ptXXXphim = None
         else:
             raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % metric)
-        self.pair_extra_dim = pair_extra_dim    
+        self.pair_extra_dim = pair_extra_dim
         self.embed = Embed(input_dim, embed_dims, activation=activation) if len(embed_dims) > 0 else nn.Identity()
         self.pair_embed = (
             PairEmbed(
@@ -571,7 +571,7 @@ class ParticleTransformer(nn.Module):
         # cand_kinematics_pxpypze: (N, 4, P) [px,py,pz,energy]
         # cand_mask: (N, 1, P) -- real particle = 1, padded = 0
         padding_mask = ~cand_mask.squeeze(1) # (N, 1, P) -> (N, P)
-        with torch.cuda.amp.autocast(enabled=self.use_amp):
+        with torch.amp.autocast("cuda", enabled=self.use_amp):
             num_particles = cand_features.size(-1)
 
             # input embedding
@@ -592,4 +592,5 @@ class ParticleTransformer(nn.Module):
 
             output = self.fc(x_cls) #(N, num_class)
 
+            # Ideally here for binary (multiclass) we want sigmoid (softmax)
             return output

@@ -13,6 +13,7 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
 from collections.abc import Sequence
 
+
 def stack_and_pad_features(cand_features, max_cands):
     cand_features_tensors = np.stack([ak.pad_none(cand_features[feat], max_cands, clip=True) for feat in cand_features.fields], axis=-1)
     cand_features_tensors = ak.to_numpy(ak.fill_none(cand_features_tensors, 0))
@@ -23,17 +24,20 @@ def stack_and_pad_features(cand_features, max_cands):
     cand_features_tensors[np.isinf(cand_features_tensors)] = 0
     return cand_features_tensors
 
+
 def load_row_groups(filename):
     metadata = ak.metadata_from_parquet(filename)
     num_row_groups = metadata["num_row_groups"]
     col_counts = metadata["col_counts"]
     return [RowGroup(filename, row_group, col_counts[row_group]) for row_group in range(num_row_groups)]
 
+
 class RowGroup:
     def __init__(self, filename, row_group, num_rows):
         self.filename = filename
         self.row_group = row_group
         self.num_rows = num_rows
+
 
 class ParticleTransformerDataset(IterableDataset):
     def __init__(self, row_groups: Sequence[RowGroup], cfg: DictConfig):

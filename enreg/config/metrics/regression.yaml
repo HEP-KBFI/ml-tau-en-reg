@@ -1,46 +1,89 @@
 regression:
   ratio_plot:
     bin_edges:
-      zh_test: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
-      z_test: [20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
-  cls_wp: Tight
-  classifier_WPs:  # The values for ParticleTransformer from the previous paper
-      Loose: 0.930
-      Medium: 0.967
-      Tight: 0.975
+      zh: [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
+      z: [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
+    resolution_plot:
+      ylabel: "$p_T\\ resol.\\ (q_{75} - q_{25})/q_{50}$"
+      ylim: [0, 0.06]
+      xlabel: "$p_T^{gen}$"
+      xscale: "linear"
+      yscale: "linear"
+      nticks: 7
+    response_plot:
+      ylabel: "$p_T\\ scale\\ (q_{50})$"
+      ylim: [0.99, 1.01]
+      xlabel: "$p_T^{gen}$"
+      xscale: "linear"
+      yscale: "linear"
+      nticks: 3
   algorithms:
-    240701_pt_paper:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/20240701_lowered_ptcut_merged/v1/jet_regression/ParticleTransformer/
+    DeepSet:
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/DeepSet/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "*"
       hatch: "//"
       color: "tab:purple"
-    240809_pt_retrain:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_particletransformer_vars/jet_regression/ParticleTransformer/
+      ls: "solid"
+      label: DeepSet
+      lw: 1
+    HPS:
+      ntuples_dir: /path/to/files
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
-      marker: "D"
+      marker: "^"
       hatch: "\\\\"
       color: "tab:green"
-    240809_pt_3var:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_3var_kinematics/jet_regression/ParticleTransformer/
+      ls: "solid"
+      label: HPS
+      lw: 3
+    HPS_:
+      ntuples_dir: /path/to/files
+      json_metrics_path: plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "^"
+      hatch: "\\\\"
+      color: "tab:green"
+      ls: "dashed"
+      label: "HPS (ideal)"
+      lw: 1
+    RecoJet:
+      ntuples_dir: /home/laurits/ntuples/20240924_lowered_recoPtCut/recoJet/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
       marker: "v"
       hatch: "."
-      color: "black"
-    240809_omnipart_3var:
-      ntuples_dir: /local/joosep/ml-tau-en-reg/results/240809_3var_kinematics/jet_regression/OmniParT/
+      color: "tab:red"
+      ls: "solid"
+      label: RecoJet
+      lw: 1
+    LorentzNet:
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/LorentzNet/
       json_metrics_path: plotting_data.json
       load_from_json: False
       compare: True
-      marker: "^"
-      hatch: "||"
-      color: "blue"
+      marker: "D"
+      hatch: "."
+      color: "tab:orange"
+      ls: "solid"
+      label: LorentzNet
+      lw: 1
+    ParticleTransformer:
+      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/ParticleTransformer/
+      json_metrics_path: plotting_data.json
+      load_from_json: False
+      compare: True
+      marker: "X"
+      hatch: "."
+      color: "tab:blue"
+      ls: "solid"
+      label: ParticleTransformer
+      lw: 3
 
 defaults:
   - _self_

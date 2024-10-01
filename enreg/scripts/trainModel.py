@@ -1,14 +1,9 @@
 #!/usr/bin/python3
-# from comet_ml import Experiment
-# from comet_ml.integration.pytorch import log_model
+from comet_ml import Experiment
 import os
-import glob
 import json
-import yaml
 import hydra
-import psutil
 import datetime
-import subprocess
 import numpy as np
 from omegaconf import DictConfig
 import tqdm
@@ -21,7 +16,6 @@ import matplotlib.pyplot as plt
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.tensorboard import SummaryWriter
 
 from enreg.tools import general as g
@@ -35,18 +29,18 @@ from enreg.tools.models.LorentzNet import LorentzNet
 from enreg.tools.models.OmniParT import OmniParT
 from enreg.tools.models.OmniDeepSet import OmniDeepSet
 
-from enreg.tools.data_management.features import FeatureStandardization
-
 from enreg.tools.data_management.particleTransformer_dataset import load_row_groups, ParticleTransformerDataset
 
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
-import time
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super().default(obj)
 
-# experiment = Experiment()
-# experiment.set_name('Test4')
 
 def unpack_data(X, dev, feature_set):
     # Create a dictionary for each feature
@@ -87,15 +81,15 @@ def get_weights(train_dataset, validation_dataset, n_bins=20):
     train_gen_tau_pt = g.reinitialize_p4(train_dataset.gen_jet_tau_p4s).pt
     val_gen_tau_pt = g.reinitialize_p4(validation_dataset.gen_jet_tau_p4s).pt
     hist, bin_edges = np.histogram(train_gen_tau_pt, bins=n_bins, range=(0, 180))
-    weight_histogram = np.median(hist)/hist
+    weight_histogram = np.median(hist) / hist
 
     train_histo_location = np.digitize(train_gen_tau_pt, bins=bin_edges)
     val_histo_location = np.digitize(val_gen_tau_pt, bins=bin_edges)
     map_from = np.array(range(1, len(bin_edges)))
     map_to = weight_histogram
 
-    train_mask = train_histo_location[:,None] == map_from
-    val_mask = val_histo_location[:,None] == map_from
+    train_mask = train_histo_location[:, None] == map_from
+    val_mask = val_histo_location[:, None] == map_from
 
     train_values = map_to[np.argmax(train_mask, axis=1)]
     val_values = map_to[np.argmax(val_mask, axis=1)]
@@ -106,20 +100,22 @@ def get_weights(train_dataset, validation_dataset, n_bins=20):
 
 
 def train_loop(
-    idx_epoch,
-    dataloader_train,
-    model,
-    dev,
-    loss_fn,
-    cfg,
-    use_per_jet_weights,
-    optimizer,
-    lr_scheduler,
-    tensorboard,
-    feature_set,
-    num_classes,
-    kind="jet_regression",
-    train=True,
+        idx_epoch,
+        dataloader_train,
+        model,
+        dev,
+        loss_fn,
+        cfg,
+        use_per_jet_weights,
+        optimizer,
+        lr_scheduler,
+        tensorboard,
+        feature_set,
+        num_classes,
+        kind="jet_regression",
+        train=True,
+        use_comet=True,
+        experiment=None
 ):
     if train:
         print("::::: TRAIN LOOP :::::")
@@ -171,10 +167,11 @@ def train_loop(
             model_inputs = model_inputs + (frost,)
 
         if kind == "jet_regression":
-            pred = model(*model_inputs).to(device=dev)[:,0]
+            pred = model(*model_inputs).to(device=dev)[:, 0]
         elif kind == "dm_multiclass":
             pred = model(*model_inputs).to(device=dev)
-            y_for_loss = torch.nn.functional.one_hot(y_for_loss, num_classes).float()
+            y_for_loss = torch.nn.functional.one_hot(y_for_loss,
+                                                     num_classes).float()  # TODO: Note num_classes actually < 16
         elif kind == "binary_classification":
             pred = model(*model_inputs).to(device=dev)
         loss = loss_fn(pred, y_for_loss)
@@ -190,9 +187,9 @@ def train_loop(
             class_true_train.extend(y_for_loss.detach().cpu().numpy())
             class_pred_train.extend(pred.detach().cpu().numpy())
         elif kind == "jet_regression":
-            pred_jet_pt = torch.exp(pred.detach().cpu())*torch.squeeze(y["reco_jet_pt"], axis=-1)
+            pred_jet_pt = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
             gen_tau_pt = torch.squeeze(y["gen_tau_pt"], axis=-1)
-            ratio = (pred_jet_pt/gen_tau_pt).numpy()
+            ratio = (pred_jet_pt / gen_tau_pt).numpy()
             ratio[np.isinf(ratio)] = 0
             ratio[np.isnan(ratio)] = 0
             ratios.extend(ratio)
@@ -211,14 +208,27 @@ def train_loop(
             lr_scheduler.step()
 
     loss_train /= normalization
-    # if train:
-    #     experiment.log_metric(name="loss_train", value=loss_train, step=idx_epoch)
-    # else:
-    #     experiment.log_metric(name="loss_validation", value=loss_train, step=idx_epoch)
+    if use_comet:
+        if train:
+            experiment.log_metric(name="loss_train", value=loss_train, step=idx_epoch)
+            if kind == "dm_multiclass":
+                experiment.log_confusion_matrix(
+                    y_true=None,
+                    y_predicted=None,
+                    matrix=None,
+                    labels=None,
+                    title="Confusion Matrix",
+                    row_label="Actual Category",
+                    column_label="Predicted Category",
+                    step=idx_epoch
+                )
+
+        else:
+            experiment.log_metric(name="loss_validation", value=loss_train, step=idx_epoch)
 
     if kind == "binary_classification":
         accuracy_train /= accuracy_normalization_train
-        logTrainingProgress(
+        logging_data = logTrainingProgress(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
@@ -233,7 +243,7 @@ def train_loop(
         median_reco_gen_ratio = np.median(np.abs(ratios))
         stdev_reco_gen_ratio = np.std(np.abs(ratios))
         iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
-        logTrainingProgress_regression(
+        logging_data = logTrainingProgress_regression(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
@@ -246,7 +256,7 @@ def train_loop(
             np.array(ratios)
         )
     elif kind == "dm_multiclass":
-        logTrainingProgress_decaymode(
+        logging_data = logTrainingProgress_decaymode(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
@@ -256,22 +266,28 @@ def train_loop(
         )
     tensorboard.flush()
     print("Loss = {}".format(loss_train))
-    if kind == "jet_regression":
-        return loss_train, iqr_reco_gen_ratio
-    else:
-        return loss_train
-
-
-def run_command(cmd):
-    result = subprocess.run(cmd.split(" "), stdout=subprocess.PIPE, universal_newlines=True)
-    print(result.stdout)
+    return loss_train, logging_data
 
 
 @hydra.main(config_path="../config", config_name="model_training", version_base=None)
 def trainModel(cfg: DictConfig) -> None:
     print("<trainModel>:")
+    experiment = None
+    try:
+        experiment = Experiment()
+        if cfg.comet.experiment is None:
+            now = datetime.datetime.now()
+            experiment_name = now.strftime("%d/%m/%Y, %H:%M:%S")
+        else:
+            experiment_name = cfg.comet.experiment
+        experiment.set_name(experiment_name)
+        use_comet = True
+        print(f"Using CometML for logging. Experiment name {cfg.comet.experiment}")
+    except ValueError:
+        use_comet = False
+        print("CometML API key not found, not logging to CometML")
 
-    #because we are doing plots for tensorboard, we don't want anything to crash
+    # because we are doing plots for tensorboard, we don't want anything to crash
     plt.switch_backend('agg')
 
     feature_set = cfg.dataset.feature_set
@@ -280,32 +296,33 @@ def trainModel(cfg: DictConfig) -> None:
     kind = cfg.training_type
     model_config = cfg.models[cfg.model_type]
 
+    suffix = f"_{cfg.models.OmniParT.version}" if cfg.model_type == "OmniParT" else ""
     model_output_path = os.path.join(
         cfg.output_dir,
         cfg.training_type,
-        cfg.model_type,
+        cfg.model_type + suffix,
         # when running many jobs on the cluster, it's easier to not have a bunch of different dates for each model
         # str(datetime.datetime.now()).replace(" ", "_").replace(":", "_")
     )
 
-    #if we are going to train the model, ensure a model does not already exist (e.g. if doing testing as a separate step)
+    # if we are going to train the model, ensure a model does not already exist (e.g. if doing testing as a separate step)
     if cfg.train and os.path.isdir(model_output_path):
         raise Exception("Output directory exists while train=True: {}".format(model_output_path))
 
     # get the number of row groups (independently loadable chunks) in each input file
     data = sum([load_row_groups(os.path.join(cfg.data_path, fn)) for fn in cfg.training_samples], [])
 
-    #shuffle row groups
+    # shuffle row groups
     perm = np.random.permutation(len(data))
     data_reshuf = [data[p] for p in perm]
 
-    #take train and validation split from the row groups
-    ntrain = int(len(data_reshuf)*cfg.fraction_train)
-    nvalid = int(len(data_reshuf)*cfg.fraction_valid)
+    # take train and validation split from the row groups
+    ntrain = int(len(data_reshuf) * cfg.fraction_train)
+    nvalid = int(len(data_reshuf) * cfg.fraction_valid)
     training_data = data_reshuf[:ntrain]
-    validation_data = data_reshuf[ntrain:ntrain+nvalid]
+    validation_data = data_reshuf[ntrain:ntrain + nvalid]
     print(f"row groups: train={len(training_data)} validation={len(validation_data)}")
-    
+
     dataset_train = ParticleTransformerDataset(
         row_groups=training_data,
         cfg=cfg.dataset,
@@ -324,7 +341,7 @@ def trainModel(cfg: DictConfig) -> None:
 
     print("Building model...")
 
-    #configure the number of model input dimensions based on the input features 
+    # configure the number of model input dimensions based on the input features
     input_dim = 0
     if 'cand_kinematics' in feature_set:
         input_dim += 4
@@ -336,7 +353,6 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 3
     if 'cand_omni_features_wPID' in feature_set:
         input_dim += 10
-
 
     num_classes = cfg.num_classes[kind]
     if cfg.model_type == "ParticleTransformer":
@@ -390,7 +406,7 @@ def trainModel(cfg: DictConfig) -> None:
     model_params = filter(lambda p: p.requires_grad, model.parameters())
     num_trainable_weights = sum([np.prod(p.size()) for p in model_params])
     print("#trainable parameters = {}".format(num_trainable_weights))
-    
+
     best_model_output_path = os.path.join(model_output_path, "model_best.pt")
 
     if cfg.train:
@@ -449,24 +465,19 @@ def trainModel(cfg: DictConfig) -> None:
         print("#batches(train) = {}".format(num_batches_train))
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             base_optimizer,
-            T_max=len(dataloader_train)*cfg.training.num_epochs,
-            eta_min=cfg.training.lr*0.01
+            T_max=len(dataloader_train) * cfg.training.num_epochs,
+            eta_min=cfg.training.lr * 0.01
         )
         print("Starting training...")
         print(" current time:", datetime.datetime.now())
-        tensorboard = SummaryWriter(os.path.join(model_output_path,"tensorboard_logs"))
+        tensorboard = SummaryWriter(os.path.join(model_output_path, "tensorboard_logs"))
         min_loss_validation = -1.0
         # early_stopper = EarlyStopper(patience=10)
-        losses_train = []
-        losses_validation = []
-        if kind == "jet_regression":
-            iqr_train = []
-            iqr_validation = []
         for idx_epoch in range(cfg.training.num_epochs):
             print("Processing epoch #%i" % idx_epoch)
             print(" current time:", datetime.datetime.now())
 
-            train_output = train_loop(
+            train_loss, train_logging_data = train_loop(
                 idx_epoch,
                 dataloader_train,
                 model,
@@ -480,17 +491,14 @@ def trainModel(cfg: DictConfig) -> None:
                 feature_set,
                 num_classes,
                 kind=kind,
+                use_comet=use_comet,
+                experiment=experiment
             )
-            if kind == "jet_regression":
-                iqr_train.append(train_output[1])
-                losses_train.append(train_output[0])
-            else:
-                losses_train.append(train_output)
             print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
             tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
             with torch.no_grad():
-                validation_output = train_loop(
+                loss_validation, val_logging_data = train_loop(
                     idx_epoch,
                     dataloader_validation,
                     model,
@@ -505,33 +513,41 @@ def trainModel(cfg: DictConfig) -> None:
                     num_classes,
                     kind=kind,
                     train=False,
+                    use_comet=use_comet,
+                    experiment=experiment
                 )
-            if kind == "jet_regression":
-                loss_validation = validation_output[1]
-                iqr_validation.append(loss_validation)
-                losses_validation.append(validation_output[0])
-            else:
-                loss_validation = validation_output
-                losses_validation.append(loss_validation)
 
             if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
                 print("Saving best model to file {}".format(best_model_output_path))
                 torch.save(model.state_dict(), best_model_output_path)
                 min_loss_validation = loss_validation
-            process = psutil.Process(os.getpid())
-            print(" Memory-Usage = %i Mb" % (process.memory_info().rss / 1048576))
-            history_data = {
-                "losses_train": losses_train,
-                "losses_validation": losses_validation,
-            }
-            if kind == 'jet_regression':
-                history_data.update({"iqr_train": iqr_train, "iqr_validation": iqr_validation})
-            with open(os.path.join(model_output_path, "history.json"), "w") as fi:
+
+            new_history_data = {}
+            for key, value in val_logging_data.items():
+                new_history_data[key + "_validation"] = value
+            for key, value in train_logging_data.items():
+                new_history_data[key + "_train"] = value
+
+            history_data_path = os.path.join(model_output_path, "history.json")
+            if os.path.exists(history_data_path):
+                with open(history_data_path, "rt") as in_file:
+                    history_data = json.load(in_file)
+                for key, value in new_history_data.items():
+                    history_data[key].append(value)
+            else:
+                history_data = {}
+                for key, value in new_history_data.items():
+                    history_data[key] = []
+                    history_data[key].append(value)
+
+            with open(history_data_path, "wt") as out_file:
                 json.dump(
                     history_data,
-                    fi,
-                    indent=4
+                    out_file,
+                    indent=4,
+                    cls=NumpyEncoder
                 )
+
             # if early_stopper.early_stop(loss_validation):
             #     break
         print("Finished training.")
@@ -568,16 +584,24 @@ def trainModel(cfg: DictConfig) -> None:
                 with torch.no_grad():
                     if kind == "jet_regression":
                         pred = model(*model_inputs)[:, 0]
+                        pred = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        y_for_loss = torch.exp(y_for_loss.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
                     elif kind == "dm_multiclass":
                         pred = model(*model_inputs)
+                        pred = torch.softmax(pred, axis=-1)
                         pred = torch.argmax(pred, axis=-1)
                     elif kind == "binary_classification":
-                        pred = model(*model_inputs)[:, 1]
+                        pred = model(*model_inputs)  # [:, 1]
+                        pred = torch.softmax(pred, axis=-1)[:, 1]
                 preds.extend(pred.detach().cpu().numpy())
                 targets.extend(y_for_loss.detach().cpu().numpy())
             preds = np.array(preds)
             targets = np.array(targets)
-            ak.to_parquet(ak.Record({kind: {"pred": preds, "target": targets}}), os.path.join(model_output_path, test_sample))
+            data_to_save = {
+                "pred": preds,
+                "target": targets,
+            }
+            ak.to_parquet(ak.Record({kind: data_to_save}), os.path.join(model_output_path, test_sample))
 
 
 if __name__ == "__main__":

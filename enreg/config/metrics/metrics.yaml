@@ -1,4 +1,5 @@
 defaults:
   - classifier
   - regression
+  - dm_reconstruction
   - _self_
