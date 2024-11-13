@@ -10,7 +10,8 @@ comet:
 #everything that the user should modify is here
 #override these using command line args
 output_dir: training-outputs/240809_3var_kinematics
-data_path: /scratch/persistent/laurits/ml-tau/20240924_lowered_recoPtCut
+# data_path: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
+data_path: /scratch/project_465001293/mltau-data/v2
 
 #override this using command line args
 training_type: dm_multiclass
@@ -36,11 +37,16 @@ test_samples:
   - qq_test.parquet
 
 #the training sample will be further subdividied as follows to train and valid
-fraction_train: 0.8
+trainSize: 1e6
 fraction_valid: 0.2
 
+reco_jet_pt_cut:
+  binary_classification: 20
+  dm_multiclass: 5
+  jet_regression: 0
 
 dataset:
+  row_group_size: 1024
   max_cands: 16
   use_lifetime: False
   min_jet_theta: 0.0
@@ -61,7 +67,7 @@ num_classes:
 training:
   lr: 1e-4
   num_epochs: 100
-  batch_size: 1024
+  batch_size: 4048
   num_dataloader_workers: 2
   prefetch_factor: 100
   classweight_sig: 1

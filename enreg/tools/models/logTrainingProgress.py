@@ -4,14 +4,14 @@ from sklearn.metrics import precision_score, roc_auc_score, roc_curve, Confusion
 
 
 def logTrainingProgress(
-    tensorboard,
-    idx_epoch,
-    mode,
-    loss,
-    accuracy,
-    class_true,
-    pred_probas,
-    weights
+        tensorboard,
+        idx_epoch,
+        mode,
+        loss,
+        accuracy,
+        class_true,
+        pred_probas,
+        weights
 ):
     class_pred = np.argmax(pred_probas, axis=-1)
     signal_proba = pred_probas[:, 1]
@@ -49,16 +49,19 @@ def logTrainingProgress(
     tensorboard.add_scalar("precision/%s" % mode, precision, global_step=idx_epoch)
     tensorboard.add_scalar("recall/%s" % mode, recall, global_step=idx_epoch)
     tensorboard.add_scalar("F1_score/%s" % mode, F1_score, global_step=idx_epoch)
-    tensorboard.add_histogram("tauClassifier_sig/%s" % mode, signal_proba[class_true == 1], global_step=idx_epoch)
-    if len(signal_proba[class_true==0]) > 0:
+    if len(signal_proba[class_true == 1]) > 0:
+        tensorboard.add_histogram("tauClassifier_sig/%s" % mode, signal_proba[class_true == 1], global_step=idx_epoch)
+    else:
+        raise ValueError("No signal samples. Signal_proba[class_true == 1] is empty.")
+    if len(signal_proba[class_true == 0]) > 0:
         tensorboard.add_histogram("tauClassifier_bgr/%s" % mode, signal_proba[class_true == 0], global_step=idx_epoch)
     else:
         raise ValueError("No backround samples. Signal_proba[class_true == 0] is empty.")
 
     fpr, tpr, _ = roc_curve(class_true, signal_proba)
-    fig = plt.figure(figsize=(5,5))
+    fig = plt.figure(figsize=(5, 5))
     plt.plot(tpr, fpr)
-    plt.xlim(0,1)
+    plt.xlim(0, 1)
     plt.ylim(1e-5, 1)
     plt.yscale("log")
     plt.xlabel("TPR")
@@ -79,16 +82,16 @@ def logTrainingProgress(
 
 
 def logTrainingProgress_regression(
-    tensorboard,
-    idx_epoch,
-    mode,
-    loss,
-    mean_reco_gen_ratio,
-    median_reco_gen_ratio,
-    stdev_reco_gen_ratio,
-    iqr_reco_gen_ratio,
-    weights,
-    ratios
+        tensorboard,
+        idx_epoch,
+        mode,
+        loss,
+        mean_reco_gen_ratio,
+        median_reco_gen_ratio,
+        stdev_reco_gen_ratio,
+        iqr_reco_gen_ratio,
+        weights,
+        ratios
 ):
     tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)
     tensorboard.add_scalar("Mean ratio/%s" % mode, mean_reco_gen_ratio, global_step=idx_epoch)
@@ -96,7 +99,7 @@ def logTrainingProgress_regression(
     tensorboard.add_scalar("Stdev ratio/%s" % mode, stdev_reco_gen_ratio, global_step=idx_epoch)
     tensorboard.add_scalar("IQR ratio/%s" % mode, iqr_reco_gen_ratio, global_step=idx_epoch)
 
-    fig = plt.figure(figsize=(5,5))
+    fig = plt.figure(figsize=(5, 5))
     plt.hist(ratios, bins=np.linspace(0.5, 1.5, 100), histtype="step", lw=2)
     plt.xlabel("reco pt / gen tau pt")
     plt.ylabel("number of jets / bin")
@@ -113,22 +116,21 @@ def logTrainingProgress_regression(
     return logging_data
 
 
-
 def logTrainingProgress_decaymode(
-    tensorboard,
-    idx_epoch,
-    mode,
-    loss,
-    weights,
-    confusion_matrix
+        tensorboard,
+        idx_epoch,
+        mode,
+        loss,
+        weights,
+        confusion_matrix
 ):
     tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)
 
-    confusion_matrix_norm = confusion_matrix/np.sum(confusion_matrix)
-    disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_norm, display_labels=range(confusion_matrix.shape[0]))
+    confusion_matrix_norm = confusion_matrix / np.sum(confusion_matrix)
+    disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix_norm,
+                                  display_labels=range(confusion_matrix.shape[0]))
     disp.plot(values_format=".2f", cmap="Blues", text_kw={"fontsize": 6})
     tensorboard.add_figure("confusion_matrix/{}".format(mode), disp.figure_, global_step=idx_epoch)
-
 
     class_FPR = (confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)) / confusion_matrix.sum()
     class_FNR = (confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)) / confusion_matrix.sum()
@@ -144,8 +146,7 @@ def logTrainingProgress_decaymode(
     TPR = np.sum(class_TPR) / len(class_TPR)
     TNR = np.sum(class_TNR) / len(class_TNR)
 
-
-    # This here is 
+    # This here is
     # TODO: If reporting macro-average then in cases of 3 or more classes, std should also be reported.
     precision = TPR / (TPR + FPR)
     recall = TPR / (TPR + FNR)

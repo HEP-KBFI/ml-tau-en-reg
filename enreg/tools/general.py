@@ -6,7 +6,9 @@ import numpy as np
 import awkward as ak
 
 
-def load_all_data(input_loc: str | list, n_files: int = None, columns: list = None) -> ak.Array:
+# def load_all_data(input_loc: str | list, n_files: int = None, columns: list = None) -> ak.Array:
+def load_all_data(input_loc, n_files: int = None, columns: list = None) -> ak.Array:
+
     """Loads all .parquet files specified by the input. The input can be a list of input_paths, a directory where the files
     are located or a wildcard path.
 
@@ -151,6 +153,11 @@ def get_reduced_decaymodes(decaymodes: np.array):
         2: 2,
         3: 2,
         4: 2,
+        5: 10,
+        6: 11,
+        7: 11,
+        8: 11,
+        9: 11,
         10: 10,
         11: 11,
         12: 11,

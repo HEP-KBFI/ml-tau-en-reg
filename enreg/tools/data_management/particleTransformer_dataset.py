@@ -40,9 +40,10 @@ class RowGroup:
 
 
 class ParticleTransformerDataset(IterableDataset):
-    def __init__(self, row_groups: Sequence[RowGroup], cfg: DictConfig):
+    def __init__(self, row_groups: Sequence[RowGroup], cfg: DictConfig, reco_jet_pt_cut: float):
         self.row_groups = row_groups
         self.cfg = cfg
+        self.reco_jet_pt_cut = reco_jet_pt_cut
         self.num_rows = sum([rg.num_rows for rg in self.row_groups])
 
     def build_tensors(self, data: ak.Array):
@@ -134,6 +135,7 @@ class ParticleTransformerDataset(IterableDataset):
 
         jet_regression_target = torch.log(gen_tau_pt/reco_jet_pt)
         gen_jet_tau_decaymode = torch.tensor(ak.to_numpy(data.gen_jet_tau_decaymode)).long()
+
         gen_jet_tau_decaymode_exists = (gen_jet_tau_decaymode != -1).long()
 
         #X, y, w
@@ -179,6 +181,8 @@ class ParticleTransformerDataset(IterableDataset):
         for row_group in row_groups_to_process:
             #load one chunk from one file
             data = ak.from_parquet(row_group.filename, row_groups=[row_group.row_group])
+            reco_jet_p4s = g.reinitialize_p4(data.reco_jet_p4s)
+            data = data[reco_jet_p4s.pt >= self.reco_jet_pt_cut]
             tensors = self.build_tensors(data)
 
             #return individual jets from the dataset
