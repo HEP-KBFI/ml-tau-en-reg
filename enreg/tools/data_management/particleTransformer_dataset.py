@@ -1,15 +1,11 @@
 import torch
-import json
 import math
 import numpy as np
 import awkward as ak
 import enreg.tools.general as g
-from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from torch.utils.data import IterableDataset
-from torch import nn
 import enreg.tools.data_management.features as f
-from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
 from collections.abc import Sequence
 

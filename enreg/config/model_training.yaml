@@ -10,8 +10,8 @@ comet:
 #everything that the user should modify is here
 #override these using command line args
 output_dir: training-outputs/240809_3var_kinematics
-# data_path: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
-data_path: /scratch/project_465001293/mltau-data/v2
+data_path: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
+# data_path: /scratch/project_465001293/mltau-data/v2
 
 #override this using command line args
 training_type: dm_multiclass
@@ -46,6 +46,8 @@ reco_jet_pt_cut:
   jet_regression: 0
 
 dataset:
+  trainSize: 1e6  # Duplicated
+  fraction_valid: 0.2  # Duplicated
   row_group_size: 1024
   max_cands: 16
   use_lifetime: False
@@ -57,6 +59,17 @@ dataset:
     # - cand_ParT_features
     # - cand_omni_kinematics
     - cand_omni_features_wPID
+  features:
+    - cand_pt
+    - cand_mass
+    - cand_deta
+    - cand_dphi
+    - cand_charge
+    - cand_isElectron
+    - cand_isMuon
+    - cand_isPhoton
+    - cand_isChargedHadron
+    - cand_isNeutralHadron
 
 #number of output classes for different tasks
 num_classes:

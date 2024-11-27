@@ -25,7 +25,10 @@ seaborn
 setGPU
 tensorboard
 tqdm
+torch
+pytorch-lightning
 uproot
 vector
 zenodo_get
 particle
+wheel
