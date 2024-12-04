@@ -146,8 +146,10 @@ class IterableFutureDataset(IterableDataset):
             weight_tensors
         )
 
-    def __len__(self):
-        return self.num_rows
+    # def __len__(self):
+    #     return self.num_rows  # TODO: IterableDataset` has `__len__` defined. In combination with multi-process data
+    #     # TODO: loading (when num_workers > 1), `__len__` could be inaccurate if each worker is not configured
+    #     #  TODO: independently to avoid having duplicate data.
 
     def __iter__(self):
         worker_info = torch.utils.data.get_worker_info()

@@ -318,7 +318,7 @@ def trainModel(cfg: DictConfig) -> None:
         ntrain = int(np.ceil(cfg.trainSize / (len(cfg.training_samples) * cfg.dataset.row_group_size)))
         nvalid = int(np.ceil(len(row_groups) * cfg.fraction_valid))
         validation_data.extend(row_groups[:nvalid])
-        training_data.extend(row_groups[nvalid : nvalid + ntrain])
+        training_data.extend(row_groups[nvalid: nvalid + ntrain])
     training_perm = np.random.permutation(len(training_data))
     validation_perm = np.random.permutation(len(validation_data))
 
