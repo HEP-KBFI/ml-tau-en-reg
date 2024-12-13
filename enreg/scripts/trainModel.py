@@ -36,10 +36,10 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 
 class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
+    def default(self, o):
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        return super().default(o)
 
 
 def unpack_data(X, dev, feature_set):
