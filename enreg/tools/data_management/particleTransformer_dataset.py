@@ -115,7 +115,7 @@ class ParticleTransformerDataset(IterableDataset):
         node_mask_tensors = torch.unsqueeze(
             torch.tensor(
                 ak.to_numpy(ak.fill_none(ak.pad_none(ak.ones_like(data.reco_cand_pdg), self.cfg.max_cands, clip=True), 0,)),
-                dtype=torch.float32
+                dtype=torch.bool
             ),
             dim=1
         )
@@ -127,12 +127,14 @@ class ParticleTransformerDataset(IterableDataset):
 
         reco_jet_pt = torch.tensor(ak.to_numpy(jet_p4s.pt), dtype=torch.float32)
         gen_tau_pt = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.pt), dtype=torch.float32)
-        reco_jet_energy = torch.tensor(ak.to_numpy(jet_p4s.energy), dtype=torch.float32)
 
         jet_regression_target = torch.log(gen_tau_pt/reco_jet_pt)
-        gen_jet_tau_decaymode = torch.tensor(ak.to_numpy(data.gen_jet_tau_decaymode)).long()
+        gen_jet_tau_decaymode = ak.to_numpy(data.gen_jet_tau_decaymode)
+        reduced_gen_decay_modes = g.get_reduced_decaymodes(gen_jet_tau_decaymode)
+        ohe_prepared_decay_modes = g.prepare_one_hot_encoding(reduced_gen_decay_modes)
+        gen_jet_tau_decaymode_reduced = torch.tensor(ohe_prepared_decay_modes).long()
 
-        gen_jet_tau_decaymode_exists = (gen_jet_tau_decaymode != -1).long()
+        gen_jet_tau_decaymode_exists = (torch.tensor(ak.to_numpy(data.gen_jet_tau_decaymode)) != -1).long()
 
         #X, y, w
         return (
@@ -153,7 +155,7 @@ class ParticleTransformerDataset(IterableDataset):
                 "gen_tau_pt": gen_tau_pt,
                 "jet_regression": jet_regression_target,
                 "binary_classification": gen_jet_tau_decaymode_exists,
-                "dm_multiclass": gen_jet_tau_decaymode
+                "dm_multiclass": gen_jet_tau_decaymode_reduced
             },
 
             #weights

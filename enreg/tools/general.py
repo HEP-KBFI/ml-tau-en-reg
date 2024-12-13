@@ -169,6 +169,16 @@ def get_reduced_decaymodes(decaymodes: np.array):
     return np.vectorize(target_mapping.get)(decaymodes)
 
 
+def prepare_one_hot_encoding(values, classes=[0, 1, 2, 10, 11, 15]):
+    mapping = {class_: i for i, class_ in enumerate(classes)}
+    return np.vectorize(mapping.get)(values)
+
+
+def one_hot_decoding(values, classes=[0, 1, 2, 10, 11, 15]):
+    mapping = {i: class_ for i, class_ in enumerate(classes)}
+    return np.vectorize(mapping.get)(values)
+
+
 def reinitialize_p4(p4_obj: ak.Array):
     """ Reinitialized the 4-momentum for particle in order to access its properties.
 
