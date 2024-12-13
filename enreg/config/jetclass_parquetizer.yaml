@@ -1,0 +1,39 @@
+row_group_size: 1024
+verbosity: 0
+jetclass_root_dir: /local/joosep/jetclass
+jetclass_parquet_dir: /scratch/persistent/laurits/jetclass_parquet
+dataset_dirs:
+    test: test_20M
+    train: train_100M
+    val: val_5M
+branches_of_interest:
+    - part_px
+    - part_py
+    - part_pz
+    - part_energy
+    - part_deta
+    - part_dphi
+    - part_d0val
+    - part_d0err
+    - part_dzval
+    - part_dzerr
+    - part_charge
+    - part_isChargedHadron
+    - part_isNeutralHadron
+    - part_isPhoton
+    - part_isElectron
+    - part_isMuon
+    - label_QCD
+    - label_Hbb
+    - label_Hcc
+    - label_Hgg
+    - label_H4q
+    - label_Hqql
+    - label_Zqq
+    - label_Wqq
+    - label_Tbqq
+    - label_Tbl
+    - jet_pt
+    - jet_eta
+    - jet_phi
+    - jet_energy

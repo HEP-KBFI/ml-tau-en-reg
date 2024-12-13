@@ -76,10 +76,10 @@ class DecayModeEvaluator:
         self._decay_mode_name_mapping = {
             0: r"$h^{\pm}$",
             1: r"$h^{\pm}\pi^0$",
-            2: r"$h^{\pm}\pi^0\pi^0$",
+            2: r'$h^\pm+\geq2\pi^0$',
             10: r"$h^{\pm}h^{\mp}h^{\pm}$",
-            11: r"$h^{\pm}h^{\mp}h^{\pm}\pi^0$",
-            15: "Other",
+            11: r"$h^{\pm}h^{\mp}h^{\pm}+\geq\pi^0$",
+            15: "Rare",
         }
         self.categories = list(self._decay_mode_name_mapping.values())
         self.general_metrics, self.class_metrics = self._calculate_performance_metrics()
@@ -87,15 +87,24 @@ class DecayModeEvaluator:
     def _get_reduced_decay_modes(self, decaymodes: np.array):
         """Maps the full set of decay modes into a smaller subset, setting the rarer decay modes under "Other" (# 15)"""
         target_mapping = {
+            -1: 15,
             0: 0,
             1: 1,
             2: 2,
-            3: 15,
-            4: 15,
+            3: 2,
+            4: 2,
+            5: 10,
+            6: 11,
+            7: 11,
+            8: 11,
+            9: 11,
             10: 10,
             11: 11,
-            12: 15,
+            12: 11,
+            13: 11,
+            14: 11,
             15: 15,
+            16: 16,
         }
         return np.vectorize(target_mapping.get)(decaymodes)
 

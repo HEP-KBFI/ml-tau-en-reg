@@ -67,7 +67,7 @@ if __name__ == "__main__":
         ("p8_ee_ZH_Htautau_ecm380", "zh"),
         ("p8_ee_Z_Ztautau_ecm380", "z")
     ]:
-        data = load_sample("/local/laurits/ml-tau-en-reg/ntuples/20240924_lowered_recoPtCut/" + sample_long)
+        data = load_sample("/local/laurits/ml-tau-en-reg/ntuples/20241001_drop_pyhepmc_FULL/" + sample_long)
         data_train, data_test = split_train_test(data)
         ak.to_parquet(data_train, sample_short + "_train.parquet", row_group_size=1024)
         ak.to_parquet(data_test, sample_short + "_test.parquet", row_group_size=1024)

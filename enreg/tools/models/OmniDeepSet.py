@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from gabbro.models.gpt_model import BackboneModel
+from gabbro.models.backbone_base import BackboneModel
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
 from enreg.tools.models.OmniParT import EmbedParT
@@ -28,7 +28,7 @@ class OmniDeepSet(nn.Module):
         self.width = 128
 
         self.nn_pred = ffn(256, num_classes, self.width, self.act, self.dropout)
-    
+
     def forward(self, cand_features, cand_kinematics_pxpypze=None, cand_mask=None, frost='freeze'):
         padding_mask = ~cand_mask.squeeze(1) # (N, 1, P) -> (N, P)
         with torch.cuda.amp.autocast(enabled=self.use_amp):

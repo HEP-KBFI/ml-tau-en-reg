@@ -1,0 +1,40 @@
+max_constituents: 32
+labels:
+    - label_QCD
+    - label_Hbb
+    - label_Hcc
+    - label_Hgg
+    - label_H4q
+    - label_Hqql
+    - label_Zqq
+    - label_Wqq
+    - label_Tbqq
+    - label_Tbl
+training:
+    output_dir: /home/laurits/tmp/JetClass_ParT
+    lr: 1e-3
+    trainer:
+        max_epochs: 3
+    batch_size: 2048
+    num_dataloader_workers: 2
+    prefetch_factor: 100
+    classweight_sig: 1
+    classweight_bgr: 10
+    use_class_weights: True
+    apply_regression_weights: False
+    use_per_jet_weights: True
+    use_focal_loss: True
+    focal_loss_gamma: 2.0
+    fast_optimizer: AdamW
+    slow_optimizer: None
+    verbosity: 1
+
+defaults:
+    - _self_
+    - models: models
+    - jetclass_parquetizer
+
+hydra:
+    output_subdir: null
+    run:
+        dir: .

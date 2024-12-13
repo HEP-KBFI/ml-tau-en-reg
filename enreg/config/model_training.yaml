@@ -5,12 +5,13 @@ train: True
 test: True
 
 comet:
-  experiment: null
+    experiment: null
 
 #everything that the user should modify is here
 #override these using command line args
 output_dir: training-outputs/240809_3var_kinematics
-data_path: /scratch/persistent/laurits/ml-tau/20240924_lowered_recoPtCut
+# data_path: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
+data_path: /scratch/project_465001293/mltau-data/v2
 
 #override this using command line args
 training_type: dm_multiclass
@@ -25,65 +26,83 @@ model_type: ParticleTransformer
 #these samples can be used for training and validation
 #qq is added back using command line flags for the binary classification task
 training_samples:
-  - z_train.parquet
-  #  - zh_train.parquet
-  - qq_train.parquet
+    - z_train.parquet
+    #  - zh_train.parquet
+    - qq_train.parquet
 
 #these are never used in the training code, only for the final evaluation
 test_samples:
-  - z_test.parquet
-  #  - zh_test.parquet
-  - qq_test.parquet
+    - z_test.parquet
+    #  - zh_test.parquet
+    - qq_test.parquet
 
 #the training sample will be further subdividied as follows to train and valid
-fraction_train: 0.8
+trainSize: 1e6
 fraction_valid: 0.2
 
+reco_jet_pt_cut:
+    binary_classification: 20
+    dm_multiclass: 5
+    jet_regression: 0
 
 dataset:
-  max_cands: 16
-  use_lifetime: False
-  min_jet_theta: 0.0
-  max_jet_theta: 1000
-  min_jet_pt: 0
-  max_jet_pt: 1000
-  feature_set:
-    # - cand_ParT_features
-    # - cand_omni_kinematics
-    - cand_omni_features_wPID
+    trainSize: 1e6 # Duplicated
+    fraction_valid: 0.2 # Duplicated
+    row_group_size: 1024
+    max_cands: 16
+    use_lifetime: False
+    min_jet_theta: 0.0
+    max_jet_theta: 1000
+    min_jet_pt: 0
+    max_jet_pt: 1000
+    feature_set:
+        # - cand_ParT_features
+        # - cand_omni_kinematics
+        - cand_omni_features_wPID
+    features:
+        - cand_pt
+        - cand_mass
+        - cand_deta
+        - cand_dphi
+        - cand_charge
+        - cand_isElectron
+        - cand_isMuon
+        - cand_isPhoton
+        - cand_isChargedHadron
+        - cand_isNeutralHadron
 
 #number of output classes for different tasks
 num_classes:
-  dm_multiclass: 16
-  jet_regression: 1
-  binary_classification: 2
+    dm_multiclass: 6 # Changed from 16
+    jet_regression: 1
+    binary_classification: 2
 
 training:
-  lr: 1e-4
-  num_epochs: 100
-  batch_size: 1024
-  num_dataloader_workers: 2
-  prefetch_factor: 100
-  classweight_sig: 1
-  classweight_bgr: 10
-  use_class_weights: True
-  apply_regression_weights: False
-  use_per_jet_weights: True
-  use_focal_loss: True
-  focal_loss_gamma: 2.0
-  fast_optimizer: AdamW
-  slow_optimizer: None
-  verbosity: 1
+    lr: 1e-4
+    num_epochs: 100
+    batch_size: 4048
+    num_dataloader_workers: 2
+    prefetch_factor: 100
+    classweight_sig: 1
+    classweight_bgr: 10
+    use_class_weights: True
+    apply_regression_weights: False
+    use_per_jet_weights: True
+    use_focal_loss: True
+    focal_loss_gamma: 2.0
+    fast_optimizer: AdamW
+    slow_optimizer: None
+    verbosity: 1
 
 #disable creation of the outputs dir which we don't use
 #https://stackoverflow.com/questions/65104134/disable-file-output-of-hydra
 defaults:
-  - models: models
-  - _self_
-  - override hydra/hydra_logging: disabled
-  - override hydra/job_logging: disabled
+    - models: models
+    - _self_
+    - override hydra/hydra_logging: disabled
+    - override hydra/job_logging: disabled
 
 hydra:
-  output_subdir: null
-  run:
-    dir: .
+    output_subdir: null
+    run:
+        dir: .

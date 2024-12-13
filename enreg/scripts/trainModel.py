@@ -36,10 +36,10 @@ from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 
 class NumpyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
+    def default(self, o):
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        return super().default(o)
 
 
 def unpack_data(X, dev, feature_set):
@@ -309,27 +309,33 @@ def trainModel(cfg: DictConfig) -> None:
     if cfg.train and os.path.isdir(model_output_path):
         raise Exception("Output directory exists while train=True: {}".format(model_output_path))
 
-    # get the number of row groups (independently loadable chunks) in each input file
-    data = sum([load_row_groups(os.path.join(cfg.data_path, fn)) for fn in cfg.training_samples], [])
 
-    # shuffle row groups
-    perm = np.random.permutation(len(data))
-    data_reshuf = [data[p] for p in perm]
+    training_data = []
+    validation_data = []
+    for sample in cfg.training_samples:
+        # get the number of row groups (independently loadable chunks) in each input file
+        row_groups = load_row_groups(os.path.join(cfg.data_path, sample))
+        ntrain = int(np.ceil(cfg.trainSize / (len(cfg.training_samples) * cfg.dataset.row_group_size)))
+        nvalid = int(np.ceil(len(row_groups) * cfg.fraction_valid))
+        validation_data.extend(row_groups[:nvalid])
+        training_data.extend(row_groups[nvalid: nvalid + ntrain])
+    training_perm = np.random.permutation(len(training_data))
+    validation_perm = np.random.permutation(len(validation_data))
 
-    # take train and validation split from the row groups
-    ntrain = int(len(data_reshuf) * cfg.fraction_train)
-    nvalid = int(len(data_reshuf) * cfg.fraction_valid)
-    training_data = data_reshuf[:ntrain]
-    validation_data = data_reshuf[ntrain:ntrain + nvalid]
+    training_data = [training_data[p] for p in training_perm]
+    validation_data = [validation_data[p] for p in validation_perm]
+
     print(f"row groups: train={len(training_data)} validation={len(validation_data)}")
 
     dataset_train = ParticleTransformerDataset(
         row_groups=training_data,
         cfg=cfg.dataset,
+        reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type]
     )
     dataset_validation = ParticleTransformerDataset(
         row_groups=validation_data,
         cfg=cfg.dataset,
+        reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type]
     )
     if kind == "jet_regression" and cfg.training.apply_regression_weights:
         weights_train, weights_validation = get_weights(dataset_train, dataset_validation)
@@ -567,6 +573,7 @@ def trainModel(cfg: DictConfig) -> None:
             dataset_full = ParticleTransformerDataset(
                 row_groups=data,
                 cfg=cfg.dataset,
+                reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type]
             )
 
             # test dataloader must NOT specify num_workers or prefetch,
