@@ -38,6 +38,7 @@ def load_all_data(input_loc, n_files: int = None, columns: list = None) -> ak.Ar
         elif os.path.isfile(input_loc):
             input_files = [input_loc]
         else:
+            print("Input loc:", input_loc, "Type:", type(input_loc))
             raise ValueError(f"Unexpected input_loc")
     else:
         raise ValueError(f"Unexpected input_loc")
