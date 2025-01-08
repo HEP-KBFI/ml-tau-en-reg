@@ -461,7 +461,7 @@ class ParticleTransformer(nn.Module):
         pair_extra_dim=0,
         remove_self_pair=False,
         use_pre_activation_pair=True,
-        embed_dims=[128, 512, 128],
+        embed_dims=[256, 512, 256],
         pair_embed_dims=[64, 64, 64],
         num_heads=8,
         num_layers=8,
@@ -583,7 +583,7 @@ class ParticleTransformer(nn.Module):
             # transform particles
             for block in self.blocks:
                 cand_features_embed = block(cand_features_embed, x_cls=None, padding_mask=padding_mask, attn_mask=attn_mask)
-            
+
             # transform per-jet class tokens
             cls_tokens = self.cls_token.expand(1, cand_features_embed.size(1), -1)  # (1, N, C)
             for block in self.cls_blocks:

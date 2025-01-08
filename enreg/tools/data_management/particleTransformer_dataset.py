@@ -41,6 +41,7 @@ class ParticleTransformerDataset(IterableDataset):
         self.cfg = cfg
         self.reco_jet_pt_cut = reco_jet_pt_cut
         self.num_rows = sum([rg.num_rows for rg in self.row_groups])
+        print(f"There are {'{:,}'.format(self.num_rows)} jets in the dataset.")
 
     def build_tensors(self, data: ak.Array):
         jet_constituent_p4s = g.reinitialize_p4(data.reco_cand_p4s)
