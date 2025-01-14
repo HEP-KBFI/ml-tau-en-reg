@@ -1,14 +1,14 @@
-output_dir: outputs/240801_regression_plots
+# output_dir: outputs/240801_regression_plots
 plot_samples_separately: True
 load_from_json: False
 
 #this path contains the input ntuples to the ML model (jet & tau properties)
 #the model predictions are stored in separte files
 #and are configured in metrics/regression.yaml -> algorithms/ntuples_dir
-base_ntuple_path: /home/laurits/ntuples/20240924_lowered_recoPtCut/
+base_ntuple_path: '/home/hardi/Doc/pyfailid/ml-tau-en-reg/20241002_Training_ntuples_geq20ge'
 comparison_samples:
   - zh_test
-  - z_test
+#  - z_test
 
 defaults:
   - metrics: metrics
