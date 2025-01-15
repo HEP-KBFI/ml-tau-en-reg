@@ -5,9 +5,18 @@ directories:
   BASE_DATA_DIR: '/home/hardi/Doc/pyfailid/ml-tau-en-reg/20241002_Training_ntuples_geq20ge'
   BASE_TRAINING_DIR: '/home/hardi/Doc/pyfailid/ml-tau-en-reg/training-outputs'
 
+training_data:
+    # - z_train
+    # - zh_train
+    # - qq_train
+    # - z_test
+    - zh_test
+    # - qq_test
+
 evaluating:
   training_types:
     - '20201204_ParT_ntrain_v2'
+    - '20250113_OmniParT_fine_tuning_freeze_60'
     # - '20201206_updated_DM_training'
     # - '20201211_ParT_no_PMHA'
     # - '20241220_unfreeze_from_start'
@@ -25,16 +34,16 @@ evaluating:
       # - 'trainfrac_2e3'
     tasks:
       - 'jet_regression'
-      # - 'dm_multiclass'
+      - 'dm_multiclass'
+      - 'binary_classification'
       # - 'tagger'
-      # - 'binary_classification'
     models:
       - 'ParticleTransformer'
       # - 'LorentzNet'
       # - 'DeepSet'
       # - 'HPS'
       # - 'OmniParT_from_scratch'
-      # - 'OmniParT_fine_tuning'
+      - 'OmniParT_fine_tuning'
       # - 'OmniParT_fixed_backbone'
     z_OR_zh_test:
       # - 'z_test'
