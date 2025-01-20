@@ -146,6 +146,7 @@ def train_loop(
         print("Setting model to eval mode")
         model.eval()
         tensorboard_tag = "valid"
+    print(len(dataloader_train))
 
     for idx_batch, (X, y, weight) in tqdm.tqdm(enumerate(dataloader_train), total=len(dataloader_train)):
         # Compute prediction and loss
@@ -170,8 +171,7 @@ def train_loop(
             pred = model(*model_inputs).to(device=dev)[:, 0]
         elif kind == "dm_multiclass":
             pred = model(*model_inputs).to(device=dev)
-            y_for_loss = torch.nn.functional.one_hot(y_for_loss,
-                                                     num_classes).float()  # TODO: Note num_classes actually < 16
+            y_for_loss = torch.nn.functional.one_hot(y_for_loss, num_classes).float()
         elif kind == "binary_classification":
             pred = model(*model_inputs).to(device=dev)
         loss = loss_fn(pred, y_for_loss)
@@ -500,8 +500,8 @@ def trainModel(cfg: DictConfig) -> None:
                 use_comet=use_comet,
                 experiment=experiment
             )
-            print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
-            tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
+            # print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
+            # tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
 
             with torch.no_grad():
                 loss_validation, val_logging_data = train_loop(

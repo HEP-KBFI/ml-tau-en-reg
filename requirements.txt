@@ -1,3 +1,4 @@
+wheel
 autopep8
 awkward
 boost_histogram
@@ -31,4 +32,3 @@ uproot
 vector
 zenodo_get
 particle
-wheel

@@ -1,89 +1,26 @@
 regression:
-  ratio_plot:
-    bin_edges:
-      zh: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
-      z: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
-    resolution_plot:
-      ylabel: "$p_T\\ resol.\\ (q_{75} - q_{25})/q_{50}$"
-      ylim: [0, 0.06]
-      xlabel: "$p_T^{gen}$"
-      xscale: "linear"
-      yscale: "linear"
-      nticks: 7
-    response_plot:
-      ylabel: "$p_T\\ scale\\ (q_{50})$"
-      ylim: [0.99, 1.01]
-      xlabel: "$p_T^{gen}$"
-      xscale: "linear"
-      yscale: "linear"
-      nticks: 3
-  algorithms:
-    DeepSet:
-      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/DeepSet/
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "*"
-      hatch: "//"
-      color: "tab:purple"
-      ls: "solid"
-      label: DeepSet
-      lw: 1
-    HPS:
-      ntuples_dir: /path/to/files
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "^"
-      hatch: "\\\\"
-      color: "tab:green"
-      ls: "solid"
-      label: HPS
-      lw: 3
-    HPS_:
-      ntuples_dir: /path/to/files
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "^"
-      hatch: "\\\\"
-      color: "tab:green"
-      ls: "dashed"
-      label: "HPS (ideal)"
-      lw: 1
-    RecoJet:
-      ntuples_dir: /home/laurits/ntuples/20240924_lowered_recoPtCut/recoJet/
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "v"
-      hatch: "."
-      color: "tab:red"
-      ls: "solid"
-      label: RecoJet
-      lw: 1
-    LorentzNet:
-      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/LorentzNet/
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "D"
-      hatch: "."
-      color: "tab:orange"
-      ls: "solid"
-      label: LorentzNet
-      lw: 1
-    ParticleTransformer:
-      ntuples_dir: /home/laurits/ml-tau-en-reg/training-outputs/20240921_recoPtCut_removed_samples/v1/jet_regression/ParticleTransformer/
-      json_metrics_path: plotting_data.json
-      load_from_json: False
-      compare: True
-      marker: "X"
-      hatch: "."
-      color: "tab:blue"
-      ls: "solid"
-      label: ParticleTransformer
-      lw: 3
+    base_dir: /home/laurits/ml-tau-en-reg/training-outputs/20201204_ParT_ntrain_v2/v1/trainfrac_1e4/jet_regression
+    algorithms:
+        ParticleTransformer:
+            data_dir: ${regression.base_dir}
+    ratio_plot:
+        bin_edges:
+            zh: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175]
+            z: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
+        resolution_plot:
+            ylabel: "$p_T\\ resol.\\ (q_{75} - q_{25})/q_{50}$"
+            ylim: [0, 0.06]
+            xlabel: "$p_T^{gen}$"
+            xscale: "linear"
+            yscale: "linear"
+            nticks: 7
+        response_plot:
+            ylabel: "$p_T\\ scale\\ (q_{50})$"
+            ylim: [0.99, 1.01]
+            xlabel: "$p_T^{gen}$"
+            xscale: "linear"
+            yscale: "linear"
+            nticks: 3
 
 defaults:
-  - _self_
+    - _self_

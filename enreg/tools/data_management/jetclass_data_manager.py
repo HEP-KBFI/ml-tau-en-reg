@@ -120,7 +120,6 @@ class IterableJetClassDataset(IterableDataset):
             axis=-1
         )
         target_tensor = torch.tensor(targets, dtype=torch.float32)
-
         return (
             #X - model inputs
             cand_feature_tensors,
@@ -147,7 +146,6 @@ class IterableJetClassDataset(IterableDataset):
         for row_group in row_groups_to_process:
             data = ak.from_parquet(row_group.filename, row_groups=[row_group.row_group])
             tensors = self.build_tensors(data)
-
             # return individual jets from the dataset
             for ijet in range(len(data)):
                 yield (

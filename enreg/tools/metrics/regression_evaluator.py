@@ -103,7 +103,7 @@ class RegressionEvaluator:
         self.resolution_function = IQR
         self.sample = sample_name
         self.response_function = np.median
-        self.bin_edges = np.array(self.cfg.ratio_plot.bin_edges[sample_name])
+        self.bin_edges = np.array(self.cfg.metrics.regression.ratio_plot.bin_edges[sample_name])
         self.bin_centers = calculate_bin_centers(self.bin_edges)[0]
         self.resolutions, self.responses, self.binned_ratios = self._get_binned_values(self.ratios, self.truth)
         self.resolution, self.response = self._get_overall_resoluton_response()
@@ -133,7 +133,7 @@ class RangeContentPlot:
     def __init__(self, cfg, sample_name):
         self.cfg = cfg
         self.sample_name = sample_name
-        self.bin_edges = np.array(self.cfg.ratio_plot.bin_edges[self.sample_name])
+        self.bin_edges = np.array(self.cfg.metrics.regression.ratio_plot.bin_edges[self.sample_name])
         self.fig, self.axes = self.plot()
 
     def plot(self):
@@ -183,15 +183,15 @@ class LinePlot:
 
     def add_line(self, x_values, y_values, algorithm, label=""):
         if label == "":
-            label = self.cfg.algorithms[algorithm].label
+            label = self.cfg.ALGORITHM_PLOT_STYLES[algorithm].name
         self.ax.plot(
             x_values,
             y_values,
             label=label,
-            marker=self.cfg.algorithms[algorithm].marker,
-            color=self.cfg.algorithms[algorithm].color,
-            ls=self.cfg.algorithms[algorithm].ls,
-            lw=self.cfg.algorithms[algorithm].lw,
+            marker=self.cfg.ALGORITHM_PLOT_STYLES[algorithm].marker,
+            color=self.cfg.ALGORITHM_PLOT_STYLES[algorithm].color,
+            ls=self.cfg.ALGORITHM_PLOT_STYLES[algorithm].ls,
+            lw=self.cfg.ALGORITHM_PLOT_STYLES[algorithm].lw,
             ms=10
         )
         self.ax.legend()
@@ -226,7 +226,7 @@ class Resolution2DPlot:
             y_true=self.evaluator.truth.to_numpy(),
             y_pred=self.evaluator.prediction.to_numpy(),
             left_bin_edge=0.0,
-            right_bin_edge=self.cfg.ratio_plot.bin_edges[self.sample][-1],
+            right_bin_edge=self.cfg.metrics.regression.ratio_plot.bin_edges[self.sample][-1],
             n_bins=24,
             figsize=(8, 9),
             cmap="Greys",
@@ -249,23 +249,23 @@ class RegressionMultiEvaluator:
         self.sample = sample
         self.response_lineplot = LinePlot(
             cfg=self.cfg,
-            xlabel=cfg.ratio_plot.response_plot.xlabel,
-            ylabel=cfg.ratio_plot.response_plot.ylabel,
-            xscale=cfg.ratio_plot.response_plot.xscale,
-            yscale=cfg.ratio_plot.response_plot.yscale,
-            ymin=cfg.ratio_plot.response_plot.ylim[0],
-            ymax=cfg.ratio_plot.response_plot.ylim[1],
-            nticks=cfg.ratio_plot.response_plot.nticks,
+            xlabel=cfg.metrics.regression.ratio_plot.response_plot.xlabel,
+            ylabel=cfg.metrics.regression.ratio_plot.response_plot.ylabel,
+            xscale=cfg.metrics.regression.ratio_plot.response_plot.xscale,
+            yscale=cfg.metrics.regression.ratio_plot.response_plot.yscale,
+            ymin=cfg.metrics.regression.ratio_plot.response_plot.ylim[0],
+            ymax=cfg.metrics.regression.ratio_plot.response_plot.ylim[1],
+            nticks=cfg.metrics.regression.ratio_plot.response_plot.nticks,
         )
         self.resolution_lineplot = LinePlot(
             cfg=self.cfg,
-            xlabel=cfg.ratio_plot.resolution_plot.xlabel,
-            ylabel=cfg.ratio_plot.resolution_plot.ylabel,
-            xscale=cfg.ratio_plot.resolution_plot.xscale,
-            yscale=cfg.ratio_plot.resolution_plot.yscale,
-            ymin=cfg.ratio_plot.resolution_plot.ylim[0],
-            ymax=cfg.ratio_plot.resolution_plot.ylim[1],
-            nticks=cfg.ratio_plot.resolution_plot.nticks,
+            xlabel=cfg.metrics.regression.ratio_plot.resolution_plot.xlabel,
+            ylabel=cfg.metrics.regression.ratio_plot.resolution_plot.ylabel,
+            xscale=cfg.metrics.regression.ratio_plot.resolution_plot.xscale,
+            yscale=cfg.metrics.regression.ratio_plot.resolution_plot.yscale,
+            ymin=cfg.metrics.regression.ratio_plot.resolution_plot.ylim[0],
+            ymax=cfg.metrics.regression.ratio_plot.resolution_plot.ylim[1],
+            nticks=cfg.metrics.regression.ratio_plot.resolution_plot.nticks,
         )
         self.bin_distributions_plots = {}
         self.resolution_2d_plots = {}

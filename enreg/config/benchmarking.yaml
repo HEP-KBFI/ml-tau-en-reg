@@ -1,15 +1,68 @@
-output_dir: outputs/240801_regression_plots
-plot_samples_separately: True
-load_from_json: False
-
-#this path contains the input ntuples to the ML model (jet & tau properties)
-#the model predictions are stored in separte files
-#and are configured in metrics/regression.yaml -> algorithms/ntuples_dir
-base_ntuple_path: /home/laurits/ntuples/20240924_lowered_recoPtCut/
+NTUPLE_BASE_DIR: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
+# NTUPLE_BASE_DIR: /scratch/project_465001293/mltau-data/v2
+PLOTS_OUTPUT_DIR: /home/laurits/test_master_evaluator
+ALGORITHM_PLOT_STYLES:
+    DeepSet:
+        name: DeepSet
+        marker: "*"
+        hatch: "//"
+        color: "tab:purple"
+        ls: "solid"
+        label: DeepSet
+        marker_size: 15
+        lw: 1
+    HPS:
+        name: HPS
+        marker: "^"
+        hatch: "\\\\"
+        color: "tab:green"
+        ls: "solid"
+        label: HPS
+        marker_size: 15
+        lw: 3
+    RecoJet:
+        name: RecoJet
+        marker: "v"
+        hatch: "."
+        color: "tab:red"
+        ls: "solid"
+        label: RecoJet
+        lw: 1
+        marker_size: 15
+    LorentzNet:
+        name: LorentzNet
+        marker: "D"
+        hatch: "."
+        color: "tab:orange"
+        ls: "solid"
+        label: LorentzNet
+        lw: 1
+        marker_size: 15
+    ParticleTransformer:
+        name: ParticleTransformer
+        marker: "X"
+        hatch: "."
+        color: "tab:blue"
+        ls: "solid"
+        label: ParticleTransformer
+        lw: 3
+        marker_size: 15
+# this path contains the input ntuples to the ML model (jet & tau properties)
+# the model predictions are stored in separte files
+# and are configured in metrics/regression.yaml -> algorithms/ntuples_dir
 comparison_samples:
-  - zh_test
-  - z_test
+    signal_samples:
+        # - zh_test
+        - z_test
+    background_samples:
+        - qq_test
+comparison_algorithms:
+    - ParticleTransformer
+comparison_tasks:
+    - jet_regression
+    - binary_classification
+    - dm_multiclass
 
 defaults:
-  - metrics: metrics
-  - _self_
+    - metrics: metrics
+    - _self_

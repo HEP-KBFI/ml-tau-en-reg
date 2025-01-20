@@ -3,36 +3,36 @@ import torch.nn as nn
 from gabbro.models.backbone_base import BackboneModel
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 from pathlib import Path
 
 
 class OmniParT(ParticleTransformer):
     def __init__(
             self,
-            input_dim,
-            cfg,
+            input_dim: int,
+            cfg: DictConfig,
             num_classes=None,
             # network configurations
-            pair_input_dim=4,
-            pair_extra_dim=0,
-            remove_self_pair=False,
-            use_pre_activation_pair=True,
-            embed_dims=[256, 512, 256],
-            pair_embed_dims=[64, 64, 64],
-            num_heads=8,
-            num_layers=8,
-            num_cls_layers=2,
+            pair_input_dim: int = 4,
+            pair_extra_dim: int = 0,
+            remove_self_pair: bool = False,
+            use_pre_activation_pair: bool = True,
+            embed_dims: list[int] = [256, 512, 256],
+            pair_embed_dims: list[int] = [64, 64, 64],
+            num_heads: int = 8,
+            num_layers: int = 8,
+            num_cls_layers: int = 2,
             block_params=None,
-            cls_block_params={"dropout": 0, "attn_dropout": 0, "activation_dropout": 0},
-            fc_params=[],
-            activation="gelu",
+            cls_block_params: dict = {"dropout": 0, "attn_dropout": 0, "activation_dropout": 0},
+            fc_params: list = [],
+            activation: str = "gelu",
             # misc
-            trim=True,
-            for_inference=False,
-            use_amp=False,
-            metric="eta-phi",
-            verbosity=0,
+            trim : bool = True,
+            for_inference: bool = False,
+            use_amp: bool = False,
+            metric: str = "eta-phi",
+            verbosity: int = 0,
             **kwargs
     ):
         super().__init__(input_dim=input_dim,
@@ -145,7 +145,7 @@ class EmbedParT(nn.Module):
             loaded_bb_model = torch.load(cfg.bb_path, map_location=torch.device('cpu'))
             gpt_state = {k.replace("module.", ""): v for k, v in loaded_bb_model["state_dict"].items() if
                          k.startswith("module.")}
-            self.bb_model.load_state_dict(gpt_state)
+            self.bb_model.load_state_dict(gpt_state, strict=False)
 
 
     def forward(self, cand_omni_kinematics, cand_mask):
