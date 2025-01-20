@@ -69,8 +69,8 @@ class DecayModeEvaluator:
         os.makedirs(self.output_dir, exist_ok=True)
         self.sample = sample
         self.algorithm = algorithm
-        self.predicted = self._get_reduced_decay_modes(predicted)
-        self.truth = self._get_reduced_decay_modes(truth)
+        self.predicted = predicted
+        self.truth = truth
         self.confusion_matrix = metrics.confusion_matrix(self.truth, self.predicted)
         self.normalized_confusion_matrix = metrics.confusion_matrix(self.truth, self.predicted, normalize="true")
         self._decay_mode_name_mapping = {
@@ -83,30 +83,6 @@ class DecayModeEvaluator:
         }
         self.categories = list(self._decay_mode_name_mapping.values())
         self.general_metrics, self.class_metrics = self._calculate_performance_metrics()
-
-    def _get_reduced_decay_modes(self, decaymodes: np.array):
-        """Maps the full set of decay modes into a smaller subset, setting the rarer decay modes under "Other" (# 15)"""
-        target_mapping = {
-            -1: 15,
-            0: 0,
-            1: 1,
-            2: 2,
-            3: 2,
-            4: 2,
-            5: 10,
-            6: 11,
-            7: 11,
-            8: 11,
-            9: 11,
-            10: 10,
-            11: 11,
-            12: 11,
-            13: 11,
-            14: 11,
-            15: 15,
-            16: 16,
-        }
-        return np.vectorize(target_mapping.get)(decaymodes)
 
     def plot_confusion_matrix(self, output_path: str = ""):
         fig, ax = visualize_confusion_matrix(

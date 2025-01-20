@@ -1,16 +1,18 @@
 ckpt_path: /scratch/project_465001293/ml-tau-en-reg/enreg/omnijet_alpha/gabbro/checkpoints/vqvae_32000_tokens_p3_mass_pid/model_ckpt.ckpt
+# ckpt_path: /home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/gabbro/checkpoints/vqvae_32000_tokens_p3_mass_pid/model_ckpt.ckpt
 bb_path: /scratch/project_465001293/ml-tau-en-reg/enreg/omnijet_alpha/gabbro/checkpoints/generative_32000_tokens_p4_mass_pid/OmniJet_generative_model_FiduciaryCagoule_254.ckpt
-num_rounds_frozen_backbone: 30
+# bb_path: /home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/gabbro/checkpoints/generative_32000_tokens_p4_mass_pid/OmniJet_generative_model_FiduciaryCagoule_254.ckpt
+num_rounds_frozen_backbone: 0
 version: "from_scratch"
 versions:
-  - "from_scratch"
-  - "fixed_backbone"
-  - "fine_tuning"
+    - "from_scratch"
+    - "fixed_backbone"
+    - "fine_tuning"
 hyperparameters:
-  num_layers: 2
-  embed_dims:
-    - 256
-    - 512
-    - 256
+    num_layers: 2
+    embed_dims:
+        - 256
+        - 512
+        - 256
 defaults:
-  - _self_
+    - _self_

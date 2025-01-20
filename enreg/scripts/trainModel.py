@@ -205,7 +205,7 @@ def train_loop(
             optimizer.zero_grad()
             loss.mean().backward()
             optimizer.step()
-            # lr_scheduler.step()
+            lr_scheduler.step()
 
     loss_train /= normalization
     if use_comet:

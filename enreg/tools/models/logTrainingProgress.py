@@ -73,9 +73,11 @@ def logTrainingProgress(
         "precision": float(precision),
         "false_positives": float(false_positive_rate),
         "false_negatives": float(false_negative_rate),
+        "true_positives": float(true_positive_rate),
+        "true_negatives": float(true_negative_rate),
         "accuracy": float(accuracy),
         "loss": float(loss)
-        # "AUC": 
+        # "AUC":
     }
 
     return logging_data
@@ -166,7 +168,7 @@ def logTrainingProgress_decaymode(
         "class_recall": class_recall,
         "class_F1": class_F1,
 
-        # "AUC": 
+        # "AUC":
         "FPR": FPR,
         "FNR": FNR,
         "TPR": TPR,

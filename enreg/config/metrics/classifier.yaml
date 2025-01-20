@@ -1,61 +1,41 @@
 classifier:
-  plotting:
-    output_dir: /home/laurits/CLIC_metrics_202300921
-  algorithms:
-    DeepSet:
-      name: "DeepSet"
-      marker: "*"
-      hatch: "//"
-      color: "tab:purple"
-      linestyle: ""
-      marker_size: 15
-    OmniParT:
-      name: "OmniParT"
-      marker: "^"
-      hatch: "."
-      color: "tab:green"
-      linestyle: ""
-      marker_size: 15
-    ParticleTransformer:
-      name: "ParticleTransformer"
-      marker: "v"
-      hatch: "\\\\"
-      color: "tab:red"
-      linestyle: ""
-      marker_size: 15
-  performances:
-    efficiency:
-      xlabel:
-        pt: "$p_T^{gen\\mathrm{-}\\tau_h}\\,\\, [GeV]$"
-        eta: "$\\eta^{gen\\mathrm{-}\\tau_h}\\,\\, [GeV]$"
-        theta: "$\\theta^{gen\\mathrm{-}\\tau_h}\\,\\, [ ^{o} ]$"
-      ylabel: "$\\varepsilon_{\\tau}$"
-      yscale: "linear"
-      ylim: [0, 1]
-    fakerate:
-      xlabel:
-        pt: "$p_T^{gen\\mathrm{-}jet}\\,\\, [GeV]$"
-        eta: "$\\eta^{gen\\mathrm{-}jet}\\,\\, [GeV]$"
-        theta: "$\\theta^{gen\\mathrm{-}jet}\\,\\, [ ^{o} ]$"
-      ylabel: "$P_{misid}$"
-      yscale: "log"
-      ylim: [5e-6, 2e-2]
-  cuts:
-    min_pt: 20
-    min_theta: 10
-    max_theta: 170
-  metrics:
-    pt:
-      x_range: [20, 180]
-      n_bins: 9
-      x_maj_tick_spacing: 40
-    eta:
-      x_range: [-2.6, 2.6]
-      n_bins: 9
-      x_maj_tick_spacing: 20
-    theta:
-      x_range: [10, 90]
-      n_bins: 9
-      x_maj_tick_spacing: 20
-  defaults:
-    - _self_
+    base_dir: /home/laurits/ml-tau-en-reg/training-outputs/20201204_ParT_ntrain_v2/v1/trainfrac_1e4/binary_classification
+    algorithms:
+        ParticleTransformer:
+            data_dir: ${regression.base_dir}
+    performances:
+        efficiency:
+            xlabel:
+                pt: "$p_T^{gen\\mathrm{-}\\tau_h}\\,\\, [GeV]$"
+                eta: "$\\eta^{gen\\mathrm{-}\\tau_h}\\,\\, [GeV]$"
+                theta: "$\\theta^{gen\\mathrm{-}\\tau_h}\\,\\, [ ^{o} ]$"
+            ylabel: "$\\varepsilon_{\\tau}$"
+            yscale: "linear"
+            ylim: [0, 1]
+        fakerate:
+            xlabel:
+                pt: "$p_T^{gen\\mathrm{-}jet}\\,\\, [GeV]$"
+                eta: "$\\eta^{gen\\mathrm{-}jet}\\,\\, [GeV]$"
+                theta: "$\\theta^{gen\\mathrm{-}jet}\\,\\, [ ^{o} ]$"
+            ylabel: "$P_{misid}$"
+            yscale: "log"
+            ylim: [5e-6, 2e-2]
+    cuts:
+        min_pt: 20
+        min_theta: 10
+        max_theta: 170
+    metrics:
+        pt:
+            x_range: [20, 180]
+            n_bins: 9
+            x_maj_tick_spacing: 40
+        eta:
+            x_range: [-2.6, 2.6]
+            n_bins: 9
+            x_maj_tick_spacing: 20
+        theta:
+            x_range: [10, 90]
+            n_bins: 9
+            x_maj_tick_spacing: 20
+    defaults:
+        - _self_

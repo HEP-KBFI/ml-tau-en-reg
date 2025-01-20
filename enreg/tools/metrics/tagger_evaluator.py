@@ -6,7 +6,7 @@ import awkward as ak
 import mplhep as hep
 from matplotlib import ticker
 import matplotlib.pyplot as plt
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from enreg.tools import general as g
 from enreg.tools.visualization.histogram import Histogram
 from enreg.tools.general import NpEncoder
@@ -51,7 +51,7 @@ class TaggerEvaluator:
 
         self.loose_wp, self.medium_wp, self.tight_wp = self._calculate_wps()
         self.wp_metrics = {}
-        for name, metric in cfg.metrics.items():
+        for name, metric in cfg.metrics.classifier.metrics.items():
             fr_bin_centers, fr_data, fr_yerr, fr_xerr = self._get_working_point_fakerates(name, metric)
             eff_bin_centers, eff_data, eff_yerr, eff_xerr = self._get_working_point_efficiencies(name, metric)
             self.wp_metrics[name] = {
@@ -68,15 +68,15 @@ class TaggerEvaluator:
     def _calculate_fakerates(self):
         fakerates = []
         # Denominator
-        ref_var_pt_mask = self.bkg_gen_jet_p4.pt > self.cfg.cuts.min_pt
-        ref_var_theta_mask1 = abs(np.rad2deg(self.bkg_gen_jet_p4.theta)) < self.cfg.cuts.max_theta
-        ref_var_theta_mask2 = abs(np.rad2deg(self.bkg_gen_jet_p4.theta)) > self.cfg.cuts.min_theta
+        ref_var_pt_mask = self.bkg_gen_jet_p4.pt > self.cfg.metrics.classifier.cuts.min_pt
+        ref_var_theta_mask1 = abs(np.rad2deg(self.bkg_gen_jet_p4.theta)) < self.cfg.metrics.classifier.cuts.max_theta
+        ref_var_theta_mask2 = abs(np.rad2deg(self.bkg_gen_jet_p4.theta)) > self.cfg.metrics.classifier.cuts.min_theta
         denominator_mask = ref_var_pt_mask * ref_var_theta_mask1 * ref_var_theta_mask2
 
         # Numerator
-        tau_pt_mask = self.bkg_reco_jet_p4.pt > self.cfg.cuts.min_pt
-        tau_theta_mask1 = abs(np.rad2deg(self.bkg_reco_jet_p4.theta)) < self.cfg.cuts.max_theta
-        tau_theta_mask2 = abs(np.rad2deg(self.bkg_reco_jet_p4.theta)) > self.cfg.cuts.min_theta
+        tau_pt_mask = self.bkg_reco_jet_p4.pt > self.cfg.metrics.classifier.cuts.min_pt
+        tau_theta_mask1 = abs(np.rad2deg(self.bkg_reco_jet_p4.theta)) < self.cfg.metrics.classifier.cuts.max_theta
+        tau_theta_mask2 = abs(np.rad2deg(self.bkg_reco_jet_p4.theta)) > self.cfg.metrics.classifier.cuts.min_theta
         numerator_mask = tau_pt_mask * tau_theta_mask1 * tau_theta_mask2
         numerator_mask = numerator_mask * denominator_mask
 
@@ -94,15 +94,15 @@ class TaggerEvaluator:
     def _calculate_efficiencies(self):
         efficiencies = []
         # Denominator
-        ref_var_pt_mask = self.signal_gen_tau_p4.pt > self.cfg.cuts.min_pt
-        ref_var_theta_mask1 = abs(np.rad2deg(self.signal_gen_tau_p4.theta)) < self.cfg.cuts.max_theta
-        ref_var_theta_mask2 = abs(np.rad2deg(self.signal_gen_tau_p4.theta)) > self.cfg.cuts.min_theta
+        ref_var_pt_mask = self.signal_gen_tau_p4.pt > self.cfg.metrics.classifier.cuts.min_pt
+        ref_var_theta_mask1 = abs(np.rad2deg(self.signal_gen_tau_p4.theta)) < self.cfg.metrics.classifier.cuts.max_theta
+        ref_var_theta_mask2 = abs(np.rad2deg(self.signal_gen_tau_p4.theta)) > self.cfg.metrics.classifier.cuts.min_theta
         denominator_mask = ref_var_pt_mask * ref_var_theta_mask1 * ref_var_theta_mask2
 
         # Numerator
-        tau_pt_mask = self.signal_reco_jet_p4.pt > self.cfg.cuts.min_pt
-        tau_theta_mask1 = abs(np.rad2deg(self.signal_reco_jet_p4.theta)) < self.cfg.cuts.max_theta
-        tau_theta_mask2 = abs(np.rad2deg(self.signal_reco_jet_p4.theta)) > self.cfg.cuts.min_theta
+        tau_pt_mask = self.signal_reco_jet_p4.pt > self.cfg.metrics.classifier.cuts.min_pt
+        tau_theta_mask1 = abs(np.rad2deg(self.signal_reco_jet_p4.theta)) < self.cfg.metrics.classifier.cuts.max_theta
+        tau_theta_mask2 = abs(np.rad2deg(self.signal_reco_jet_p4.theta)) > self.cfg.metrics.classifier.cuts.min_theta
         numerator_mask = tau_pt_mask * tau_theta_mask1 * tau_theta_mask2
         numerator_mask = numerator_mask * denominator_mask
 
@@ -171,11 +171,11 @@ class ROCPlot:
         self.ax.plot(
             evaluator.efficiencies,
             evaluator.fakerates,
-            color=self.cfg.algorithms[evaluator.algorithm].color,
-            marker=self.cfg.algorithms[evaluator.algorithm].marker,
-            label=self.cfg.algorithms[evaluator.algorithm].name,
-            ms=self.cfg.algorithms[evaluator.algorithm].marker_size,
-            ls=self.cfg.algorithms[evaluator.algorithm].linestyle
+            color=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].color,
+            marker=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].marker,
+            label=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].name,
+            ms=15,
+            ls=""
         )
         self.ax.legend(prop={"size": 30})
 
@@ -197,23 +197,23 @@ class FakeRatePlot:
             xerr=evaluator.wp_metrics[self.metric]["fr_xerr"],
             yerr=evaluator.wp_metrics[self.metric]["fr_yerr"],
             ms=20,
-            color=self.cfg.algorithms[evaluator.algorithm].color,
-            marker=self.cfg.algorithms[evaluator.algorithm].marker,
-            linestyle="None",
-            label=self.cfg.algorithms[evaluator.algorithm].name,
+            color=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].color,
+            marker=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].marker,
+            linestyle="",
+            label=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].name,
         )
         self.ax.legend(loc='upper right', prop={"size": 30})
 
     def plot(self):
         fig, ax = plt.subplots(figsize=(10, 10))
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(self.cfg.metrics[self.metric].x_maj_tick_spacing))
-        ax.set_xlabel(rf"{self.cfg.performances.fakerate.xlabel[self.metric]}", fontsize=30)
-        ax.set_ylabel(rf"{self.cfg.performances.fakerate.ylabel}", fontsize=30)
-        ax.set_yscale(self.cfg.performances.fakerate.yscale)
-        if self.cfg.performances.fakerate.ylim is not None:
-            ylim = tuple(self.cfg.performances.fakerate.ylim)
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(self.cfg.metrics.classifier.metrics[self.metric].x_maj_tick_spacing))
+        ax.set_xlabel(rf"{self.cfg.metrics.classifier.performances.fakerate.xlabel[self.metric]}", fontsize=30)
+        ax.set_ylabel(rf"{self.cfg.metrics.classifier.performances.fakerate.ylabel}", fontsize=30)
+        ax.set_yscale(self.cfg.metrics.classifier.performances.fakerate.yscale)
+        if self.cfg.metrics.classifier.performances.fakerate.ylim is not None:
+            ylim = tuple(self.cfg.metrics.classifier.performances.fakerate.ylim)
         else:
-            ylim = self.cfg.performances.fakerate.ylim
+            ylim = self.cfg.metrics.classifier.performances.fakerate.ylim
         ax.set_ylim(ylim)
         ax.tick_params(axis="x", labelsize=30)
         ax.tick_params(axis="y", labelsize=30)
@@ -238,23 +238,23 @@ class EfficiencyPlot:
             xerr=evaluator.wp_metrics[self.metric]["eff_xerr"],
             yerr=evaluator.wp_metrics[self.metric]["eff_yerr"],
             ms=20,
-            color=self.cfg.algorithms[evaluator.algorithm].color,
-            marker=self.cfg.algorithms[evaluator.algorithm].marker,
-            linestyle="None",
-            label=self.cfg.algorithms[evaluator.algorithm].name,
+            color=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].color,
+            marker=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].marker,
+            linestyle="",
+            label=self.cfg.ALGORITHM_PLOT_STYLES[evaluator.algorithm].name,
         )
         self.ax.legend(loc='upper right', prop={"size": 30})
 
     def plot(self):
         fig, ax = plt.subplots(figsize=(10, 10))
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(self.cfg.metrics[self.metric].x_maj_tick_spacing))
-        ax.set_xlabel(rf"{self.cfg.performances.efficiency.xlabel[self.metric]}", fontsize=30)
-        ax.set_ylabel(rf"{self.cfg.performances.efficiency.ylabel}", fontsize=30)
-        ax.set_yscale(self.cfg.performances.efficiency.yscale)
-        if self.cfg.performances.efficiency.ylim is not None:
-            ylim = tuple(self.cfg.performances.efficiency.ylim)
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(self.cfg.metrics.classifier.metrics[self.metric].x_maj_tick_spacing))
+        ax.set_xlabel(rf"{self.cfg.metrics.classifier.performances.efficiency.xlabel[self.metric]}", fontsize=30)
+        ax.set_ylabel(rf"{self.cfg.metrics.classifier.performances.efficiency.ylabel}", fontsize=30)
+        ax.set_yscale(self.cfg.metrics.classifier.performances.efficiency.yscale)
+        if self.cfg.metrics.classifier.performances.efficiency.ylim is not None:
+            ylim = tuple(self.cfg.metrics.classifier.performances.efficiency.ylim)
         else:
-            ylim = self.cfg.performances.efficiency.ylim
+            ylim = self.cfg.metrics.classifier.performances.efficiency.ylim
         ax.set_ylim(tuple(ylim))
         ax.tick_params(axis="x", labelsize=30)
         ax.tick_params(axis="y", labelsize=30)
@@ -301,7 +301,7 @@ class TaggerMultiEvaluator:
         self.output_dir = output_dir
         self.cfg = cfg
         os.makedirs(self.output_dir, exist_ok=True)
-        self.metrics = list(self.cfg.metrics.keys())
+        self.metrics = list(self.cfg.metrics.classifier.metrics.keys())
 
         self.classifier_plots = {}
         self.efficiency_plots = {metric: EfficiencyPlot(self.cfg, metric) for metric in self.metrics}

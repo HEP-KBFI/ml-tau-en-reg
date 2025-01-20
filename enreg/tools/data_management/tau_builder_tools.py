@@ -5,7 +5,6 @@ import numpy as np
 import awkward as ak
 from textwrap import dedent
 from enreg.tools import slurm_tools as st
-import pdb
 
 
 def process_single_file(input_path: str, builder, output_path: str) -> None:

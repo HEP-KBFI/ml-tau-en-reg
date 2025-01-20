@@ -1,4 +1,7 @@
 max_constituents: 32
+train: True
+test: True
+verbosity: 1
 labels:
     - label_QCD
     - label_Hbb
@@ -11,10 +14,10 @@ labels:
     - label_Tbqq
     - label_Tbl
 training:
-    output_dir: /home/laurits/tmp/JetClass_ParT
-    lr: 1e-3
+    output_dir: /home/laurits/20241228_JetClass_ParT_lr_e-5
+    lr: 1e-5
     trainer:
-        max_epochs: 3
+        max_epochs: 100
     batch_size: 2048
     num_dataloader_workers: 2
     prefetch_factor: 100
@@ -28,6 +31,8 @@ training:
     fast_optimizer: AdamW
     slow_optimizer: None
     verbosity: 1
+comet:
+    experiment: null
 
 defaults:
     - _self_
