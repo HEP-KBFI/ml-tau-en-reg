@@ -17,6 +17,8 @@ class RowGroup:
         self.row_group = row_group
         self.num_rows = num_rows
 
+    def __repr__(self):
+        return "RowGroup({}:{}:{})".format(self.filename, self.row_group, self.num_rows)
 
 class FutureDataset(Dataset):
     def __init__(self, data_path: str, cfg: DictConfig):
@@ -187,8 +189,8 @@ def train_val_split_shuffle(
 ):
     total_len = len(concat_dataset)
     indices = list(range(total_len))
-    random.seed(seed)
-    random.shuffle(indices)
+    #not correct to seed the randomizer every time this function is called
+    # random.shuffle(indices)
 
     split = int(total_len * val_split)
     if max_train_jets == -1:

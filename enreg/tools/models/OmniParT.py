@@ -5,8 +5,10 @@ from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from gabbro.models.vqvae import VQVAELightning
 from omegaconf import OmegaConf, DictConfig
 from pathlib import Path
+import pickle
 
-
+embed_arr = []
+ibatch = 0
 class OmniParT(ParticleTransformer):
     def __init__(
             self,
@@ -105,7 +107,7 @@ class OmniParT(ParticleTransformer):
 
             # OmniJet-alpha embedding (VQ-VAE + BB)
             cand_features_embed = self.embed(cand_features, cand_mask).permute(1, 0, 2)
-
+            cand_features_embed_orig = cand_features_embed.detach().clone()
             # Transformer part. In contrast to ParT we don't use particle attention here.
             for block in self.blocks:
                 cand_features_embed = block(cand_features_embed, x_cls=None, padding_mask=padding_mask)
@@ -118,7 +120,7 @@ class OmniParT(ParticleTransformer):
 
             output = self.fc(x_cls)  # (N, num_class)
 
-            return output
+            return output, cand_features_embed_orig
 
 
 class EmbedParT(nn.Module):
@@ -142,13 +144,19 @@ class EmbedParT(nn.Module):
             n_GPT_blocks=3
         )
         if self.cfg.version != "from_scratch":
+            print("loading backbone weights")
             loaded_bb_model = torch.load(cfg.bb_path, map_location=torch.device('cpu'))
-            gpt_state = {k.replace("module.", ""): v for k, v in loaded_bb_model["state_dict"].items() if
-                         k.startswith("module.")}
-            self.bb_model.load_state_dict(gpt_state, strict=False)
+            if "state_dict" in loaded_bb_model:
+                gpt_state = {k.replace("module.", ""): v for k, v in loaded_bb_model["state_dict"].items() if
+                             k.startswith("module.")}
+                self.bb_model.load_state_dict(gpt_state, strict=False)
+            else:
+                sd = {k.replace("embed.bb_model.", ""): loaded_bb_model[k] for k in loaded_bb_model.keys() if k.startswith("embed.bb_model")}
+                self.bb_model.load_state_dict(sd, strict=False)
 
 
     def forward(self, cand_omni_kinematics, cand_mask):
+        global embed_arr, ibatch
         # preprocess according to self.pp_dict
         cand_omni_kinematics[:, 0] = torch.nan_to_num(
             torch.log(cand_omni_kinematics[:, 0]) - self.pp_dict['part_pt']['subtract_by'] * self.pp_dict['part_pt'][

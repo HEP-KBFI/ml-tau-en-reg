@@ -36,7 +36,7 @@ class TauJetDataset(Dataset):
         self._processed_dir = processed_dir
 
         self.filelist = filelist
-        random.shuffle(self.filelist)
+        # random.shuffle(self.filelist)
 
         # The order of features in the jet feature tensor
         self.reco_jet_features = ["x", "y", "z", "tau", "pt", "eta", "phi", "e"]

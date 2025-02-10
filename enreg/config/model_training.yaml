@@ -11,7 +11,7 @@ comet:
 #override these using command line args
 output_dir: training-outputs/240809_3var_kinematics
 # data_path: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
-data_path: /scratch/project_465001293/mltau-data/v2
+data_path: data/v2
 
 #override this using command line args
 training_type: dm_multiclass
@@ -80,7 +80,7 @@ num_classes:
 training:
     lr: 1e-4
     num_epochs: 100
-    batch_size: 4048
+    batch_size: 4096
     num_dataloader_workers: 2
     prefetch_factor: 100
     classweight_sig: 1
