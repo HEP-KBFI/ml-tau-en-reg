@@ -10,6 +10,9 @@ import tqdm
 import sklearn
 import sklearn.metrics
 import awkward as ak
+import pickle
+import sys
+import random
 
 import matplotlib.pyplot as plt
 
@@ -168,12 +171,28 @@ def train_loop(
             model_inputs = model_inputs + (frost,)
 
         if kind == "jet_regression":
-            pred = model(*model_inputs).to(device=dev)[:, 0]
+            pred, embeds = model(*model_inputs)
+            pred = pred[:, 0]
         elif kind == "dm_multiclass":
-            pred = model(*model_inputs).to(device=dev)
+            pred, embeds = model(*model_inputs)
             y_for_loss = torch.nn.functional.one_hot(y_for_loss, num_classes).float()
         elif kind == "binary_classification":
-            pred = model(*model_inputs).to(device=dev)
+            pred, embeds = model(*model_inputs)
+
+        pred = pred.to(device=dev)
+        embeds = embeds.transpose(1,0)*X["mask"].transpose(2,1)
+        embeds = embeds.cpu().detach().numpy()
+        with open("batch_{}.pkl".format(idx_batch), "wb") as fi:
+            pickle.dump({
+                "embeds": embeds,
+                "reco_jet_pt": y["reco_jet_pt"].numpy(),
+                "gen_tau_pt": y["gen_tau_pt"].numpy(),
+                "jet_regression": y["jet_regression"].numpy(),
+                "binary_classification": y["binary_classification"].numpy(),
+                "dm_multiclass": y["dm_multiclass"].numpy(),
+            }, fi)
+        sys.exit()
+
         loss = loss_fn(pred, y_for_loss)
         if use_per_jet_weights:
             loss = loss * weight
@@ -321,9 +340,12 @@ def trainModel(cfg: DictConfig) -> None:
         training_data.extend(row_groups[nvalid: nvalid + ntrain])
     training_perm = np.random.permutation(len(training_data))
     validation_perm = np.random.permutation(len(validation_data))
+    # training_perm = np.arange(len(training_data))
+    # validation_perm = np.arange(len(validation_data))
 
     training_data = [training_data[p] for p in training_perm]
     validation_data = [validation_data[p] for p in validation_perm]
+    print(training_data)
 
     print(f"row groups: train={len(training_data)} validation={len(validation_data)}")
 
@@ -419,14 +441,14 @@ def trainModel(cfg: DictConfig) -> None:
         dataloader_train = DataLoader(
             dataset_train,
             batch_size=cfg.training.batch_size,
-            num_workers=cfg.training.num_dataloader_workers,
-            prefetch_factor=cfg.training.prefetch_factor,
+            #num_workers=cfg.training.num_dataloader_workers,
+            #prefetch_factor=cfg.training.prefetch_factor,
         )
         dataloader_validation = DataLoader(
             dataset_validation,
             batch_size=cfg.training.batch_size,
-            num_workers=cfg.training.num_dataloader_workers,
-            prefetch_factor=cfg.training.prefetch_factor,
+            #num_workers=cfg.training.num_dataloader_workers,
+            #prefetch_factor=cfg.training.prefetch_factor,
         )
 
         if kind == "binary_classification":
@@ -612,4 +634,6 @@ def trainModel(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
+    np.random.seed(42)
+    random.seed(42)
     trainModel()

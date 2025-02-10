@@ -6,6 +6,7 @@ import enreg.tools.general as g
 from omegaconf import DictConfig
 from torch.utils.data import IterableDataset
 import enreg.tools.data_management.features as f
+import enreg.tools.data_management.features as f
 
 from collections.abc import Sequence
 
@@ -33,6 +34,9 @@ class RowGroup:
         self.filename = filename
         self.row_group = row_group
         self.num_rows = num_rows
+    
+    def __repr__(self):
+        return "RowGroup({}:{}:{})".format(self.filename, self.row_group, self.num_rows)
 
 
 class ParticleTransformerDataset(IterableDataset):
