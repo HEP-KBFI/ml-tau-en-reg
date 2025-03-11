@@ -60,42 +60,40 @@ else
     TRAINING_SCRIPT=enreg/scripts/train-pytorch-gpu.sh
 fi
 
-for i in `seq 3 $NUMBER_REPETITIONS`; do
-    # for trainSize in 2e3 1e4 1e5 1e6; do
+for i in `seq 1 $NUMBER_REPETITIONS`; do
+    for trainSize in 2e3 1e4 1e5 1e6; do
         export OUTDIR=$BASE_DIR/v$i/trainfrac_$trainSize
-        trainSize=1e6
-        # if [ "$RUN_JET_REGRESSION" = true ] ; then
-        #     # echo Submitting jet_regression jobs for repetition $i and $trainSize training jets
-        #     # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=LorentzNet
-        #     # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=DeepSet
-        #     # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=OmniDeepSet
-        #     # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=ParticleTransformer comet.experiment=ParT_jr_$trainSize
-        #     # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=OmniParT models.OmniParT.version=fine_tuning comet.experiment=OmniParT_ft_jr_$trainSize
-        #     # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=OmniParT models.OmniParT.version=from_scratch comet.experiment=OmniParT_fs_jr_$trainSize
-        #     # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=OmniParT models.OmniParT.version=fixed_backbone comet.experiment=OmniParT_fb_jr_$trainSize
-        # fi
+        if [ "$RUN_JET_REGRESSION" = true ] ; then
+            echo Submitting jet_regression jobs for repetition $i and $trainSize training jets
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=LorentzNet
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=DeepSet
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=OmniDeepSet
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=ParticleTransformer comet.experiment=ParT_jr_$trainSize
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=OmniParT models.OmniParT.version=fine_tuning comet.experiment=OmniParT_ft_jr_$trainSize
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=OmniParT models.OmniParT.version=from_scratch comet.experiment=OmniParT_fs_jr_$trainSize
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=jet_regression model_type=OmniParT models.OmniParT.version=fixed_backbone comet.experiment=OmniParT_fb_jr_$trainSize
+        fi
 
         if [ "$RUN_DM_MULTICLASS" = true ] ; then
-            # echo Submitting dm_multiclass jobs for repetition $i and $trainSize training jets
-            # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=LorentzNet
-            # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=DeepSet
-            # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=OmniDeepSet
-            # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=ParticleTransformer comet.experiment=ParT_dm_$trainSize
+            echo Submitting dm_multiclass jobs for repetition $i and $trainSize training jets
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=LorentzNet
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=DeepSet
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=OmniDeepSet
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=ParticleTransformer comet.experiment=ParT_dm_$trainSize
             sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=OmniParT models.OmniParT.version=fine_tuning comet.experiment=OmniParT_ft_dm_$trainSize
             sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=OmniParT models.OmniParT.version=from_scratch comet.experiment=OmniParT_fs_dm_$trainSize
             sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=OmniParT models.OmniParT.version=fixed_backbone comet.experiment=OmniParT_fb_dm_$trainSize
         fi
 
         if [ "$RUN_BINARY_CLS" = true ] ; then
-            # echo Submitting binary_cls jobs for repetition $i and $trainSize training jets
-            # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=LorentzNet comet.experiment=LorentzNet_bc_$trainSize
-            # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=DeepSet comet.experiment=DeepSet_bc_$trainSize
-            # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=OmniDeepSet comet.experiment=OmniDeepSet_bc_$trainSize
-            # sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=ParticleTransformer comet.experiment=ParT_bc_$trainSize
+            echo Submitting binary_cls jobs for repetition $i and $trainSize training jets
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=LorentzNet comet.experiment=LorentzNet_bc_$trainSize
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=DeepSet comet.experiment=DeepSet_bc_$trainSize
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$TRAIN_SAMPS] test_samples=[$TEST_SAMPS] training_type=dm_multiclass model_type=OmniDeepSet comet.experiment=OmniDeepSet_bc_$trainSize
+            sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=ParticleTransformer comet.experiment=ParT_bc_$trainSize
             sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=OmniParT models.OmniParT.version=fine_tuning comet.experiment=OmniParT_ft_bc_$trainSize
             sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=OmniParT models.OmniParT.version=from_scratch comet.experiment=OmniParT_fs_bc_$trainSize
             sbatch $TRAINING_SCRIPT trainSize=$trainSize output_dir=$OUTDIR training_samples=[$CLS_TRAIN_SAMPS] test_samples=[$CLS_TEST_SAMPS] training_type=binary_classification model_type=OmniParT models.OmniParT.version=fixed_backbone comet.experiment=OmniParT_fb_bc_$trainSize
         fi
-
-    # done
+    done
 done
