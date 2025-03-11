@@ -46,8 +46,8 @@ reco_jet_pt_cut:
     jet_regression: 0
 
 dataset:
-    trainSize: 1e6 # Duplicated
-    fraction_valid: 0.2 # Duplicated
+    trainSize: ${trainSize}
+    fraction_valid: ${fraction_valid}
     row_group_size: 1024
     max_cands: 16
     use_lifetime: False
@@ -80,7 +80,7 @@ num_classes:
 training:
     lr: 1e-4
     num_epochs: 100
-    batch_size: 4048
+    batch_size: 4096
     num_dataloader_workers: 2
     prefetch_factor: 100
     classweight_sig: 1

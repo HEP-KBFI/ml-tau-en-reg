@@ -2,7 +2,7 @@ ckpt_path: /scratch/project_465001293/ml-tau-en-reg/enreg/omnijet_alpha/gabbro/c
 # ckpt_path: /home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/gabbro/checkpoints/vqvae_32000_tokens_p3_mass_pid/model_ckpt.ckpt
 bb_path: /scratch/project_465001293/ml-tau-en-reg/enreg/omnijet_alpha/gabbro/checkpoints/generative_32000_tokens_p4_mass_pid/OmniJet_generative_model_FiduciaryCagoule_254.ckpt
 # bb_path: /home/laurits/ml-tau-en-reg/enreg/omnijet_alpha/gabbro/checkpoints/generative_32000_tokens_p4_mass_pid/OmniJet_generative_model_FiduciaryCagoule_254.ckpt
-num_rounds_frozen_backbone: 0
+num_rounds_frozen_backbone: 30
 version: "from_scratch"
 versions:
     - "from_scratch"
