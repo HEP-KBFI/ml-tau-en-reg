@@ -132,14 +132,15 @@ class EmbedParT(nn.Module):
             param.requires_grad = False
         ckpt_cfg = OmegaConf.load(Path(cfg.ckpt_path).parent / "config.yaml")
         self.pp_dict = OmegaConf.to_container(ckpt_cfg.data.dataset_kwargs_common.feature_dict)
-
+        n_GPT_blocks = 1
+        print(f"Using {n_GPT_blocks} GPT blocks")
         self.bb_model = BackboneModel(
             embedding_dim=256,
             attention_dropout=0.0,
             vocab_size=32002,
             max_sequence_len=128,
             n_heads=32,
-            n_GPT_blocks=3
+            n_GPT_blocks=n_GPT_blocks
         )
         if self.cfg.version != "from_scratch":
             loaded_bb_model = torch.load(cfg.bb_path, map_location=torch.device('cpu'))

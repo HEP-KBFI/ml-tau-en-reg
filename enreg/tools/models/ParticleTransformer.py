@@ -11,6 +11,20 @@ import torch.nn as nn
 from functools import partial
 
 
+def tril_indices_onnx(n, m, offset=0, device="cpu"):
+    # Create row and col grids on the correct device
+    rows = torch.arange(n, device=device).unsqueeze(1).expand(n, m)   # shape [n, m]
+    cols = torch.arange(m, device=device).unsqueeze(0).expand(n, m)   # shape [n, m]
+    
+    # Boolean mask for lower triangular
+    mask = rows >= (cols + offset)
+    
+    # Get indices where mask is True
+    indices = torch.stack(torch.where(mask), dim=0)
+    return indices
+
+
+
 def print_param(name, param):
     if param is not None:
         print(" type(%s) = " % name, type(param))
@@ -327,7 +341,10 @@ class PairEmbed(nn.Module):
         with torch.no_grad():
             batch_size, _, seq_len = x.size()
             if self.is_symmetric and not self.for_onnx:
-                i, j = torch.tril_indices(
+                # i, j = torch.tril_indices(
+                #     seq_len, seq_len, offset=-1 if self.remove_self_pair else 0, device=(x if x is not None else uu).device
+                # )
+                i, j = tril_indices_onnx(
                     seq_len, seq_len, offset=-1 if self.remove_self_pair else 0, device=(x if x is not None else uu).device
                 )
                 x = x.unsqueeze(-1).repeat(1, 1, 1, seq_len)
@@ -570,6 +587,7 @@ class ParticleTransformer(nn.Module):
         # cand_features: (N=num_batches, C=num_features, P=num_particles)
         # cand_kinematics_pxpypze: (N, 4, P) [px,py,pz,energy]
         # cand_mask: (N, 1, P) -- real particle = 1, padded = 0
+        cand_mask = cand_mask.type(torch.bool)
         padding_mask = ~cand_mask.squeeze(1) # (N, 1, P) -> (N, P)
         with torch.amp.autocast("cuda", enabled=self.use_amp):
             num_particles = cand_features.size(-1)

@@ -1,8 +1,14 @@
-hyperparameters:
-    num_layers: 2
-    embed_dims:
-        - 256
-        - 512
-        - 256
-defaults:
-    - _self_
+_target_: enreg.tools.models.ParticleTransformer.ParticleTransformer
+input_dim: 10
+num_classes: ${num_classes[${training_type}]}
+num_layers: 2  # hyperparameters
+embed_dims:  # hyperparameters
+    - 256
+    - 512
+    - 256
+use_pre_activation_pair: False
+for_inference: False
+use_amp: False
+metric: eta-phi
+verbosity: 1
+
