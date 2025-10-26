@@ -1,0 +1,133 @@
+name: Pylint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+jobs:
+  pylint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pylint jq
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run Pylint and save JSON
+        run: |
+          pylint --rcfile=config/.pylintrc $(git ls-files '*.py') \
+            --output-format=json > pylint_output.json || true
+
+      - name: Upload Pylint report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pylint-report
+          path: pylint_output.json
+
+      - name: Generate Pylint PR summary (collapsible)
+        if: always()
+        run: |
+            echo "### 🧹 Pylint Summary" > lint_summary.md
+
+            ERRORS=$(jq '[.[] | select(.type == "error" or .type == "fatal")] | length' pylint_output.json)
+            WARNINGS=$(jq '[.[] | select(.type == "warning")] | length' pylint_output.json)
+            REFACTOR=$(jq '[.[] | select(.type == "refactor")] | length' pylint_output.json)
+            SCORE=$(pylint --rcfile=config/.pylintrc $(git ls-files '*.py') \
+                  | grep "Your code has been rated" \
+                  | awk '{print $7}' \
+                  | cut -d'/' -f1 || echo "N/A")
+
+            echo "" >> lint_summary.md
+            echo "🧾 **Score:** $SCORE" >> lint_summary.md
+            echo "❌**Errors:** $ERRORS" >> lint_summary.md
+            echo "⚠️**Warnings:** $WARNINGS" >> lint_summary.md
+            echo "🛠️**Refactors:** $REFACTOR" >> lint_summary.md
+            echo "" >> lint_summary.md
+
+            # Collapsible section
+            echo "<details>" >> lint_summary.md
+            echo "<summary>Show all Pylint messages</summary>" >> lint_summary.md
+            echo "" >> lint_summary.md
+            echo '```' >> lint_summary.md
+
+            # Include all issues (or limit to first N)
+            jq -c '.[]' pylint_output.json | while IFS= read -r item; do
+                path=$(echo "$item" | jq -r '.path')
+                line=$(echo "$item" | jq -r '.line')
+                col=$(echo "$item" | jq -r '.column // 1')
+                type=$(echo "$item" | jq -r '.type | ascii_upcase')
+                msg=$(echo "$item" | jq -r '.message')
+
+                case "$type" in
+                    ERROR)      emoji="❌" ;;
+                    FATAL)      emoji="💀" ;;
+                    WARNING)    emoji="⚠️" ;;
+                    REFACTOR)   emoji="🛠️" ;;
+                    CONVENTION) emoji="📏" ;;
+                    INFO)       emoji="ℹ️" ;;
+                    *)          emoji="" ;;
+                esac
+
+                # Detect line or range
+                if [[ "$msg" =~ "Similar lines" ]] || [[ "$msg" =~ "Similar functions" ]]; then
+
+                    code=$(echo "$msg" | awk 'NR>3')
+                    msg=$(echo "$msg" | awk 'NR<=3')
+                else
+                    code=$(sed -n "${line}p" "$path")
+                fi
+
+                # # Escape backticks in code
+                # code=${code//'`'/\`}
+                # echo "---------------"
+                # echo "$code"
+
+                # Append to Markdown
+                echo "**$path:$line:$col** $emoji $type: *$msg*" >> lint_summary.md
+                echo "" >> lint_summary.md
+                echo '```python' >> lint_summary.md
+                echo "$code" >> lint_summary.md
+                echo '```' >> lint_summary.md
+                echo "" >> lint_summary.md
+            done
+            echo "_Inline annotations are also visible in the PR files tab._" >> lint_summary.md
+            echo "_Full report uploaded as an artifact **pylint-report**._" >> lint_summary.md
+
+      - name: Post Pylint summary as PR comment
+        if: github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+            token: ${{ secrets.GITHUB_TOKEN }}
+            issue-number: ${{ github.event.pull_request.number }}
+            body-file: lint_summary.md
+
+      - name: Run lint action
+        uses: wearerequired/lint-action@v2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          pylint: true
+          continue_on_error: true
+
+      - name: Fail on errors
+        if: ${{ steps.pylint_summary.outputs.errors != '0' }}
+        run: |
+          echo "::error ::Pylint found ${{ steps.pylint_summary.outputs.errors }} error(s). Failing the build."
+          exit 1
+
