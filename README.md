@@ -8,29 +8,15 @@ Tau leptons can decay both leptonically and hadronically, however only hadronic 
 
 <img src="images/tau_decays.png" width="50%"/>
 
-## Future Dataset [![DOI](https://zenodo.org/badge/DOI-10.5281/zenodo.13881061.svg)](https://doi.org/10.5281/zenodo.13881061)
-
-The dataset contains 2 signal samples (ZH->Ztautau and Z->tautau) and one background sample (Z->qq).
-While the validation plots can be reproduced with [this script](notebooks/data_intro.ipynb), here is a selection of these:
-
-The generator-level hadronically decaying tau visible transverse momentum:
-
-<img src="images/gen_tau_visible_pt.png" width="50%"/>
-
-The jet substructure of two neutral-hadronless decay modes:
-
-<img src="images/jet_2D_shapes_ZH_DM0_DM3.png" width="100%"/>
-
-
 ---
 
 ---
 
-## Papers:
+# Papers:
 
 The results of these studies have been divided across two separate papers, with the first one covering tau identification and the latter covering both kinematic and decay mode reconstruction.
 
-### TauID [![DOI:10.1016/j.cpc.2024.109095](http://img.shields.io/badge/DOI-10.1016/j.cpc.2024.109095-f9f107.svg)](https://doi.org/10.1016/j.cpc.2024.109095) [![arXiv](https://img.shields.io/badge/arXiv-2307.07747-b31b1b.svg)](https://arxiv.org/abs/2307.07747)
+## TauID [![DOI:10.1016/j.cpc.2024.109095](http://img.shields.io/badge/DOI-10.1016/j.cpc.2024.109095-f9f107.svg)](https://doi.org/10.1016/j.cpc.2024.109095) [![arXiv](https://img.shields.io/badge/arXiv-2307.07747-b31b1b.svg)](https://arxiv.org/abs/2307.07747)
 
 **"Tau lepton identification and reconstruction: a new frontier for jet-tagging ML algorithms"**
 
@@ -43,7 +29,7 @@ In this paper, we studied the performance of state-of-the-art methods and compar
 
 ---
 
-### Tau kinematic and decay mode reconstruction [![DOI:10.1016/j.cpc.2024.109399](http://img.shields.io/badge/DOI-10.1016/j.cpc.2024.109399-f9f107.svg)](https://doi.org/10.1016/j.cpc.2024.109399) [![arXiv](https://img.shields.io/badge/arXiv-2407.06788-b31b1b.svg)](https://arxiv.org/abs/2407.06788)
+## Tau kinematic and decay mode reconstruction [![DOI:10.1016/j.cpc.2024.109399](http://img.shields.io/badge/DOI-10.1016/j.cpc.2024.109399-f9f107.svg)](https://doi.org/10.1016/j.cpc.2024.109399) [![arXiv](https://img.shields.io/badge/arXiv-2407.06788-b31b1b.svg)](https://arxiv.org/abs/2407.06788)
 
 _[Published in: Comput.Phys.Commun. 307 (2025) 109399]_
 
@@ -59,7 +45,7 @@ Here we demonstrated how three different types of models with a varying degree o
 
 ---
 
-### Tau reconstruction and identification using a foundation model [![DOI:10.1016/j.cpc.2024.109399](http://img.shields.io/badge/DOI-10.21468/SciPostPhysCore.8.3.046-f9f107.svg)](https://doi.org/10.21468/SciPostPhysCore.8.3.046) [![arXiv](https://img.shields.io/badge/arXiv-2503.19165-b31b1b.svg)](https://arxiv.org/abs/2503.19165)
+## Tau reconstruction and identification using a foundation model [![DOI:10.1016/j.cpc.2024.109399](http://img.shields.io/badge/DOI-10.21468/SciPostPhysCore.8.3.046-f9f107.svg)](https://doi.org/10.21468/SciPostPhysCore.8.3.046) [![arXiv](https://img.shields.io/badge/arXiv-2503.19165-b31b1b.svg)](https://arxiv.org/abs/2503.19165)
 
 _[Published in: SciPost Phys. Core 8, 046 (2025)]_
 

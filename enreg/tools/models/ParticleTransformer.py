@@ -341,12 +341,12 @@ class PairEmbed(nn.Module):
         with torch.no_grad():
             batch_size, _, seq_len = x.size()
             if self.is_symmetric and not self.for_onnx:
-                # i, j = torch.tril_indices(
-                #     seq_len, seq_len, offset=-1 if self.remove_self_pair else 0, device=(x if x is not None else uu).device
-                # )
-                i, j = tril_indices_onnx(
+                i, j = torch.tril_indices(
                     seq_len, seq_len, offset=-1 if self.remove_self_pair else 0, device=(x if x is not None else uu).device
                 )
+                # i, j = tril_indices_onnx(
+                #     seq_len, seq_len, offset=-1 if self.remove_self_pair else 0, device=(x if x is not None else uu).device
+                # )
                 x = x.unsqueeze(-1).repeat(1, 1, 1, seq_len)
                 xi = x[:, :, i, j]  # (batch, dim, seq_len*(seq_len+1)/2)
                 xj = x[:, :, j, i]

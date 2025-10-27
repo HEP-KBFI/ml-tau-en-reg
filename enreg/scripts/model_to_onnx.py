@@ -116,11 +116,10 @@ def model_to_onnx(cfg: DictConfig) -> None:
         model,
         tuple(dummy_inputs.values()),
         onnx_model_path,
-        opset_version=13,
         verbose=False,
         input_names=list(dummy_inputs.keys()),
         output_names=["prediction"],
-        # dynamo=True
+        dynamo=True
     )
     validate_conversion(inputs=dummy_inputs, onnx_model_path=onnx_model_path, pytorch_model=model)
 
