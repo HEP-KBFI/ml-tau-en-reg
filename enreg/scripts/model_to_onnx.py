@@ -1,4 +1,3 @@
-
 import matplotlib
 import copy
 import pickle as pkl
@@ -32,7 +31,6 @@ from onnxconverter_common import float16
 from onnxscript.function_libs.torch_lib.tensor_typing import TFloat
 
 
-
 import hydra
 from omegaconf import DictConfig
 from hydra.utils import instantiate
@@ -58,7 +56,6 @@ MODEL_DIR = "/home/laurits/mltau-ONNX"
 TASKS = ["dm_multiclass", "jet_regression", "binary_classification"]
 
 
-
 def print_software_environment():
     print("--------------------------------------")
     print("For CUDA, we must use onnxruntime-gpu (not onnxruntime):")
@@ -70,7 +67,9 @@ def print_software_environment():
 def validate_conversion(inputs: dict, onnx_model_path: str, pytorch_model):
     # Evaluate ONNX model
     ort_session = ort.InferenceSession(onnx_model_path)
-    outputs = ort_session.run(None, {key: value.numpy() for key, value in inputs.items()})
+    outputs = ort_session.run(
+        None, {key: value.numpy() for key, value in inputs.items()}
+    )
     # outputs is a list (one element per output tensor)
     print("ONNX output shape:", outputs[0].shape)
 
@@ -88,7 +87,9 @@ def validate_conversion(inputs: dict, onnx_model_path: str, pytorch_model):
 def load_model(model_dir: str, task: str, cfg: DictConfig, device: str = "cpu"):
     # Load model state
     model_path = os.path.join(model_dir, f"{task}.pt")
-    model_state = torch.load(model_path, map_location=torch.device(device), weights_only=True)
+    model_state = torch.load(
+        model_path, map_location=torch.device(device), weights_only=True
+    )
     model = instantiate(cfg.models.ParticleTransformer).to(device=device)
     model.eval()
     model.load_state_dict(model_state, strict=False)
@@ -106,8 +107,8 @@ def model_to_onnx(cfg: DictConfig) -> None:
     # Create dummy input as is used by the ParticleTransformer model
     dummy_inputs = {
         "cand_features": torch.randn(1, 10, 16),
-        "cand_kinematics_pxpypze":  torch.randn(1, 4, 16),
-        "cand_mask": torch.ones(1, 1, 16)#, dtype=torch.bool)
+        "cand_kinematics_pxpypze": torch.randn(1, 4, 16),
+        "cand_mask": torch.ones(1, 1, 16),  # , dtype=torch.bool)
     }
 
     # Convert the model to ONNX format
@@ -119,13 +120,15 @@ def model_to_onnx(cfg: DictConfig) -> None:
         verbose=False,
         input_names=list(dummy_inputs.keys()),
         output_names=["prediction"],
-        dynamo=True
+        dynamo=True,
     )
-    validate_conversion(inputs=dummy_inputs, onnx_model_path=onnx_model_path, pytorch_model=model)
+    validate_conversion(
+        inputs=dummy_inputs, onnx_model_path=onnx_model_path, pytorch_model=model
+    )
 
 
 # ONNX graph will explicitly contain the standard attention computations (matmuls + softmax), not a fused "Attention" node. This can improve compatibility but sacrifices performance.
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     model_to_onnx()

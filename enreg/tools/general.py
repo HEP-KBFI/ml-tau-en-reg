@@ -8,7 +8,6 @@ import awkward as ak
 
 # def load_all_data(input_loc: str | list, n_files: int = None, columns: list = None) -> ak.Array:
 def load_all_data(input_loc, n_files: int = None, columns: list = None) -> ak.Array:
-
     """Loads all .parquet files specified by the input. The input can be a list of input_paths, a directory where the files
     are located or a wildcard path.
 
@@ -58,7 +57,7 @@ def load_all_data(input_loc, n_files: int = None, columns: list = None) -> ak.Ar
 
 
 def load_parquet(input_path: str, columns: list = None) -> ak.Array:
-    """ Loads the contents of the .parquet file specified by the input_path
+    """Loads the contents of the .parquet file specified by the input_path
 
     Args:
         input_path : str
@@ -180,7 +179,7 @@ def one_hot_decoding(values, classes=[0, 1, 2, 10, 11, 15]):
 
 
 def reinitialize_p4(p4_obj: ak.Array):
-    """ Reinitialized the 4-momentum for particle in order to access its properties.
+    """Reinitialized the 4-momentum for particle in order to access its properties.
 
     Args:
         p4_obj : ak.Array
@@ -216,7 +215,7 @@ def reinitialize_p4(p4_obj: ak.Array):
 
 
 def load_json(path):
-    """ Loads the contents of the .json file with the given path
+    """Loads the contents of the .json file with the given path
 
     Args:
         path : str
@@ -232,7 +231,8 @@ def load_json(path):
 
 
 class NpEncoder(json.JSONEncoder):
-    """ Class for encoding various objects such that they could be saved to a json file"""
+    """Class for encoding various objects such that they could be saved to a json file"""
+
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -244,7 +244,7 @@ class NpEncoder(json.JSONEncoder):
 
 
 def save_to_json(data, output_path):
-    """ Saves data to a .json file located at `output_path`
+    """Saves data to a .json file located at `output_path`
 
     Args:
         data : dict

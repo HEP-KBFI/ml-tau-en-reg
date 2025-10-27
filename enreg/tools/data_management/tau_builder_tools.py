@@ -1,5 +1,6 @@
 import os
 import enreg
+
 # import subprocess
 import numpy as np
 import awkward as ak
@@ -26,13 +27,21 @@ def process_single_file(input_path: str, builder, output_path: str) -> None:
 def multipath_slurm_tau_builder(input_paths, output_paths, batch_size=7):
     output_dir = st.create_tmp_run_dir()
     print(f"Temporary directory created to {output_dir}")
-    print(f"Run `bash enreg/scripts/submit_builder_batchJobs.sh {output_dir}/executables/`")
+    print(
+        f"Run `bash enreg/scripts/submit_builder_batchJobs.sh {output_dir}/executables/`"
+    )
     number_batches = int(len(input_paths) / batch_size) + 1
     input_path_chunks = list(np.array_split(input_paths, number_batches))
     output_path_chunks = list(np.array_split(output_paths, number_batches))
-    input_file_paths, output_file_paths = create_job_input_list(input_path_chunks, output_path_chunks, output_dir)
-    for job_idx, (input_file_path, output_file_path) in enumerate(zip(input_file_paths, output_file_paths)):
-        job_file = prepare_job_file(input_file_path, output_file_path, job_idx, output_dir)
+    input_file_paths, output_file_paths = create_job_input_list(
+        input_path_chunks, output_path_chunks, output_dir
+    )
+    for job_idx, (input_file_path, output_file_path) in enumerate(
+        zip(input_file_paths, output_file_paths)
+    ):
+        job_file = prepare_job_file(
+            input_file_path, output_file_path, job_idx, output_dir
+        )
         # subprocess.call(["sbatch", job_file])
     # wait_iteration()
 
@@ -40,13 +49,15 @@ def multipath_slurm_tau_builder(input_paths, output_paths, batch_size=7):
 def create_job_input_list(input_path_chunks, output_path_chunks, output_dir):
     input_file_paths = []
     output_file_paths = []
-    for i, (in_chunk, out_chunk) in enumerate(zip(input_path_chunks, output_path_chunks)):
+    for i, (in_chunk, out_chunk) in enumerate(
+        zip(input_path_chunks, output_path_chunks)
+    ):
         input_file_path = os.path.join(output_dir, f"input_paths_{i}.txt")
         output_file_path = os.path.join(output_dir, f"output_paths_{i}.txt")
-        with open(input_file_path, 'wt') as outFile:
+        with open(input_file_path, "wt") as outFile:
             for path in in_chunk:
                 outFile.write(path + "\n")
-        with open(output_file_path, 'wt') as outFile:
+        with open(output_file_path, "wt") as outFile:
             for path in out_chunk:
                 outFile.write(path + "\n")
         input_file_paths.append(input_file_path)
@@ -55,10 +66,10 @@ def create_job_input_list(input_path_chunks, output_path_chunks, output_dir):
 
 
 def prepare_job_file(
-        input_file,
-        output_file,
-        job_idx,
-        output_dir,
+    input_file,
+    output_file,
+    job_idx,
+    output_dir,
 ):
     """Writes the job file that will be executed by slurm
 
@@ -84,13 +95,16 @@ def prepare_job_file(
     os.makedirs(error_dir, exist_ok=True)
     log_dir = os.path.join(output_dir, "log_files")
     os.makedirs(log_dir, exist_ok=True)
-    job_file = os.path.join(job_dir, 'execute' + str(job_idx) + '.sh')
-    error_file = os.path.join(error_dir, 'error' + str(job_idx))
-    log_file = os.path.join(log_dir, 'output' + str(job_idx))
-    run_script = os.path.join(os.path.dirname(enreg.__file__), "scripts", "runBuilder.py")
-    with open(job_file, 'wt') as filehandle:
-        filehandle.writelines(dedent(
-            f"""
+    job_file = os.path.join(job_dir, "execute" + str(job_idx) + ".sh")
+    error_file = os.path.join(error_dir, "error" + str(job_idx))
+    log_file = os.path.join(log_dir, "output" + str(job_idx))
+    run_script = os.path.join(
+        os.path.dirname(enreg.__file__), "scripts", "runBuilder.py"
+    )
+    with open(job_file, "wt") as filehandle:
+        filehandle.writelines(
+            dedent(
+                f"""
                 #!/bin/bash
                 #SBATCH --job-name=tauBuilder
                 #SBATCH --ntasks=1
@@ -102,5 +116,7 @@ def prepare_job_file(
                 env
                 date
                 ./run.sh python {run_script} slurm_run=True +input_file={input_file} +output_file={output_file}
-            """).strip('\n'))
+            """
+            ).strip("\n")
+        )
     return job_file

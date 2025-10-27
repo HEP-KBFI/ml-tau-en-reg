@@ -16,6 +16,7 @@ import sklearn.metrics as sklm
 #   down to 1% of the inital value at the end of the training
 # They use checkpoint with highest accuracy.
 
+
 class ParTModule(L.LightningModule):
     def __init__(self, cfg: DictConfig, input_dim: int, num_classes: int):
         super().__init__()
@@ -29,29 +30,38 @@ class ParTModule(L.LightningModule):
             use_pre_activation_pair=False,
             for_inference=False,
             use_amp=False,
-            metric='eta-phi',
+            metric="eta-phi",
         )
 
     def training_step(self, batch, batch_idx):
         predicted_labels, target = self.forward(batch)
-        metrics = self.calculate_metrics(true=target, pred=predicted_labels, dataset="train")
+        metrics = self.calculate_metrics(
+            true=target, pred=predicted_labels, dataset="train"
+        )
         self.log_dict(metrics)
         return metrics["train_loss"]
 
     def validation_step(self, batch, batch_idx):
         predicted_labels, target = self.forward(batch)
-        metrics = self.calculate_metrics(true=target, pred=predicted_labels, dataset='val')
+        metrics = self.calculate_metrics(
+            true=target, pred=predicted_labels, dataset="val"
+        )
         self.log_dict(metrics)
-        return metrics['val_loss']
+        return metrics["val_loss"]
 
     def configure_optimizers(self):
-        base_optimizer = torch.optim.RAdam(params=self.ParT.parameters(), lr=self.cfg.training.lr, betas=(0.95, 0.999), eps=1e-5)
+        base_optimizer = torch.optim.RAdam(
+            params=self.ParT.parameters(),
+            lr=self.cfg.training.lr,
+            betas=(0.95, 0.999),
+            eps=1e-5,
+        )
         # optimizer = Lookahead(base_optimizer=base_optimizer, k=6, alpha=0.5)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             base_optimizer,
             T_max=20000 * self.cfg.training.trainer.max_epochs,
             # T_max=len(dataloader_train) * cfg.training.num_epochs,
-            eta_min=self.cfg.training.lr * 0.01
+            eta_min=self.cfg.training.lr * 0.01,
         )
         # LR remains constant for the first 70% of iterations, then decays exponentially at an
         # interval of every 20k iterations down to 1% of the inital value at the end of the training
@@ -68,7 +78,7 @@ class ParTModule(L.LightningModule):
         predicted_labels = self.ParT(
             cand_features=cand_features,
             cand_kinematics_pxpypze=cand_kinematics_pxpypze,
-            cand_mask=cand_mask
+            cand_mask=cand_mask,
         )
         return predicted_labels, target
 
@@ -80,9 +90,10 @@ class ParTModule(L.LightningModule):
             "accuracy": one_hot_encoded_accuracy_score(true=true, pred=pred),
             # "f1_score": 1,  # TODO
             # "auc": sklm.roc_auc_score(true_labels, pred_labels, multi_class="ovo", average="macro"), # make row groups smaller??
-            "loss": self.loss_fn(pred, true)
+            "loss": self.loss_fn(pred, true),
         }
         return {f"{dataset}_{key}": value for key, value in metrics.items()}
+
 
 def one_hot_encoded_accuracy_score(true, pred):
     true_indices = np.argmax(true.detach().cpu(), axis=1)

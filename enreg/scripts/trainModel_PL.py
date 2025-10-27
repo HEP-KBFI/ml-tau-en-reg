@@ -1,9 +1,9 @@
-import os
-from torch import optim, nn, utils, Tensor
+from torch import optim
 import lightning as L
 
 
-def get_target(training_type)
+def get_target(training_type):
+    pass
 
 
 class TauRegresser(L.LightningModule):
@@ -17,11 +17,11 @@ class TauRegresser(L.LightningModule):
     def training_step(self, batch, batch_step):
         X, y, weight = batch
         model_inputs = unpack_data(X, self.dev, feature_set, self.model_type)
-        if cfg.model_type == 'OmniParT':
-            if idx_epoch < cfg.models.OmniParT.num_rounds_frozen_backbone:
-                frost = 'freeze'
-            else:
-                frost = 'unfreeze'
+        # if cfg.model_type == 'OmniParT':
+            # if idx_epoch < cfg.models.OmniParT.num_rounds_frozen_backbone:
+            #     frost = 'freeze'
+            # else:
+            #     frost = 'unfreeze'
         pred = model(*model_inputs).to(device=dev)[:, 0]
         y = y["jet_regression"]
         loss = loss_fn(pred, y)
@@ -68,7 +68,7 @@ class TauTagger(L.LightningModule):
         self.model = model
         self.model_type = model_type
         self.optimizer = base_optimizer
-        self.dev = 
+        # self.dev = 
 
     def training_step(self, batch, batch_step):
         X, y, weight = batch

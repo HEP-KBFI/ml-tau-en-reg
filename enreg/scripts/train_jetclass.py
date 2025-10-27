@@ -11,7 +11,9 @@ from lightning.pytorch.callbacks import TQDMProgressBar, ModelCheckpoint
 
 @hydra.main(config_path="../config", config_name="jetclass", version_base=None)
 def train(cfg: DictConfig):
-    parT = ParTModule(cfg=cfg, input_dim=13, num_classes=len(cfg.labels))  # 13 cand_features, 4 cand_kinematics
+    parT = ParTModule(
+        cfg=cfg, input_dim=13, num_classes=len(cfg.labels)
+    )  # 13 cand_features, 4 cand_kinematics
     models_dir = os.path.join(cfg.training.output_dir, "models")
     log_dir = os.path.join(cfg.training.output_dir, "logs")
     os.makedirs(log_dir, exist_ok=True)
@@ -28,16 +30,17 @@ def train(cfg: DictConfig):
                 mode="min",
                 save_top_k=-1,
                 save_weights_only=True,
-                filename="ParT-{epoch:02d}-{val_loss:.2f}"
+                filename="ParT-{epoch:02d}-{val_loss:.2f}",
             ),
         ],
         logger=[
             CSVLogger(log_dir, name="JetClassifier"),
             # CometLogger(experiment_name=experiment_name)
-        ]
+        ],
     )
     datamodule = jdm.JetClassDataModule(cfg=cfg)
     trainer.fit(model=parT, datamodule=datamodule)
+
 
 if __name__ == "__main__":
     train()

@@ -26,6 +26,7 @@ from enreg.tools.losses.initWeights import initWeights
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 
 from enreg.tools.data_management.jetclass_data_manager import IterableJetClassDataset
+
 # from enreg.tools.data_management.particleTransformer_dataset import load_row_groups, ParticleTransformerDataset
 # See asendada enda loaderiga
 
@@ -39,22 +40,21 @@ class NumpyEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-
 def train_loop(
-        idx_epoch,
-        dataloader_train,
-        model,
-        dev,
-        loss_fn,
-        cfg,
-        use_per_jet_weights,
-        optimizer,
-        lr_scheduler,
-        tensorboard,
-        num_classes,
-        train=True,
-        use_comet=True,
-        experiment=None
+    idx_epoch,
+    dataloader_train,
+    model,
+    dev,
+    loss_fn,
+    cfg,
+    use_per_jet_weights,
+    optimizer,
+    lr_scheduler,
+    tensorboard,
+    num_classes,
+    train=True,
+    use_comet=True,
+    experiment=None,
 ):
     if train:
         print("::::: TRAIN LOOP :::::")
@@ -76,11 +76,16 @@ def train_loop(
         tensorboard_tag = "valid"
     print(len(dataloader_train))
 
-    for idx_batch, (cand_features, cand_kinematics, mask, y) in tqdm.tqdm(enumerate(dataloader_train), total=len(dataloader_train)):
+    for idx_batch, (cand_features, cand_kinematics, mask, y) in tqdm.tqdm(
+        enumerate(dataloader_train), total=len(dataloader_train)
+    ):
         # Compute prediction and loss
 
-
-        pred = model(cand_features.to(device=dev), cand_kinematics.to(device=dev), mask.to(device=dev)).to(device=dev)
+        pred = model(
+            cand_features.to(device=dev),
+            cand_kinematics.to(device=dev),
+            mask.to(device=dev),
+        ).to(device=dev)
 
         loss = loss_fn(pred, y.to(device=dev))
         loss_train += loss.sum().item()
@@ -88,7 +93,9 @@ def train_loop(
 
         pred_dm = torch.argmax(pred.detach().cpu(), axis=-1).numpy()
         true_dm = torch.argmax(y.cpu(), axis=-1).numpy()
-        confusion_matrix += sklearn.metrics.confusion_matrix(true_dm, pred_dm, labels=range(num_classes))
+        confusion_matrix += sklearn.metrics.confusion_matrix(
+            true_dm, pred_dm, labels=range(num_classes)
+        )
 
         # Backpropagation
         if train:
@@ -109,20 +116,21 @@ def train_loop(
                 title="Confusion Matrix",
                 row_label="Actual Category",
                 column_label="Predicted Category",
-                step=idx_epoch
+                step=idx_epoch,
             )
 
         else:
-            experiment.log_metric(name="loss_validation", value=loss_train, step=idx_epoch)
-
+            experiment.log_metric(
+                name="loss_validation", value=loss_train, step=idx_epoch
+            )
 
     logging_data = logTrainingProgress_decaymode(
         tensorboard,
         idx_epoch,
         tensorboard_tag,
         loss_train,
-        np.zeros(5), # TODO?
-        confusion_matrix
+        np.zeros(5),  # TODO?
+        confusion_matrix,
     )
     tensorboard.flush()
     print("Loss = {}".format(loss_train))
@@ -148,18 +156,22 @@ def trainModel(cfg: DictConfig) -> None:
         print("CometML API key not found, not logging to CometML")
 
     # because we are doing plots for tensorboard, we don't want anything to crash
-    plt.switch_backend('agg')
-
+    plt.switch_backend("agg")
 
     model_output_path = os.path.join(cfg.training.output_dir, "model_out")
 
     # if we are going to train the model, ensure a model does not already exist (e.g. if doing testing as a separate step)
     if cfg.train and os.path.isdir(model_output_path):
-        raise Exception("Output directory exists while train=True: {}".format(model_output_path))
+        raise Exception(
+            "Output directory exists while train=True: {}".format(model_output_path)
+        )
 
-
-    dataset_train = IterableJetClassDataset(data_dir=cfg.jetclass_parquet_dir , dataset_type='train', cfg=cfg)
-    dataset_validation = IterableJetClassDataset(data_dir=cfg.jetclass_parquet_dir , dataset_type='val', cfg=cfg)
+    dataset_train = IterableJetClassDataset(
+        data_dir=cfg.jetclass_parquet_dir, dataset_type="train", cfg=cfg
+    )
+    dataset_validation = IterableJetClassDataset(
+        data_dir=cfg.jetclass_parquet_dir, dataset_type="val", cfg=cfg
+    )
 
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {dev}")
@@ -178,7 +190,7 @@ def trainModel(cfg: DictConfig) -> None:
         use_pre_activation_pair=False,
         for_inference=False,
         use_amp=False,
-        metric='eta-phi',
+        metric="eta-phi",
         verbosity=cfg.verbosity,
     ).to(device=dev)
 
@@ -210,7 +222,9 @@ def trainModel(cfg: DictConfig) -> None:
         base_optimizer = torch.optim.RAdam(model.parameters(), lr=cfg.training.lr)
 
         if cfg.training.slow_optimizer == "Lookahead":
-            print("Using {} optimizer with Lookahead.".format(cfg.training.fast_optimizer))
+            print(
+                "Using {} optimizer with Lookahead.".format(cfg.training.fast_optimizer)
+            )
             optimizer = Lookahead(base_optimizer=base_optimizer, k=10, alpha=0.5)
         elif cfg.training.slow_optimizer == "None":
             print("Using {} optimizer.".format(cfg.training.fast_optimizer))
@@ -224,7 +238,7 @@ def trainModel(cfg: DictConfig) -> None:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             base_optimizer,
             T_max=len(dataloader_train) * cfg.training.trainer.max_epochs,
-            eta_min=cfg.training.lr * 0.01
+            eta_min=cfg.training.lr * 0.01,
         )
         print("Starting training...")
         print(" current time:", datetime.datetime.now())
@@ -248,7 +262,7 @@ def trainModel(cfg: DictConfig) -> None:
                 tensorboard,
                 num_classes,
                 use_comet=use_comet,
-                experiment=experiment
+                experiment=experiment,
             )
             # print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
             # tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
@@ -268,7 +282,7 @@ def trainModel(cfg: DictConfig) -> None:
                     num_classes,
                     train=False,
                     use_comet=use_comet,
-                    experiment=experiment
+                    experiment=experiment,
                 )
 
             if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
@@ -295,12 +309,7 @@ def trainModel(cfg: DictConfig) -> None:
                     history_data[key].append(value)
 
             with open(history_data_path, "wt") as out_file:
-                json.dump(
-                    history_data,
-                    out_file,
-                    indent=4,
-                    cls=NumpyEncoder
-                )
+                json.dump(history_data, out_file, indent=4, cls=NumpyEncoder)
 
         print("Finished training.")
         print("Current time:", datetime.datetime.now())
@@ -315,7 +324,9 @@ def trainModel(cfg: DictConfig) -> None:
         print("Evaluating on test samples")
         for test_sample in cfg.test_samples:
             print("Evaluating on {}".format(test_sample))
-            dataset_full = IterableJetClassDataset(data_dir=cfg.jetclass_parquet_dir , dataset_type='test', cfg=cfg)
+            dataset_full = IterableJetClassDataset(
+                data_dir=cfg.jetclass_parquet_dir, dataset_type="test", cfg=cfg
+            )
 
             # test dataloader must NOT specify num_workers or prefetch,
             # otherwise the order of jets in the dataset can change
@@ -326,7 +337,9 @@ def trainModel(cfg: DictConfig) -> None:
             )
             preds = []
             targets = []
-            for idx_batch, (cand_features, cand_kinematics, mask, y) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
+            for idx_batch, (cand_features, cand_kinematics, mask, y) in tqdm.tqdm(
+                dataloader_full, total=len(dataloader_full)
+            ):
                 with torch.no_grad():
                     pred = model(cand_features, cand_kinematics, mask)
                     pred = torch.softmax(pred, axis=-1)
@@ -339,7 +352,10 @@ def trainModel(cfg: DictConfig) -> None:
                 "pred": preds,
                 "target": targets,
             }
-            ak.to_parquet(ak.Record({kind: data_to_save}), os.path.join(model_output_path, test_sample))  # TODO
+            ak.to_parquet(
+                ak.Record({kind: data_to_save}),
+                os.path.join(model_output_path, test_sample),
+            )  # TODO
 
 
 if __name__ == "__main__":
