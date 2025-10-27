@@ -8,7 +8,7 @@ Tau leptons can decay both leptonically and hadronically, however only hadronic 
 
 <img src="images/tau_decays.png" width="50%"/>
 
-## Future Dataset [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13881061.svg)](https://doi.org/10.5281/zenodo.13881061)
+## Future Dataset [![DOI](https://zenodo.org/badge/DOI-10.5281/zenodo.13881061.svg)](https://doi.org/10.5281/zenodo.13881061)
 
 The dataset contains 2 signal samples (ZH->Ztautau and Z->tautau) and one background sample (Z->qq).
 While the validation plots can be reproduced with [this script](notebooks/data_intro.ipynb), here is a selection of these:
