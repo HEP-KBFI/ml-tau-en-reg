@@ -1,4 +1,4 @@
-# End-to-end ML reconstruction and identification of hadronically decaying tau lepton.
+# Machine learned reconstruction and identification of hadronically decaying tau lepton.
 
 The aim of this project is to develop and test end-to-end machine learning methods for reconstruction and identification of hadronically decaying tau lepton, while also providing a thouroughly validated and tested dataset for evaluating the performances of said algorithms.
 
@@ -19,9 +19,8 @@ The generator-level hadronically decaying tau visible transverse momentum:
 
 The jet substructure of two neutral-hadronless decay modes:
 
-<img src="images/jet_2D_shapes_ZH_DM0.png" width="50%"/>
+<img src="images/jet_2D_shapes_ZH_DM0_DM3.png" width="100%"/>
 
-<img src="images/jet_2D_shapes_ZH_DM3.png" width="50%"/>
 
 ---
 
@@ -39,13 +38,12 @@ _[Published in: Comput.Phys.Commun. 298 (2024) 109095]_
 
 In this paper, we studied the performance of state-of-the-art methods and compared them with the ML architectures initially designed for jet-tagging.
 
-<img src="images/ROC.png" width="50%"/>
+<img src="images/ROC_tauClassifier.png" width="100%"/>
 
-<img src="images/ParticleTransformer_tauClassifier.png" width="50%"/>
 
 ---
 
-### Tau reconstruction [![DOI:10.1016/j.cpc.2024.109399](http://img.shields.io/badge/DOI-10.1016/j.cpc.2024.109399-f9f107.svg)](https://doi.org/10.1016/j.cpc.2024.109399) [![arXiv](https://img.shields.io/badge/arXiv-2407.06788-b31b1b.svg)](https://arxiv.org/abs/2407.06788)
+### Tau kinematic and decay mode reconstruction [![DOI:10.1016/j.cpc.2024.109399](http://img.shields.io/badge/DOI-10.1016/j.cpc.2024.109399-f9f107.svg)](https://doi.org/10.1016/j.cpc.2024.109399) [![arXiv](https://img.shields.io/badge/arXiv-2407.06788-b31b1b.svg)](https://arxiv.org/abs/2407.06788)
 
 _[Published in: Comput.Phys.Commun. 307 (2025) 109399]_
 
@@ -53,10 +51,23 @@ _[Published in: Comput.Phys.Commun. 307 (2025) 109399]_
 
 Here we demonstrated how three different types of models with a varying degree of expressiveness and priors can be employed for hadronically decaying tau kinematic reconstruction and decay mode reconstruction.
 
-<img src="images/resolutions_comp.png" width="50%"/>
 
-<img src="images/best_losses.png" width="50%"/>
+<img src="images/best_losses_reso.png" width="100%"/>
 
-<img src="images/ZH_dm_precision.png" width="50%"/>
 
-<img src="images/ZH_cm_ParticleTransformer.png" width="50%"/>
+<img src="images/ZH_cm_ParticleTransformer_dm_precision.png" width="100%"/>
+
+---
+
+### Tau reconstruction and identification using a foundation model [![DOI:10.1016/j.cpc.2024.109399](http://img.shields.io/badge/DOI-10.21468/SciPostPhysCore.8.3.046-f9f107.svg)](https://doi.org/10.21468/SciPostPhysCore.8.3.046) [![arXiv](https://img.shields.io/badge/arXiv-2503.19165-b31b1b.svg)](https://arxiv.org/abs/2503.19165)
+
+_[Published in: SciPost Phys. Core 8, 046 (2025)]_
+
+**"Reconstructing hadronically decaying tau leptons with a jet foundation model"**
+
+In this paper we demonstrate how a jet foundation model, Omnijet-alpha, can successfully be utilized for a out-of-domain and out-of-context tasks such as hadronically decaying tau lepton identification, kinematic reconstruction and decay mode classification.
+
+
+<img src="images/10k_dm_reg_id.png" width="100%"/>
+
+<img src="images/tsne.png" width="100%"/>
