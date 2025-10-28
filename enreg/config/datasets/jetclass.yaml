@@ -1,0 +1,5 @@
+samples:
+  ttbar:
+    input_dir: /foo/bar
+    output_dir: /foo/bar
+    is_signal: True

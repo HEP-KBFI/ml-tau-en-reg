@@ -29,9 +29,15 @@ from enreg.tools.models.LorentzNet import LorentzNet
 from enreg.tools.models.OmniParT import OmniParT
 from enreg.tools.models.OmniDeepSet import OmniDeepSet
 
-from enreg.tools.data_management.particleTransformer_dataset import load_row_groups, ParticleTransformerDataset
+from enreg.tools.data_management.particleTransformer_dataset import (
+    load_row_groups,
+    ParticleTransformerDataset,
+)
 
-from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
+from enreg.tools.models.logTrainingProgress import (
+    logTrainingProgress,
+    logTrainingProgress_regression,
+)
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 
@@ -44,12 +50,12 @@ class NumpyEncoder(json.JSONEncoder):
 
 def unpack_data(X, dev, feature_set):
     # Create a dictionary for each feature
-    features_as_dict = {
-        feature: X[feature].to(device=dev) for feature in feature_set
-    }
+    features_as_dict = {feature: X[feature].to(device=dev) for feature in feature_set}
 
     # Concatenate chosen features
-    particle_features = torch.cat([features_as_dict[feat] for feat in feature_set], axis=1)
+    particle_features = torch.cat(
+        [features_as_dict[feat] for feat in feature_set], axis=1
+    )
 
     cand_kinematics = X["cand_kinematics"].to(device=dev)
     mask = X["mask"].to(device=dev).bool()
@@ -61,7 +67,7 @@ class EarlyStopper:
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
-        self.min_validation_loss = float('inf')
+        self.min_validation_loss = float("inf")
 
     def early_stop(self, validation_loss):
         if validation_loss < self.min_validation_loss:
@@ -75,7 +81,7 @@ class EarlyStopper:
 
 
 def get_weights(train_dataset, validation_dataset, n_bins=20):
-    """ Returns the weights for each of the jets based on the pT of the generated tau. The fewer events in a given
+    """Returns the weights for each of the jets based on the pT of the generated tau. The fewer events in a given
     genTau pT bin, the bigger the weight.
     """
     train_gen_tau_pt = g.reinitialize_p4(train_dataset.gen_jet_tau_p4s).pt
@@ -94,28 +100,32 @@ def get_weights(train_dataset, validation_dataset, n_bins=20):
     train_values = map_to[np.argmax(train_mask, axis=1)]
     val_values = map_to[np.argmax(val_mask, axis=1)]
 
-    train_weights = ak.Array(np.where(np.any(train_mask, axis=1), train_values, train_histo_location))
-    val_weights = ak.Array(np.where(np.any(val_mask, axis=1), val_values, val_histo_location))
+    train_weights = ak.Array(
+        np.where(np.any(train_mask, axis=1), train_values, train_histo_location)
+    )
+    val_weights = ak.Array(
+        np.where(np.any(val_mask, axis=1), val_values, val_histo_location)
+    )
     return torch.tensor(train_weights), torch.tensor(val_weights)
 
 
 def train_loop(
-        idx_epoch,
-        dataloader_train,
-        model,
-        dev,
-        loss_fn,
-        cfg,
-        use_per_jet_weights,
-        optimizer,
-        lr_scheduler,
-        tensorboard,
-        feature_set,
-        num_classes,
-        kind="jet_regression",
-        train=True,
-        use_comet=True,
-        experiment=None
+    idx_epoch,
+    dataloader_train,
+    model,
+    dev,
+    loss_fn,
+    cfg,
+    use_per_jet_weights,
+    optimizer,
+    lr_scheduler,
+    tensorboard,
+    feature_set,
+    num_classes,
+    kind="jet_regression",
+    train=True,
+    use_comet=True,
+    experiment=None,
 ):
     if train:
         print("::::: TRAIN LOOP :::::")
@@ -148,23 +158,25 @@ def train_loop(
         tensorboard_tag = "valid"
     print(len(dataloader_train))
 
-    for idx_batch, (X, y, weight) in tqdm.tqdm(enumerate(dataloader_train), total=len(dataloader_train)):
+    for idx_batch, (X, y, weight) in tqdm.tqdm(
+        enumerate(dataloader_train), total=len(dataloader_train)
+    ):
         # Compute prediction and loss
         model_inputs = unpack_data(X, dev, feature_set)
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
-        if cfg.model_type == 'OmniParT':
+        if cfg.model_type == "OmniParT":
             if idx_epoch < cfg.models.OmniParT.num_rounds_frozen_backbone:
-                frost = 'freeze'
+                frost = "freeze"
             else:
-                frost = 'unfreeze'
+                frost = "unfreeze"
             model_inputs = model_inputs + (frost,)
-        if cfg.model_type == 'OmniDeepSet':
+        if cfg.model_type == "OmniDeepSet":
             if idx_epoch < cfg.models.OmniDeepSet.num_rounds_frozen_backbone:
-                frost = 'freeze'
+                frost = "freeze"
             else:
-                frost = 'unfreeze'
+                frost = "unfreeze"
             model_inputs = model_inputs + (frost,)
 
         if kind == "jet_regression":
@@ -187,7 +199,9 @@ def train_loop(
             class_true_train.extend(y_for_loss.detach().cpu().numpy())
             class_pred_train.extend(pred.detach().cpu().numpy())
         elif kind == "jet_regression":
-            pred_jet_pt = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+            pred_jet_pt = torch.exp(pred.detach().cpu()) * torch.squeeze(
+                y["reco_jet_pt"], axis=-1
+            )
             gen_tau_pt = torch.squeeze(y["gen_tau_pt"], axis=-1)
             ratio = (pred_jet_pt / gen_tau_pt).numpy()
             ratio[np.isinf(ratio)] = 0
@@ -196,7 +210,9 @@ def train_loop(
         elif kind == "dm_multiclass":
             pred_dm = torch.argmax(pred.detach().cpu(), axis=-1).numpy()
             true_dm = torch.argmax(y_for_loss.cpu(), axis=-1).numpy()
-            confusion_matrix += sklearn.metrics.confusion_matrix(true_dm, pred_dm, labels=range(num_classes))
+            confusion_matrix += sklearn.metrics.confusion_matrix(
+                true_dm, pred_dm, labels=range(num_classes)
+            )
 
         weights_train.extend(weight.detach().cpu().numpy())
 
@@ -220,11 +236,13 @@ def train_loop(
                     title="Confusion Matrix",
                     row_label="Actual Category",
                     column_label="Predicted Category",
-                    step=idx_epoch
+                    step=idx_epoch,
                 )
 
         else:
-            experiment.log_metric(name="loss_validation", value=loss_train, step=idx_epoch)
+            experiment.log_metric(
+                name="loss_validation", value=loss_train, step=idx_epoch
+            )
 
     if kind == "binary_classification":
         accuracy_train /= accuracy_normalization_train
@@ -242,7 +260,9 @@ def train_loop(
         mean_reco_gen_ratio = np.mean(np.abs(ratios))
         median_reco_gen_ratio = np.median(np.abs(ratios))
         stdev_reco_gen_ratio = np.std(np.abs(ratios))
-        iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
+        iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(
+            np.abs(ratios), 0.25
+        )
         logging_data = logTrainingProgress_regression(
             tensorboard,
             idx_epoch,
@@ -253,7 +273,7 @@ def train_loop(
             stdev_reco_gen_ratio,
             iqr_reco_gen_ratio,
             np.array(weights_train),
-            np.array(ratios)
+            np.array(ratios),
         )
     elif kind == "dm_multiclass":
         logging_data = logTrainingProgress_decaymode(
@@ -262,7 +282,7 @@ def train_loop(
             tensorboard_tag,
             loss_train,
             np.array(weights_train),
-            confusion_matrix
+            confusion_matrix,
         )
     tensorboard.flush()
     print("Loss = {}".format(loss_train))
@@ -288,7 +308,7 @@ def trainModel(cfg: DictConfig) -> None:
         print("CometML API key not found, not logging to CometML")
 
     # because we are doing plots for tensorboard, we don't want anything to crash
-    plt.switch_backend('agg')
+    plt.switch_backend("agg")
 
     feature_set = cfg.dataset.feature_set
     print(f"Using features: {feature_set}")
@@ -307,18 +327,23 @@ def trainModel(cfg: DictConfig) -> None:
 
     # if we are going to train the model, ensure a model does not already exist (e.g. if doing testing as a separate step)
     if cfg.train and os.path.isdir(model_output_path):
-        raise Exception("Output directory exists while train=True: {}".format(model_output_path))
-
+        raise Exception(
+            "Output directory exists while train=True: {}".format(model_output_path)
+        )
 
     training_data = []
     validation_data = []
     for sample in cfg.training_samples:
         # get the number of row groups (independently loadable chunks) in each input file
         row_groups = load_row_groups(os.path.join(cfg.data_path, sample))
-        ntrain = int(np.ceil(cfg.trainSize / (len(cfg.training_samples) * cfg.dataset.row_group_size)))
+        ntrain = int(
+            np.ceil(
+                cfg.trainSize / (len(cfg.training_samples) * cfg.dataset.row_group_size)
+            )
+        )
         nvalid = int(np.ceil(len(row_groups) * cfg.fraction_valid))
         validation_data.extend(row_groups[:nvalid])
-        training_data.extend(row_groups[nvalid: nvalid + ntrain])
+        training_data.extend(row_groups[nvalid : nvalid + ntrain])
     training_perm = np.random.permutation(len(training_data))
     validation_perm = np.random.permutation(len(validation_data))
 
@@ -330,15 +355,17 @@ def trainModel(cfg: DictConfig) -> None:
     dataset_train = ParticleTransformerDataset(
         row_groups=training_data,
         cfg=cfg.dataset,
-        reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type]
+        reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type],
     )
     dataset_validation = ParticleTransformerDataset(
         row_groups=validation_data,
         cfg=cfg.dataset,
-        reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type]
+        reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type],
     )
     if kind == "jet_regression" and cfg.training.apply_regression_weights:
-        weights_train, weights_validation = get_weights(dataset_train, dataset_validation)
+        weights_train, weights_validation = get_weights(
+            dataset_train, dataset_validation
+        )
         dataset_train.weight_tensors = weights_train
         dataset_validation.weight_tensors = weights_validation
 
@@ -349,15 +376,15 @@ def trainModel(cfg: DictConfig) -> None:
 
     # configure the number of model input dimensions based on the input features
     input_dim = 0
-    if 'cand_kinematics' in feature_set:
+    if "cand_kinematics" in feature_set:
         input_dim += 4
-    if 'cand_ParT_features' in feature_set:
+    if "cand_ParT_features" in feature_set:
         input_dim += 13
-    if 'cand_lifetimes' in feature_set:
+    if "cand_lifetimes" in feature_set:
         input_dim += 4
-    if 'cand_omni_kinematics' in feature_set:
+    if "cand_omni_kinematics" in feature_set:
         input_dim += 3
-    if 'cand_omni_features_wPID' in feature_set:
+    if "cand_omni_features_wPID" in feature_set:
         input_dim += 10
 
     num_classes = cfg.num_classes[kind]
@@ -365,12 +392,12 @@ def trainModel(cfg: DictConfig) -> None:
         model = ParticleTransformer(
             input_dim=input_dim,
             num_classes=num_classes,
-            num_layers=cfg.models.ParticleTransformer.hyperparameters.num_layers,
-            embed_dims=cfg.models.ParticleTransformer.hyperparameters.embed_dims,
+            num_layers=cfg.models.ParticleTransformer.num_layers,
+            embed_dims=cfg.models.ParticleTransformer.embed_dims,
             use_pre_activation_pair=False,
             for_inference=False,
             use_amp=False,
-            metric='eta-phi',
+            metric="eta-phi",
             verbosity=cfg.verbosity,
         ).to(device=dev)
     elif cfg.model_type == "LorentzNet":
@@ -395,7 +422,7 @@ def trainModel(cfg: DictConfig) -> None:
             use_pre_activation_pair=False,
             for_inference=False,
             use_amp=False,
-            metric='eta-phi',
+            metric="eta-phi",
             verbosity=cfg.verbosity,
         ).to(device=dev)
     elif cfg.model_type == "OmniDeepSet":
@@ -433,20 +460,24 @@ def trainModel(cfg: DictConfig) -> None:
             if cfg.training.use_class_weights:
                 classweight_bgr = cfg.training.classweight_bgr
                 classweight_sig = cfg.training.classweight_sig
-            classweight_tensor = torch.tensor([classweight_bgr, classweight_sig], dtype=torch.float32).to(device=dev)
+            classweight_tensor = torch.tensor(
+                [classweight_bgr, classweight_sig], dtype=torch.float32
+            ).to(device=dev)
 
             if cfg.training.use_focal_loss:
                 print("Using FocalLoss.")
                 loss_fn = FocalLoss(
                     gamma=cfg.training.focal_loss_gamma,
                     alpha=classweight_tensor,
-                    reduction="none"
+                    reduction="none",
                 )
             else:
                 print("Using CrossEntropyLoss.")
-                loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
+                loss_fn = nn.CrossEntropyLoss(
+                    weight=classweight_tensor, reduction="none"
+                )
         elif kind == "jet_regression":
-            loss_fn = nn.HuberLoss(reduction='mean', delta=1.0)
+            loss_fn = nn.HuberLoss(reduction="mean", delta=1.0)
         elif kind == "dm_multiclass":
             loss_fn = nn.CrossEntropyLoss(reduction="none")
 
@@ -458,7 +489,9 @@ def trainModel(cfg: DictConfig) -> None:
             raise RuntimeError("Invalid configuration parameter 'fast_optimizer' !!")
 
         if cfg.training.slow_optimizer == "Lookahead":
-            print("Using {} optimizer with Lookahead.".format(cfg.training.fast_optimizer))
+            print(
+                "Using {} optimizer with Lookahead.".format(cfg.training.fast_optimizer)
+            )
             optimizer = Lookahead(base_optimizer=base_optimizer, k=10, alpha=0.5)
         elif cfg.training.slow_optimizer == "None":
             print("Using {} optimizer.".format(cfg.training.fast_optimizer))
@@ -472,7 +505,7 @@ def trainModel(cfg: DictConfig) -> None:
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             base_optimizer,
             T_max=len(dataloader_train) * cfg.training.num_epochs,
-            eta_min=cfg.training.lr * 0.01
+            eta_min=cfg.training.lr * 0.01,
         )
         print("Starting training...")
         print(" current time:", datetime.datetime.now())
@@ -498,7 +531,7 @@ def trainModel(cfg: DictConfig) -> None:
                 num_classes,
                 kind=kind,
                 use_comet=use_comet,
-                experiment=experiment
+                experiment=experiment,
             )
             # print("lr = {}".format(lr_scheduler.get_last_lr()[0]))
             # tensorboard.add_scalar("lr", lr_scheduler.get_last_lr()[0], idx_epoch)
@@ -520,7 +553,7 @@ def trainModel(cfg: DictConfig) -> None:
                     kind=kind,
                     train=False,
                     use_comet=use_comet,
-                    experiment=experiment
+                    experiment=experiment,
                 )
 
             if min_loss_validation == -1.0 or loss_validation < min_loss_validation:
@@ -547,12 +580,7 @@ def trainModel(cfg: DictConfig) -> None:
                     history_data[key].append(value)
 
             with open(history_data_path, "wt") as out_file:
-                json.dump(
-                    history_data,
-                    out_file,
-                    indent=4,
-                    cls=NumpyEncoder
-                )
+                json.dump(history_data, out_file, indent=4, cls=NumpyEncoder)
 
             # if early_stopper.early_stop(loss_validation):
             #     break
@@ -573,7 +601,7 @@ def trainModel(cfg: DictConfig) -> None:
             dataset_full = ParticleTransformerDataset(
                 row_groups=data,
                 cfg=cfg.dataset,
-                reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type]
+                reco_jet_pt_cut=cfg.reco_jet_pt_cut[cfg.training_type],
             )
 
             # test dataloader must NOT specify num_workers or prefetch,
@@ -585,14 +613,18 @@ def trainModel(cfg: DictConfig) -> None:
             )
             preds = []
             targets = []
-            for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
+            for X, y, weight in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
                 model_inputs = unpack_data(X, dev, feature_set)
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":
                         pred = model(*model_inputs)[:, 0]
-                        pred = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
-                        y_for_loss = torch.exp(y_for_loss.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        pred = torch.exp(pred.detach().cpu()) * torch.squeeze(
+                            y["reco_jet_pt"], axis=-1
+                        )
+                        y_for_loss = torch.exp(
+                            y_for_loss.detach().cpu()
+                        ) * torch.squeeze(y["reco_jet_pt"], axis=-1)
                     elif kind == "dm_multiclass":
                         pred = model(*model_inputs)
                         pred = torch.softmax(pred, axis=-1)
@@ -608,7 +640,10 @@ def trainModel(cfg: DictConfig) -> None:
                 "pred": preds,
                 "target": targets,
             }
-            ak.to_parquet(ak.Record({kind: data_to_save}), os.path.join(model_output_path, test_sample))
+            ak.to_parquet(
+                ak.Record({kind: data_to_save}),
+                os.path.join(model_output_path, test_sample),
+            )
 
 
 if __name__ == "__main__":

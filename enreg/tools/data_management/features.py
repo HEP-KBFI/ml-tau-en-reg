@@ -3,9 +3,10 @@ import numba
 import torch
 import numpy as np
 
+
 # @numba.njit
 def deltaR_etaPhi(eta1, phi1, eta2, phi2):
-    """ Calculates the angular distance between two objects in the eta-phi coordinates.
+    """Calculates the angular distance between two objects in the eta-phi coordinates.
 
     Args:
         eta1 : float
@@ -28,7 +29,7 @@ def deltaR_etaPhi(eta1, phi1, eta2, phi2):
 
 # @numba.njit
 def deltaR_thetaPhi(theta1, phi1, theta2, phi2):
-    """ Calculates the angular distance between two objects in the theta-phi coordinates.
+    """Calculates the angular distance between two objects in the theta-phi coordinates.
 
     Args:
         theta1 : float
@@ -51,7 +52,7 @@ def deltaR_thetaPhi(theta1, phi1, theta2, phi2):
 
 # @numba.njit
 def deltaPhi(phi1, phi2):
-    """ Calculates the difference in azimuthal angle of two objects.
+    """Calculates the difference in azimuthal angle of two objects.
 
     Args:
         phi1 : float
@@ -69,7 +70,7 @@ def deltaPhi(phi1, phi2):
 
 # @numba.njit()
 def deltaTheta(theta1, theta2):
-    """ Calculates the difference in polar angle of two objects.
+    """Calculates the difference in polar angle of two objects.
 
     Args:
         theta1 : float
@@ -86,7 +87,7 @@ def deltaTheta(theta1, theta2):
 
 # @numba.njit()
 def deltaEta(eta1, eta2):
-    """ Calculates the difference in pseudorapidity of two objects.
+    """Calculates the difference in pseudorapidity of two objects.
 
     Args:
         eta1 : float
@@ -103,7 +104,7 @@ def deltaEta(eta1, eta2):
 
 # @numba.njit()
 def angle3d(theta1, phi1, theta2, phi2):
-    """ Calculates the 3D angle between two objects given the theta and phi coordinates for them.
+    """Calculates the 3D angle between two objects given the theta and phi coordinates for them.
 
     Args:
         theta1 : float
@@ -177,7 +178,7 @@ class FeatureStandardization:
         xs = {}
         x2s = {}
         num_particles = 0
-        for (X, y, weight) in dataloader:
+        for X, y, weight in dataloader:
             for feature in self.features:
                 x = X[feature]
 
@@ -197,7 +198,9 @@ class FeatureStandardization:
                     x2s[feature] = torch.add(x2s[feature], sum_x2)
 
                 if feature not in self.is_one_hot_encoded.keys():
-                    self.is_one_hot_encoded[feature] = X["%s_is_one_hot_encoded" % feature][0]
+                    self.is_one_hot_encoded[feature] = X[
+                        "%s_is_one_hot_encoded" % feature
+                    ][0]
 
             mask = X["mask"]
             num_particles += mask.sum().item()
@@ -216,14 +219,16 @@ class FeatureStandardization:
             torch.clamp(sigma, min=1.0e-8, max=None)
             one_over_sigma = torch.div(torch.tensor(1), sigma)
             if torch.isnan(one_over_sigma).sum().item() > 0.0:
-                raise RuntimeError("Failed to compute standard deviation, because <x^2> - <x>^2 is negative !!")
+                raise RuntimeError(
+                    "Failed to compute standard deviation, because <x^2> - <x>^2 is negative !!"
+                )
 
             self.mean[feature] = mean
             self.one_over_sigma[feature] = one_over_sigma
 
     def compute_params_median_quantile(self, dataloader):
         feature_values = {}
-        for (X, y, weight) in dataloader:
+        for X, y, weight in dataloader:
             for feature in self.features:
                 x = X[feature]
 
@@ -247,10 +252,14 @@ class FeatureStandardization:
                 if feature not in feature_values.keys():
                     feature_values[feature] = torch.tensor(x_masked)
                 else:
-                    feature_values[feature] = torch.cat([feature_values[feature], x_masked])
+                    feature_values[feature] = torch.cat(
+                        [feature_values[feature], x_masked]
+                    )
 
                 if feature not in self.is_one_hot_encoded.keys():
-                    self.is_one_hot_encoded[feature] = X["%s_is_one_hot_encoded" % feature][0]
+                    self.is_one_hot_encoded[feature] = X[
+                        "%s_is_one_hot_encoded" % feature
+                    ][0]
 
         for feature in self.features:
             median, _ = torch.median(feature_values[feature], dim=0)
@@ -270,10 +279,14 @@ class FeatureStandardization:
             for dim in range(self.dims[feature]):
                 if dim < self.feature_dim:
                     self.mean[feature] = torch.unsqueeze(self.mean[feature], 0)
-                    self.one_over_sigma[feature] = torch.unsqueeze(self.one_over_sigma[feature], 0)
+                    self.one_over_sigma[feature] = torch.unsqueeze(
+                        self.one_over_sigma[feature], 0
+                    )
                 elif dim > self.feature_dim:
                     self.mean[feature] = torch.unsqueeze(self.mean[feature], -1)
-                    self.one_over_sigma[feature] = torch.unsqueeze(self.one_over_sigma[feature], -1)
+                    self.one_over_sigma[feature] = torch.unsqueeze(
+                        self.one_over_sigma[feature], -1
+                    )
 
     def __call__(self, X):
         if self.verbosity >= 4:
@@ -288,7 +301,9 @@ class FeatureStandardization:
             x_transformed = torch.mul(x_transformed, self.one_over_sigma[feature])
             X_transformed[feature] = x_transformed
             if self.verbosity >= 4:
-                print("after transformation: %s = " % feature, X_transformed[feature][0])
+                print(
+                    "after transformation: %s = " % feature, X_transformed[feature][0]
+                )
         # add features for which no transformation is requested
         for feature in X.keys():
             if feature not in self.features:
@@ -321,9 +336,17 @@ class FeatureStandardization:
         cfg = {}
         for feature in self.features:
             cfg[feature] = {}
-            cfg[feature]["mean"] = [float(mean) for mean in self.mean[feature].squeeze().detach().cpu().numpy()]
+            cfg[feature]["mean"] = [
+                float(mean)
+                for mean in self.mean[feature].squeeze().detach().cpu().numpy()
+            ]
             cfg[feature]["one_over_sigma"] = [
-                float(one_over_sigma) for one_over_sigma in self.one_over_sigma[feature].squeeze().detach().cpu().numpy()
+                float(one_over_sigma)
+                for one_over_sigma in self.one_over_sigma[feature]
+                .squeeze()
+                .detach()
+                .cpu()
+                .numpy()
             ]
             cfg[feature]["dims"] = self.dims[feature]
         cfg["method"] = self.method
@@ -341,5 +364,8 @@ class FeatureStandardization:
             print(" shape(mean) = ", self.mean[feature].shape)
             print(" mean = ", self.mean[feature].squeeze())
             print(" shape(sigma) = ", self.one_over_sigma[feature].shape)
-            print(" sigma = ", torch.div(torch.tensor(1), self.one_over_sigma[feature].squeeze()))
+            print(
+                " sigma = ",
+                torch.div(torch.tensor(1), self.one_over_sigma[feature].squeeze()),
+            )
             print(" dims = ", self.dims[feature])

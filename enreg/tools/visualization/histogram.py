@@ -1,7 +1,13 @@
 import operator
 import numpy as np
 
-OPERATORS = {">=": operator.ge, "<=": operator.le, "==": operator.eq, ">": operator.gt, "<": operator.lt}
+OPERATORS = {
+    ">=": operator.ge,
+    "<=": operator.le,
+    "==": operator.eq,
+    ">": operator.gt,
+    "<": operator.lt,
+}
 
 
 class GeneralCut:
@@ -84,25 +90,55 @@ class Histogram:
 
     def __add__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
-            raise ArithmeticError("The bins of two histograms do not match, cannot sum them.")
+            raise ArithmeticError(
+                "The bins of two histograms do not match, cannot sum them."
+            )
         result = self.binned_data + other.binned_data
         uncertainties = self.uncertainties + other.uncertainties
-        return Histogram(result, self.bin_edges, "Sum", binned=True, uncertainties=uncertainties)
+        return Histogram(
+            result, self.bin_edges, "Sum", binned=True, uncertainties=uncertainties
+        )
 
     def __str__(self):
         return f"{self.histogram_data_type} histogram"
 
     def __truediv__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
-            raise ArithmeticError("The bins of two histograms do not match, cannot divide them.")
-        result = np.nan_to_num(self.binned_data / other.binned_data, copy=True, nan=0.0, posinf=None, neginf=None)
-        rel_uncertainties = np.sqrt(np.abs(result * (1 - result) / other.binned_data))  # use binomial errors
+            raise ArithmeticError(
+                "The bins of two histograms do not match, cannot divide them."
+            )
+        result = np.nan_to_num(
+            self.binned_data / other.binned_data,
+            copy=True,
+            nan=0.0,
+            posinf=None,
+            neginf=None,
+        )
+        rel_uncertainties = np.sqrt(
+            np.abs(result * (1 - result) / other.binned_data)
+        )  # use binomial errors
         # rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)  # Poisson
-        return Histogram(result, self.bin_edges, "Efficiency", binned=True, uncertainties=rel_uncertainties)
+        return Histogram(
+            result,
+            self.bin_edges,
+            "Efficiency",
+            binned=True,
+            uncertainties=rel_uncertainties,
+        )
 
     def __mul__(self, other):
         if (other.bin_edges).all() != (self.bin_edges).all():
-            raise ArithmeticError("The bins of two histograms do not match, cannot multiply them.")
+            raise ArithmeticError(
+                "The bins of two histograms do not match, cannot multiply them."
+            )
         result = self.binned_data * other.binned_data
-        rel_uncertainties = (other.uncertainties / other.binned_data) + (self.uncertainties / self.binned_data)
-        return Histogram(result, self.bin_edges, "Multiplicity", binned=True, uncertainties=rel_uncertainties)
+        rel_uncertainties = (other.uncertainties / other.binned_data) + (
+            self.uncertainties / self.binned_data
+        )
+        return Histogram(
+            result,
+            self.bin_edges,
+            "Multiplicity",
+            binned=True,
+            uncertainties=rel_uncertainties,
+        )

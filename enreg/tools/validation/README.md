@@ -1,1 +1,0 @@
-These files here are for the purposes of validating that the input and processed data makes sense.

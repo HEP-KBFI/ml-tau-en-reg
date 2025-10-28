@@ -10,13 +10,13 @@ hep.style.use(hep.styles.CMS)
 
 
 def visualize_confusion_matrix(
-        histogram: np.array,
-        categories: list,
-        cmap: str = "Greys",
-        bin_text_color: str = "r",
-        y_label: str = "Predicted decay modes",
-        x_label: str = "True decay modes",
-        figsize: tuple = (12, 12),
+    histogram: np.array,
+    categories: list,
+    cmap: str = "Greys",
+    bin_text_color: str = "r",
+    y_label: str = "Predicted decay modes",
+    x_label: str = "True decay modes",
+    figsize: tuple = (12, 12),
 ):
     """Plots the confusion matrix for the classification task. Confusion
     matrix functions has the categories in the other way in order to have the
@@ -62,9 +62,16 @@ def visualize_confusion_matrix(
 
 
 class DecayModeEvaluator:
-    """ Actually we are predicting in the end only 6 (signal) + 1 (bkg) categories, not 16."""
+    """Actually we are predicting in the end only 6 (signal) + 1 (bkg) categories, not 16."""
 
-    def __init__(self, predicted: np.array, truth: np.array, output_dir: str, sample: str, algorithm: str):
+    def __init__(
+        self,
+        predicted: np.array,
+        truth: np.array,
+        output_dir: str,
+        sample: str,
+        algorithm: str,
+    ):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         self.sample = sample
@@ -72,11 +79,13 @@ class DecayModeEvaluator:
         self.predicted = predicted
         self.truth = truth
         self.confusion_matrix = metrics.confusion_matrix(self.truth, self.predicted)
-        self.normalized_confusion_matrix = metrics.confusion_matrix(self.truth, self.predicted, normalize="true")
+        self.normalized_confusion_matrix = metrics.confusion_matrix(
+            self.truth, self.predicted, normalize="true"
+        )
         self._decay_mode_name_mapping = {
             0: r"$h^{\pm}$",
             1: r"$h^{\pm}\pi^0$",
-            2: r'$h^\pm+\geq2\pi^0$',
+            2: r"$h^\pm+\geq2\pi^0$",
             10: r"$h^{\pm}h^{\mp}h^{\pm}$",
             11: r"$h^{\pm}h^{\mp}h^{\pm}+\geq\pi^0$",
             15: "Rare",
@@ -96,14 +105,22 @@ class DecayModeEvaluator:
             return fig, ax
 
     def _calculate_performance_metrics(self):
-        class_FPR = (self.confusion_matrix.sum(axis=0) - np.diag(self.confusion_matrix)) / self.confusion_matrix.sum()
-        class_FNR = (self.confusion_matrix.sum(axis=1) - np.diag(self.confusion_matrix)) / self.confusion_matrix.sum()
+        class_FPR = (
+            self.confusion_matrix.sum(axis=0) - np.diag(self.confusion_matrix)
+        ) / self.confusion_matrix.sum()
+        class_FNR = (
+            self.confusion_matrix.sum(axis=1) - np.diag(self.confusion_matrix)
+        ) / self.confusion_matrix.sum()
         class_TPR = (np.diag(self.confusion_matrix)) / self.confusion_matrix.sum()
-        class_TNR = (self.confusion_matrix.sum() - (class_FPR + class_FNR + class_TPR)) / self.confusion_matrix.sum()
+        class_TNR = (
+            self.confusion_matrix.sum() - (class_FPR + class_FNR + class_TPR)
+        ) / self.confusion_matrix.sum()
         class_precision = class_TPR / (class_TPR + class_FPR)
         class_recall = class_TPR / (class_TPR + class_FNR)
         class_F1 = 2 * class_precision * class_recall / (class_precision + class_recall)
-        class_accuracy = (class_TPR + class_TNR) / (class_TPR + class_TNR + class_FPR + class_FNR)
+        class_accuracy = (class_TPR + class_TNR) / (
+            class_TPR + class_TNR + class_FPR + class_FNR
+        )
 
         FPR = np.sum(class_FPR) / len(class_FPR)
         FNR = np.sum(class_FNR) / len(class_FNR)
@@ -149,17 +166,23 @@ class DecayModeEvaluator:
         print(json.dumps(self.general_metrics, indent=4, cls=NpEncoder))
 
     def save_performance(self):
-        class_metrics_output_path = os.path.join(self.output_dir, f"{self.sample}_{self.algorithm}_class_metrics.json")
+        class_metrics_output_path = os.path.join(
+            self.output_dir, f"{self.sample}_{self.algorithm}_class_metrics.json"
+        )
         with open(class_metrics_output_path, "wt") as out_file:
             json.dump(self.class_metrics, out_file, indent=4, cls=NpEncoder)
 
-        class_metrics_output_path = os.path.join(self.output_dir, f"{self.sample}_{self.algorithm}_class_metrics.json")
+        class_metrics_output_path = os.path.join(
+            self.output_dir, f"{self.sample}_{self.algorithm}_class_metrics.json"
+        )
         with open(class_metrics_output_path, "wt") as out_file:
             json.dump(self.class_metrics, out_file, indent=4, cls=NpEncoder)
 
-        confusion_matrix_output_path = os.path.join(self.output_dir,
-                                                    f"{self.sample}_{self.algorithm}_confusion_matrix.pdf")
+        confusion_matrix_output_path = os.path.join(
+            self.output_dir, f"{self.sample}_{self.algorithm}_confusion_matrix.pdf"
+        )
         self.plot_confusion_matrix(output_path=confusion_matrix_output_path)
+
 
 # Example use:
 #     dm_evaluator = DecayModeEvaluator(true_classes, pred_classes, '/path/to/output')

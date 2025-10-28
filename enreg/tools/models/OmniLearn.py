@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 
 
-
-
 class PET(nn.Module):
-    """Point Edge Transformer """
+    """Point Edge Transformer"""
+
     def __init__(
         self,
         num_feat,
@@ -26,11 +25,11 @@ class PET(nn.Module):
         layer_scale=True,
         layer_scale_init=1e-5,
         talking_head=False,
-        mode='classifier',
+        mode="classifier",
         num_diffusion=3,
         dropout=0.0,
         class_activation=None,
-     ):
+    ):
         super().__init()
         self.num_feat = num_feat
         self.num_jet = num_jet
@@ -43,7 +42,7 @@ class PET(nn.Module):
         self.num_heads = num_heads
         self.num_layers = num_layers
         self.layer_scale = layer_scale
-        self.layer_scale_init=layer_scale_init
+        self.layer_scale_init = layer_scale_init
         self.mode = mode
         self.num_diffusion = num_diffusion
         self.ema = 0.999

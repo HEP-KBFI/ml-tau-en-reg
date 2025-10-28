@@ -9,7 +9,8 @@ class StochasticDepth(nn.Module):
     Reference:
         https://github.com/rwightman/pytorch-image-models
     """
-    def __init__(self, drop_prob: float = 0., scale_by_keep: bool = True):
+
+    def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
         super().__init__()
         self.drop_prob = drop_prob
         self.scale_by_keep = scale_by_keep
@@ -18,11 +19,13 @@ class StochasticDepth(nn.Module):
         return drop_path(x, self.drop_prob, self.training, self.scale_by_keep)
 
     def extra_repr(self):
-        return f'drop_prob={round(self.drop_prob, 3):0.3f}'
+        return f"drop_prob={round(self.drop_prob, 3):0.3f}"
 
 
 class RandomDrop(nn.Module):
-    def __init__(self, drop_prob: float, num_skip: float, **kwargs):  # num_skip = num_keep ???
+    def __init__(
+        self, drop_prob: float, num_skip: float, **kwargs
+    ):  # num_skip = num_keep ???
         super().__init__(**kwargs)
         self.drop_prob = drop_prob
         self.num_skip = num_skip
@@ -30,10 +33,14 @@ class RandomDrop(nn.Module):
     def forward(self, x, training=False):
         if training:
             keep_prob = 1 - self.drop_prob
-            shape = (x.shape[0], x.shape[1], 1)  # Expecting inputs of shape (num_jets, num_features, num_particles)
+            shape = (
+                x.shape[0],
+                x.shape[1],
+                1,
+            )  # Expecting inputs of shape (num_jets, num_features, num_particles)
             random_tensor = keep_prob + torch.rand(shape)
             random_tensor = torch.floor(random_tensor)
-            x[:, self.num_skip:, :] = x[:, self.num_skip:, :] * random_tensor
+            x[:, self.num_skip :, :] = x[:, self.num_skip :, :] * random_tensor
         return x
 
 
@@ -61,7 +68,10 @@ class SimpleHeadAttention(nn.Module):
         dropout_rate (float): dropout rate to be used for dropout in the attention
             scores as well as the final projected outputs.
     """
-    def __init__(self, projection_dim: int, num_heads: int, dropout_rate: float, **kwargs):
+
+    def __init__(
+        self, projection_dim: int, num_heads: int, dropout_rate: float, **kwargs
+    ):
         super().__init__(**kwargs)
         self.num_heads = num_heads
         self.projection_dim = projection_dim
@@ -72,6 +82,3 @@ class SimpleHeadAttention(nn.Module):
         self.proj = nn.Linear(projection_dim)
         self.proj_drop = nn.Dropout(dropout_rate)
         self.softmax = nn.Softmax(dim=-1)
-
-
-

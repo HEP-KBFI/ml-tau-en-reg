@@ -28,7 +28,10 @@ class FutureDataset(Dataset):
         metadata = ak.metadata_from_parquet(self.data_path)
         num_row_groups = metadata["num_row_groups"]
         col_counts = metadata["col_counts"]
-        return [RowGroup(self.data_path, row_group, col_counts[row_group]) for row_group in range(num_row_groups)]
+        return [
+            RowGroup(self.data_path, row_group, col_counts[row_group])
+            for row_group in range(num_row_groups)
+        ]
 
     def __getitem__(self, index):
         return self.row_groups[index]
@@ -39,11 +42,11 @@ class FutureDataset(Dataset):
 
 class IterableFutureDataset(IterableDataset):
     def __init__(
-            self,
-            dataset: Dataset,
-            cfg: DictConfig,
-            dataset_type: str,
-            reco_jet_pt_cut: float = 20,
+        self,
+        dataset: Dataset,
+        cfg: DictConfig,
+        dataset_type: str,
+        reco_jet_pt_cut: float = 20,
     ):
         super().__init__()
         self.dataset = dataset
@@ -51,14 +54,19 @@ class IterableFutureDataset(IterableDataset):
         self.dataset_type = dataset_type
         self.row_groups = [d for d in self.dataset]
         self.num_rows = sum([rg.num_rows for rg in self.row_groups])
-        print(f"There are {'{:,}'.format(self.num_rows)} jets in the {dataset_type} dataset.")
+        print(
+            f"There are {'{:,}'.format(self.num_rows)} jets in the {dataset_type} dataset."
+        )
         self.reco_jet_pt_cut = reco_jet_pt_cut
 
     def stack_and_pad_features(self, features):
         pad_length = self.cfg.max_cands
         feature_tensor = np.stack(
-            [ak.pad_none(features[feat], pad_length, clip=True) for feat in features.fields],
-            axis=-1
+            [
+                ak.pad_none(features[feat], pad_length, clip=True)
+                for feat in features.fields
+            ],
+            axis=-1,
         )
         feature_tensor = ak.to_numpy(ak.fill_none(feature_tensor, 0))
         # Swapping the axes such that it has the shape of (nJets, nFeatures, nParticles)
@@ -83,45 +91,79 @@ class IterableFutureDataset(IterableDataset):
             "cand_logerel": lambda: np.log(jet_constituent_p4s.energy / jet_p4s.energy),
             "cand_deltaR": lambda: jet_constituent_p4s.deltaR(jet_p4s),
             "cand_charge": lambda: data.reco_cand_charge,
-            "cand_isElectron": lambda: ak.values_astype(abs(data.reco_cand_pdg) == 11, np.float32),
-            "cand_isMuon": lambda: ak.values_astype(abs(data.reco_cand_pdg) == 13, np.float32),
-            "cand_isPhoton": lambda: ak.values_astype(abs(data.reco_cand_pdg) == 22, np.float32),
-            "cand_isChargedHadron": lambda: ak.values_astype(abs(data.reco_cand_pdg) == 211, np.float32),
-            "cand_isNeutralHadron": lambda: ak.values_astype(abs(data.reco_cand_pdg) == 130, np.float32),
+            "cand_isElectron": lambda: ak.values_astype(
+                abs(data.reco_cand_pdg) == 11, np.float32
+            ),
+            "cand_isMuon": lambda: ak.values_astype(
+                abs(data.reco_cand_pdg) == 13, np.float32
+            ),
+            "cand_isPhoton": lambda: ak.values_astype(
+                abs(data.reco_cand_pdg) == 22, np.float32
+            ),
+            "cand_isChargedHadron": lambda: ak.values_astype(
+                abs(data.reco_cand_pdg) == 211, np.float32
+            ),
+            "cand_isNeutralHadron": lambda: ak.values_astype(
+                abs(data.reco_cand_pdg) == 130, np.float32
+            ),
         }
-        main_features = ak.Array({feature: feature_calculations[feature]() for feature in self.cfg.features})
-        cand_kinematics = ak.Array({
-            "cand_px": jet_constituent_p4s.px,
-            "cand_py": jet_constituent_p4s.py,
-            "cand_pz": jet_constituent_p4s.pz,
-            "cand_en": jet_constituent_p4s.energy,
-        })
-        cand_lifetimes = ak.Array({
-            "cand_dz": data.reco_cand_dz,
-            "cand_dz_err": data.reco_cand_dz_err,
-            "cand_dxy": data.reco_cand_dxy,
-            "cand_dxy_err": data.reco_cand_dxy_err
-        })
+        main_features = ak.Array(
+            {feature: feature_calculations[feature]() for feature in self.cfg.features}
+        )
+        cand_kinematics = ak.Array(
+            {
+                "cand_px": jet_constituent_p4s.px,
+                "cand_py": jet_constituent_p4s.py,
+                "cand_pz": jet_constituent_p4s.pz,
+                "cand_en": jet_constituent_p4s.energy,
+            }
+        )
+        cand_lifetimes = ak.Array(
+            {
+                "cand_dz": data.reco_cand_dz,
+                "cand_dz_err": data.reco_cand_dz_err,
+                "cand_dxy": data.reco_cand_dxy,
+                "cand_dxy_err": data.reco_cand_dxy_err,
+            }
+        )
 
-        features_tensor = torch.tensor(self.stack_and_pad_features(main_features), dtype=torch.float32)
-        kinematics_tensor = torch.tensor(self.stack_and_pad_features(cand_kinematics), dtype=torch.float32)
-        lifetimes_tensor = torch.tensor(self.stack_and_pad_features(cand_lifetimes), dtype=torch.float32)
+        features_tensor = torch.tensor(
+            self.stack_and_pad_features(main_features), dtype=torch.float32
+        )
+        kinematics_tensor = torch.tensor(
+            self.stack_and_pad_features(cand_kinematics), dtype=torch.float32
+        )
+        lifetimes_tensor = torch.tensor(
+            self.stack_and_pad_features(cand_lifetimes), dtype=torch.float32
+        )
         node_mask_tensors = torch.unsqueeze(
             torch.tensor(
                 ak.to_numpy(
-                    ak.fill_none(ak.pad_none(ak.ones_like(data.reco_cand_pdg), self.cfg.max_cands, clip=True), 0, )),
-                dtype=torch.float32
+                    ak.fill_none(
+                        ak.pad_none(
+                            ak.ones_like(data.reco_cand_pdg),
+                            self.cfg.max_cands,
+                            clip=True,
+                        ),
+                        0,
+                    )
+                ),
+                dtype=torch.float32,
             ),
-            dim=1
+            dim=1,
         )
         if "weight" in data.fields:
             weight_tensors = torch.tensor(ak.to_numpy(data.weight), dtype=torch.float32)
         else:
-            weight_tensors = torch.tensor(ak.ones_like(data.gen_jet_tau_decaymode), dtype=torch.float32)
+            weight_tensors = torch.tensor(
+                ak.ones_like(data.gen_jet_tau_decaymode), dtype=torch.float32
+            )
         reco_jet_pt = torch.tensor(ak.to_numpy(jet_p4s.pt), dtype=torch.float32)
         gen_tau_pt = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.pt), dtype=torch.float32)
         jet_regression_target = torch.log(gen_tau_pt / reco_jet_pt)
-        gen_jet_tau_decaymode = torch.tensor(ak.to_numpy(data.gen_jet_tau_decaymode)).long()
+        gen_jet_tau_decaymode = torch.tensor(
+            ak.to_numpy(data.gen_jet_tau_decaymode)
+        ).long()
         gen_jet_tau_decaymode_exists = (gen_jet_tau_decaymode != -1).long()
 
         # X, y, w
@@ -132,7 +174,7 @@ class IterableFutureDataset(IterableDataset):
                 "cand_features": features_tensor,
                 "cand_lifetimes": lifetimes_tensor,
                 "mask": node_mask_tensors,
-                "reco_jet_pt": reco_jet_pt
+                "reco_jet_pt": reco_jet_pt,
             },
             # y - targets
             {
@@ -140,10 +182,10 @@ class IterableFutureDataset(IterableDataset):
                 "gen_tau_pt": gen_tau_pt,
                 "jet_regression": jet_regression_target,
                 "binary_classification": gen_jet_tau_decaymode_exists,
-                "dm_multiclass": gen_jet_tau_decaymode
+                "dm_multiclass": gen_jet_tau_decaymode,
             },
             # weights
-            weight_tensors
+            weight_tensors,
         )
 
     # def __len__(self):
@@ -156,7 +198,9 @@ class IterableFutureDataset(IterableDataset):
         if worker_info is None:
             row_groups_to_process = self.row_groups
         else:
-            per_worker = int(math.ceil(float(len(self.row_groups)) / float(worker_info.num_workers)))
+            per_worker = int(
+                math.ceil(float(len(self.row_groups)) / float(worker_info.num_workers))
+            )
             worker_id = worker_info.id
             row_groups_start = worker_id * per_worker
             row_groups_end = row_groups_start + per_worker
@@ -179,11 +223,11 @@ class IterableFutureDataset(IterableDataset):
 
 
 def train_val_split_shuffle(
-        concat_dataset: ConcatDataset,
-        val_split: float = 0.2,
-        seed: int = 42,
-        max_train_jets: int = 1e6,
-        row_group_size: int = 1024
+    concat_dataset: ConcatDataset,
+    val_split: float = 0.2,
+    seed: int = 42,
+    max_train_jets: int = 1e6,
+    row_group_size: int = 1024,
 ):
     total_len = len(concat_dataset)
     indices = list(range(total_len))
@@ -233,19 +277,19 @@ class FutureDataModule(LightningDataModule):
                 concat_dataset=train_concat_dataset,
                 val_split=self.cfg.dataset.fraction_valid,
                 max_train_jets=self.cfg.trainSize,
-                row_group_size=self.cfg.dataset.row_group_size
+                row_group_size=self.cfg.dataset.row_group_size,
             )
             train_iterable_dataset = IterableFutureDataset(
                 dataset=train_subset,
                 cfg=self.cfg.dataset,
                 dataset_type="train",
-                reco_jet_pt_cut=self.reco_jet_pt_cut
+                reco_jet_pt_cut=self.reco_jet_pt_cut,
             )
             val_iterable_dataset = IterableFutureDataset(
                 dataset=val_subset,
                 cfg=self.cfg.dataset,
                 dataset_type="validation",
-                reco_jet_pt_cut=self.reco_jet_pt_cut
+                reco_jet_pt_cut=self.reco_jet_pt_cut,
             )
             self.train_loader = DataLoader(
                 train_iterable_dataset,
@@ -274,11 +318,10 @@ class FutureDataModule(LightningDataModule):
                 dataset=test_concat_dataset,
                 cfg=self.cfg.dataset,
                 dataset_type="test",
-                reco_jet_pt_cut=self.reco_jet_pt_cut
+                reco_jet_pt_cut=self.reco_jet_pt_cut,
             )
             self.test_loader = DataLoader(
-                test_iterable_dataset,
-                batch_size=self.cfg.training.batch_size
+                test_iterable_dataset, batch_size=self.cfg.training.batch_size
             )
 
     def train_dataloader(self):

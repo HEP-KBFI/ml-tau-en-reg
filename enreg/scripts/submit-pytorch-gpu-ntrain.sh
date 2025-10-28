@@ -61,7 +61,7 @@ else
 fi
 
 for i in `seq 1 $NUMBER_REPETITIONS`; do
-    for trainSize in 2e3 1e4 1e5 1e6; do
+    for trainSize in 2e3 1e5 1e6; do
         export OUTDIR=$BASE_DIR/v$i/trainfrac_$trainSize
         if [ "$RUN_JET_REGRESSION" = true ] ; then
             echo Submitting jet_regression jobs for repetition $i and $trainSize training jets

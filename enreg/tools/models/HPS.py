@@ -45,8 +45,17 @@ class Cand(hpsParticleBase):
 
     def print(self):
         output = (
-                "cand #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, pdgId = %i, charge = %1.1f"
-                % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass, self.pdgId, self.q)
+            "cand #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, pdgId = %i, charge = %1.1f"
+            % (
+                self.barcode,
+                self.energy,
+                self.pt,
+                self.eta,
+                self.phi,
+                self.mass,
+                self.pdgId,
+                self.q,
+            )
         )
         if abs(self.q) > 0.5:
             output += ", d0 = %1.3f +/- %1.3f, dz = %1.3f +/- %1.3f" % (
@@ -58,16 +67,20 @@ class Cand(hpsParticleBase):
         print(output)
 
 
-def buildCands(cand_p4s, cand_pdgIds, cand_qs, cand_d0s, cand_d0errs, cand_dzs, cand_dzerrs):
+def buildCands(
+    cand_p4s, cand_pdgIds, cand_qs, cand_d0s, cand_d0errs, cand_dzs, cand_dzerrs
+):
     if not (
-            len(cand_p4s) == len(cand_pdgIds)
-            and len(cand_pdgIds) == len(cand_qs)
-            and len(cand_qs) == len(cand_d0s)
-            and len(cand_d0s) == len(cand_d0errs)
-            and len(cand_d0errs) == len(cand_dzs)
-            and len(cand_dzs) == len(cand_dzerrs)
+        len(cand_p4s) == len(cand_pdgIds)
+        and len(cand_pdgIds) == len(cand_qs)
+        and len(cand_qs) == len(cand_d0s)
+        and len(cand_d0s) == len(cand_d0errs)
+        and len(cand_d0errs) == len(cand_dzs)
+        and len(cand_dzs) == len(cand_dzerrs)
     ):
-        raise ValueError("Length of arrays for candidate for p4 and other features don't match !!")
+        raise ValueError(
+            "Length of arrays for candidate for p4 and other features don't match !!"
+        )
     cands = []
     num_cands = len(cand_p4s)
     for idx in range(num_cands):
@@ -94,14 +107,16 @@ def readCands(data):
     event_cand_dzs = data["event_reco_cand_dz"]
     event_cand_dzerrs = data["event_reco_cand_dz_err"]
     if not (
-            len(event_cand_p4s) == len(event_cand_pdgIds)
-            and len(event_cand_pdgIds) == len(event_cand_qs)
-            and len(event_cand_qs) == len(event_cand_d0s)
-            and len(event_cand_d0s) == len(event_cand_d0errs)
-            and len(event_cand_d0errs) == len(event_cand_dzs)
-            and len(event_cand_dzs) == len(event_cand_dzerrs)
+        len(event_cand_p4s) == len(event_cand_pdgIds)
+        and len(event_cand_pdgIds) == len(event_cand_qs)
+        and len(event_cand_qs) == len(event_cand_d0s)
+        and len(event_cand_d0s) == len(event_cand_d0errs)
+        and len(event_cand_d0errs) == len(event_cand_dzs)
+        and len(event_cand_dzs) == len(event_cand_dzerrs)
     ):
-        raise ValueError("Length of arrays for candidate p4 and other features don't match !!")
+        raise ValueError(
+            "Length of arrays for candidate p4 and other features don't match !!"
+        )
     event_cands = []
     num_jets = len(event_cand_p4s)
     for idx in range(num_jets):
@@ -151,16 +166,16 @@ def selectCandsByPdgId(cands, pdgIds=[]):
 
 class Jet(hpsParticleBase):
     def __init__(
-            self,
-            jet_p4,
-            jet_constituents_p4,
-            jet_constituents_pdgId,
-            jet_constituents_q,
-            jet_constituent_d0,
-            jet_constituent_d0err,
-            jet_constituent_dz,
-            jet_constituent_dzerr,
-            barcode=-1,
+        self,
+        jet_p4,
+        jet_constituents_p4,
+        jet_constituents_pdgId,
+        jet_constituents_q,
+        jet_constituent_d0,
+        jet_constituent_d0err,
+        jet_constituent_dz,
+        jet_constituent_dzerr,
+        barcode=-1,
     ):
         super().__init__(p4=jet_p4, barcode=barcode)
         self.constituents = buildCands(
@@ -182,7 +197,15 @@ class Jet(hpsParticleBase):
     def print(self):
         print(
             "jet #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.2f, #constituents = %i"
-            % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass, len(self.constituents))
+            % (
+                self.barcode,
+                self.energy,
+                self.pt,
+                self.eta,
+                self.phi,
+                self.mass,
+                len(self.constituents),
+            )
         )
         print("constituents:")
         for cand in self.constituents:
@@ -190,25 +213,27 @@ class Jet(hpsParticleBase):
 
 
 def buildJets(
-        jet_p4s,
-        jet_constituent_p4s,
-        jet_constituent_pdgIds,
-        jet_constituent_qs,
-        jet_constituent_d0s,
-        jet_constituent_d0errs,
-        jet_constituent_dzs,
-        jet_constituent_dzerrs,
+    jet_p4s,
+    jet_constituent_p4s,
+    jet_constituent_pdgIds,
+    jet_constituent_qs,
+    jet_constituent_d0s,
+    jet_constituent_d0errs,
+    jet_constituent_dzs,
+    jet_constituent_dzerrs,
 ):
     if not (
-            len(jet_p4s) == len(jet_constituent_p4s)
-            and len(jet_constituent_p4s) == len(jet_constituent_pdgIds)
-            and len(jet_constituent_pdgIds) == len(jet_constituent_qs)
-            and len(jet_constituent_qs) == len(jet_constituent_d0s)
-            and len(jet_constituent_d0s) == len(jet_constituent_d0errs)
-            and len(jet_constituent_d0errs) == len(jet_constituent_dzs)
-            and len(jet_constituent_dzs) == len(jet_constituent_dzerrs)
+        len(jet_p4s) == len(jet_constituent_p4s)
+        and len(jet_constituent_p4s) == len(jet_constituent_pdgIds)
+        and len(jet_constituent_pdgIds) == len(jet_constituent_qs)
+        and len(jet_constituent_qs) == len(jet_constituent_d0s)
+        and len(jet_constituent_d0s) == len(jet_constituent_d0errs)
+        and len(jet_constituent_d0errs) == len(jet_constituent_dzs)
+        and len(jet_constituent_dzs) == len(jet_constituent_dzerrs)
     ):
-        raise ValueError("Length of arrays for jet p4, constituent p4, and other constituent features don't match !!")
+        raise ValueError(
+            "Length of arrays for jet p4, constituent p4, and other constituent features don't match !!"
+        )
     jets = []
     num_jets = len(jet_p4s)
     for idx in range(num_jets):
@@ -265,7 +290,12 @@ class Strip(hpsParticleBase):
         strip_px = sum_p4.px
         strip_py = sum_p4.py
         strip_pz = sum_p4.pz
-        strip_E = math.sqrt(strip_px * strip_px + strip_py * strip_py + strip_pz * strip_pz + m_pi0 * m_pi0)
+        strip_E = math.sqrt(
+            strip_px * strip_px
+            + strip_py * strip_py
+            + strip_pz * strip_pz
+            + m_pi0 * m_pi0
+        )
         strip_p4 = vector.obj(px=strip_px, py=strip_py, pz=strip_pz, E=strip_E)
         super().__init__(p4=strip_p4, barcode=barcode)
         self.cands = set(cands)
@@ -314,10 +344,15 @@ class StripAlgo:
             strip.p4 = strip.p4 + cand.p4
         strip.updatePtEtaPhiMass()
 
-    def addCandsToStrip(self, strip, cands, candBarcodesPreviousStrips, candBarcodesCurrentStrip):
+    def addCandsToStrip(
+        self, strip, cands, candBarcodesPreviousStrips, candBarcodesCurrentStrip
+    ):
         isCandAdded = False
         for cand in cands:
-            if not (cand.barcode in candBarcodesPreviousStrips or cand.barcode in candBarcodesCurrentStrip):
+            if not (
+                cand.barcode in candBarcodesPreviousStrips
+                or cand.barcode in candBarcodesCurrentStrip
+            ):
                 dEta = f.deltaTheta(cand.theta, strip.theta)
                 dPhi = f.deltaPhi(cand.phi, strip.phi)
                 if dEta < self.cfg.maxStripSizeEta and dPhi < self.cfg.maxStripSizePhi:
@@ -337,7 +372,9 @@ class StripAlgo:
         seedCands = []
         addCands = []
         for cand in cands:
-            if (cand.abs_pdgId == 22 and self.cfg.useGammas) or (cand.abs_pdgId == 11 and self.cfg.useElectrons):
+            if (cand.abs_pdgId == 22 and self.cfg.useGammas) or (
+                cand.abs_pdgId == 11 and self.cfg.useElectrons
+            ):
                 minPtSeed = None
                 minPtAdd = None
                 if cand.abs_pdgId == 22:
@@ -378,13 +415,22 @@ class StripAlgo:
                 addCandBarcodesCurrentStrip = set()
 
                 stripBuildIterations = 0
-                while stripBuildIterations < self.cfg.maxStripBuildIterations or self.cfg.maxStripBuildIterations == -1:
+                while (
+                    stripBuildIterations < self.cfg.maxStripBuildIterations
+                    or self.cfg.maxStripBuildIterations == -1
+                ):
                     isCandAdded = False
                     isCandAdded |= self.addCandsToStrip(
-                        currentStrip, seedCands, seedCandBarcodesPreviousStrips, seedCandBarcodesCurrentStrip
+                        currentStrip,
+                        seedCands,
+                        seedCandBarcodesPreviousStrips,
+                        seedCandBarcodesCurrentStrip,
                     )
                     isCandAdded |= self.addCandsToStrip(
-                        currentStrip, addCands, addCandBarcodesPreviousStrips, addCandBarcodesCurrentStrip
+                        currentStrip,
+                        addCands,
+                        addCandBarcodesPreviousStrips,
+                        addCandBarcodesCurrentStrip,
                     )
                     if not self.cfg.updateStripAfterEachCand:
                         self.updateStripP4(currentStrip)
@@ -400,8 +446,12 @@ class StripAlgo:
                     currentStrip.barcode = idxStrip
                     ++idxStrip
                     output_strips.append(currentStrip)
-                    self.markCandsInStrip(seedCandBarcodesPreviousStrips, seedCandBarcodesCurrentStrip)
-                    self.markCandsInStrip(addCandBarcodesPreviousStrips, addCandBarcodesCurrentStrip)
+                    self.markCandsInStrip(
+                        seedCandBarcodesPreviousStrips, seedCandBarcodesCurrentStrip
+                    )
+                    self.markCandsInStrip(
+                        addCandBarcodesPreviousStrips, addCandBarcodesCurrentStrip
+                    )
 
         if self.verbosity >= 4:
             print("output_strips:")
@@ -413,8 +463,12 @@ class StripAlgo:
 
 class Tau(hpsParticleBase):
     def __init__(self, chargedCands=[], strips=[], barcode=-1):
-        chargedCand_and_strip_p4s = [chargedCand.p4 for chargedCand in chargedCands] + [strip.p4 for strip in strips]
-        chargedCand_and_strip_p4s = np.array([[p4.px, p4.py, p4.pz, p4.E] for p4 in chargedCand_and_strip_p4s])
+        chargedCand_and_strip_p4s = [chargedCand.p4 for chargedCand in chargedCands] + [
+            strip.p4 for strip in strips
+        ]
+        chargedCand_and_strip_p4s = np.array(
+            [[p4.px, p4.py, p4.pz, p4.E] for p4 in chargedCand_and_strip_p4s]
+        )
         sum_p4 = None
         if len(chargedCand_and_strip_p4s) == 0:
             sum_p4 = vector.obj(px=0, py=0, pz=0, E=0)
@@ -457,7 +511,16 @@ class Tau(hpsParticleBase):
     def print(self):
         print(
             "tau #%i: energy = %1.1f, pT = %1.1f, eta = %1.3f, phi = %1.3f, mass = %1.3f, idDiscr = %1.3f, decayMode = %s"
-            % (self.barcode, self.energy, self.pt, self.eta, self.phi, self.mass, self.idDiscr, self.decayMode)
+            % (
+                self.barcode,
+                self.energy,
+                self.pt,
+                self.eta,
+                self.phi,
+                self.mass,
+                self.idDiscr,
+                self.decayMode,
+            )
         )
         # print("signal_chargedCands:")
         # for cand in self.signal_chargedCands:
@@ -476,7 +539,12 @@ class Tau(hpsParticleBase):
             cand.print()
         print(
             " isolation: charged = %1.2f, gamma = %1.2f, neutralHadron = %1.2f, combined = %1.2f"
-            % (self.chargedIso_dR0p5, self.gammaIso_dR0p5, self.neutralHadronIso_dR0p5, self.combinedIso_dR0p5)
+            % (
+                self.chargedIso_dR0p5,
+                self.gammaIso_dR0p5,
+                self.neutralHadronIso_dR0p5,
+                self.combinedIso_dR0p5,
+            )
         )
 
 
@@ -508,18 +576,20 @@ def write_tau_cand_p4s(taus, collection):
     # TODO: There is a smarter way to do this
     retVal = ak.Array(
         [
-            vector.awk(
-                ak.zip(
-                    {
-                        "px": [cand.p4.px for cand in getattr(tau, collection)],
-                        "py": [cand.p4.py for cand in getattr(tau, collection)],
-                        "pz": [cand.p4.pz for cand in getattr(tau, collection)],
-                        "mass": [cand.p4.mass for cand in getattr(tau, collection)],
-                    }
+            (
+                vector.awk(
+                    ak.zip(
+                        {
+                            "px": [cand.p4.px for cand in getattr(tau, collection)],
+                            "py": [cand.p4.py for cand in getattr(tau, collection)],
+                            "pz": [cand.p4.pz for cand in getattr(tau, collection)],
+                            "mass": [cand.p4.mass for cand in getattr(tau, collection)],
+                        }
+                    )
                 )
+                if len(getattr(tau, collection)) >= 1
+                else build_dummy_array()
             )
-            if len(getattr(tau, collection)) >= 1
-            else build_dummy_array()
             for tau in taus
         ]
     )
@@ -530,9 +600,11 @@ def write_tau_cand_attrs(taus, collection, attr, dtype):
     # TODO: There is a smarter way to do this
     retVal = ak.Array(
         [
-            ak.Array([getattr(cand, attr) for cand in getattr(tau, collection)])
-            if len(getattr(tau, collection)) >= 1
-            else build_dummy_array(dtype)
+            (
+                ak.Array([getattr(cand, attr) for cand in getattr(tau, collection)])
+                if len(getattr(tau, collection)) >= 1
+                else build_dummy_array(dtype)
+            )
             for tau in taus
         ]
     )
@@ -602,32 +674,65 @@ def writeTaus(taus):
         # "tauClassifier": ak.Array([tau.idDiscr for tau in taus]),  # As we do not want to overwrite the PT value for this.
         "tauChargedIso_dR0p5": ak.Array([tau.chargedIso_dR0p5 for tau in taus]),
         "tauGammaIso_dR0p5": ak.Array([tau.gammaIso_dR0p5 for tau in taus]),
-        "tauNeutralHadronIso_dR0p5": ak.Array([tau.neutralHadronIso_dR0p5 for tau in taus]),
+        "tauNeutralHadronIso_dR0p5": ak.Array(
+            [tau.neutralHadronIso_dR0p5 for tau in taus]
+        ),
         "tauChargedIso_dR0p3": ak.Array(
-            [comp_pt_sum(selectCandsByDeltaR(tau.iso_chargedCands, tau, 0.3)) for tau in taus]
+            [
+                comp_pt_sum(selectCandsByDeltaR(tau.iso_chargedCands, tau, 0.3))
+                for tau in taus
+            ]
         ),
         "tauGammaIso_dR0p3": ak.Array(
-            [comp_pt_sum(selectCandsByDeltaR(tau.iso_gammaCands, tau, 0.3)) for tau in taus]
+            [
+                comp_pt_sum(selectCandsByDeltaR(tau.iso_gammaCands, tau, 0.3))
+                for tau in taus
+            ]
         ),
         "tauNeutralHadronIso_dR0p3": ak.Array(
-            [comp_pt_sum(selectCandsByDeltaR(tau.iso_neutralHadronCands, tau, 0.3)) for tau in taus]
+            [
+                comp_pt_sum(selectCandsByDeltaR(tau.iso_neutralHadronCands, tau, 0.3))
+                for tau in taus
+            ]
         ),
-        "tauPhotonPtSumOutsideSignalCone": ak.Array([comp_photonPtSumOutsideSignalCone(tau) for tau in taus]),
+        "tauPhotonPtSumOutsideSignalCone": ak.Array(
+            [comp_photonPtSumOutsideSignalCone(tau) for tau in taus]
+        ),
         "tau_charge": ak.Array([tau.q for tau in taus]),
         "tau_decaymode": ak.Array([get_decayMode(tau) for tau in taus]),
         "tau_nGammas": ak.Array([len(tau.signal_gammaCands) for tau in taus]),
         "tau_nCharged": ak.Array([len(tau.signal_chargedCands) for tau in taus]),
         "tau_leadChargedCand_pt": ak.Array([tau.leadChargedCand_pt for tau in taus]),
         "tau_emEnergyFrac": ak.Array(
-            [(comp_pt_sum(tau.signal_gammaCands) / tau.pt) if tau.pt > 0.0 else 0.0 for tau in taus]
+            [
+                (comp_pt_sum(tau.signal_gammaCands) / tau.pt) if tau.pt > 0.0 else 0.0
+                for tau in taus
+            ]
         ),
         "tau_dEta_strip": ak.Array(
-            [comp_pt_weighted_dX(tau, tau.signal_gammaCands, comp_deltaTheta) for tau in taus]
+            [
+                comp_pt_weighted_dX(tau, tau.signal_gammaCands, comp_deltaTheta)
+                for tau in taus
+            ]
         ),
-        "tau_dPhi_strip": ak.Array([comp_pt_weighted_dX(tau, tau.signal_gammaCands, comp_deltaPhi) for tau in taus]),
+        "tau_dPhi_strip": ak.Array(
+            [
+                comp_pt_weighted_dX(tau, tau.signal_gammaCands, comp_deltaPhi)
+                for tau in taus
+            ]
+        ),
         "tau_dR_signal": ak.Array(
-            [comp_pt_weighted_dX(tau, tau.signal_gammaCands, comp_deltaR_thetaPhi) for tau in taus]),
-        "tau_dR_iso": ak.Array([comp_pt_weighted_dX(tau, tau.iso_gammaCands, comp_deltaR_thetaPhi) for tau in taus]),
+            [
+                comp_pt_weighted_dX(tau, tau.signal_gammaCands, comp_deltaR_thetaPhi)
+                for tau in taus
+            ]
+        ),
+        "tau_dR_iso": ak.Array(
+            [
+                comp_pt_weighted_dX(tau, tau.iso_gammaCands, comp_deltaR_thetaPhi)
+                for tau in taus
+            ]
+        ),
     }
     return retVal
 
@@ -672,12 +777,17 @@ class CombinatoricsGenerator:
 
         current_digit = k - 1
         while True:
-            assert len("".join("%i" % digits[idx] for idx in range(k))) <= len("%i" % n) * k
+            assert (
+                len("".join("%i" % digits[idx] for idx in range(k)))
+                <= len("%i" % n) * k
+            )
             retVal.append(copy.deepcopy(digits))
             if digits[current_digit] < (n - (k - current_digit)):
                 digits[current_digit] = digits[current_digit] + 1
             else:
-                while current_digit >= 0 and digits[current_digit] >= (n - (k - current_digit)):
+                while current_digit >= 0 and digits[current_digit] >= (
+                    n - (k - current_digit)
+                ):
                     current_digit -= 1
                 if current_digit >= 0:
                     digits[current_digit] = digits[current_digit] + 1
@@ -691,7 +801,10 @@ class CombinatoricsGenerator:
             print("combinations = %s" % retVal)
             print(
                 "#combinations = %i (expected = %i)"
-                % (len(retVal), self.factorial(n) / (self.factorial(k) * self.factorial(n - k)))
+                % (
+                    len(retVal),
+                    self.factorial(n) / (self.factorial(k) * self.factorial(n - k)),
+                )
             )
 
         return retVal
@@ -727,17 +840,25 @@ class HPSAlgo:
         #  Here input is cfg.builder
         if verbosity >= 1:
             print("signalCands:")
-            print(" minChargedHadronPt = %1.2f" % self.cfg.signalCands.minChargedHadronPt)
+            print(
+                " minChargedHadronPt = %1.2f" % self.cfg.signalCands.minChargedHadronPt
+            )
             print(" minElectronPt = %1.2f" % self.cfg.signalCands.minElectronPt)
             print(" minMuonPt = %1.2f" % self.cfg.signalCands.minMuonPt)
 
         if verbosity >= 1:
             print("isolationCands:")
-            print(" minChargedHadronPt = %1.2f" % self.cfg.isolationCands.minChargedHadronPt)
+            print(
+                " minChargedHadronPt = %1.2f"
+                % self.cfg.isolationCands.minChargedHadronPt
+            )
             print(" minElectronPt = %1.2f" % self.cfg.isolationCands.minElectronPt)
             print(" minGammaPt = %1.2f" % self.cfg.isolationCands.minGammaPt)
             print(" minMuonPt = %1.2f" % self.cfg.isolationCands.minMuonPt)
-            print(" minNeutralHadronPt = %1.2f" % self.cfg.isolationCands.minNeutralHadronPt)
+            print(
+                " minNeutralHadronPt = %1.2f"
+                % self.cfg.isolationCands.minNeutralHadronPt
+            )
 
         if verbosity >= 1:
             print("matchingConeSize = %1.2f" % self.cfg.matchingConeSize)
@@ -748,22 +869,38 @@ class HPSAlgo:
 
         if verbosity >= 1:
             print("targetedDecayModes:")
-            for decayMode in ["1Prong0Pi0", "1Prong1Pi0", "1Prong2Pi0", "3Prong0Pi0", "3Prong1Pi0"]:
+            for decayMode in [
+                "1Prong0Pi0",
+                "1Prong1Pi0",
+                "1Prong2Pi0",
+                "3Prong0Pi0",
+                "3Prong1Pi0",
+            ]:
                 if decayMode in self.cfg.decayModes.keys():
                     print(" %s:" % decayMode)
                     targetedDecayMode = self.cfg.decayModes[decayMode]
-                    print("  numChargedCands = %i" % targetedDecayMode["numChargedCands"])
+                    print(
+                        "  numChargedCands = %i" % targetedDecayMode["numChargedCands"]
+                    )
                     print("  numStrips = %i" % targetedDecayMode["numStrips"])
                     print(
                         "  tauMass: min = %1.2f, max = %1.2f"
-                        % (targetedDecayMode["minTauMass"], targetedDecayMode["maxTauMass"])
+                        % (
+                            targetedDecayMode["minTauMass"],
+                            targetedDecayMode["maxTauMass"],
+                        )
                     )
                     if targetedDecayMode["numStrips"] > 0:
                         print(
                             "  stripMass: min = %1.2f, max = %1.2f"
-                            % (targetedDecayMode["minStripMass"], targetedDecayMode["maxStripMass"])
+                            % (
+                                targetedDecayMode["minStripMass"],
+                                targetedDecayMode["maxStripMass"],
+                            )
                         )
-                    print("  maxChargedCands = %i" % targetedDecayMode["maxChargedCands"])
+                    print(
+                        "  maxChargedCands = %i" % targetedDecayMode["maxChargedCands"]
+                    )
                     print("  maxStrips = %i" % targetedDecayMode["maxStrips"])
 
         self.combinatorics = CombinatoricsGenerator(verbosity)
@@ -773,9 +910,12 @@ class HPSAlgo:
         signalCands = []
         for cand in cands:
             if (
-                    (cand.abs_pdgId == 11 and cand.pt > self.cfg.signalCands.minElectronPt)
-                    or (cand.abs_pdgId == 13 and cand.pt > self.cfg.signalCands.minMuonPt)
-                    or (cand.abs_pdgId == 211 and cand.pt > self.cfg.signalCands.minChargedHadronPt)
+                (cand.abs_pdgId == 11 and cand.pt > self.cfg.signalCands.minElectronPt)
+                or (cand.abs_pdgId == 13 and cand.pt > self.cfg.signalCands.minMuonPt)
+                or (
+                    cand.abs_pdgId == 211
+                    and cand.pt > self.cfg.signalCands.minChargedHadronPt
+                )
             ):
                 signalCands.append(cand)
         return signalCands
@@ -784,11 +924,25 @@ class HPSAlgo:
         isolationCands = []
         for cand in cands:
             if (
-                    (cand.abs_pdgId == 11 and cand.pt > self.cfg.isolationCands.minElectronPt)
-                    or (cand.abs_pdgId == 13 and cand.pt > self.cfg.isolationCands.minMuonPt)
-                    or (cand.abs_pdgId == 22 and cand.pt > self.cfg.isolationCands.minGammaPt)
-                    or (cand.abs_pdgId == 211 and cand.pt > self.cfg.isolationCands.minChargedHadronPt)
-                    or (cand.abs_pdgId == 130 and cand.pt > self.cfg.isolationCands.minNeutralHadronPt)
+                (
+                    cand.abs_pdgId == 11
+                    and cand.pt > self.cfg.isolationCands.minElectronPt
+                )
+                or (
+                    cand.abs_pdgId == 13 and cand.pt > self.cfg.isolationCands.minMuonPt
+                )
+                or (
+                    cand.abs_pdgId == 22
+                    and cand.pt > self.cfg.isolationCands.minGammaPt
+                )
+                or (
+                    cand.abs_pdgId == 211
+                    and cand.pt > self.cfg.isolationCands.minChargedHadronPt
+                )
+                or (
+                    cand.abs_pdgId == 130
+                    and cand.pt > self.cfg.isolationCands.minNeutralHadronPt
+                )
             ):
                 isolationCands.append(cand)
         return isolationCands
@@ -799,7 +953,9 @@ class HPSAlgo:
             isOverlap = False
             for cand in cands:
                 if cand.pdgId == cand_to_clean.pdgId and cand.q == cand_to_clean.q:
-                    dR = f.deltaR_thetaPhi(cand.theta, cand.phi, cand_to_clean.theta, cand_to_clean.phi)  # TODO
+                    dR = f.deltaR_thetaPhi(
+                        cand.theta, cand.phi, cand_to_clean.theta, cand_to_clean.phi
+                    )  # TODO
                     if dR < dRmatch:
                         isOverlap = True
                         break
@@ -812,7 +968,10 @@ class HPSAlgo:
         for strip in strips:
             cleanedCands = self.cleanCands(strip.cands, chargedCands)
             cleanedStrip = Strip(cleanedCands, strip.barcode)
-            if len(cleanedCands) > 0 and cleanedStrip.pt > self.cfg.StripAlgo.minStripPt:
+            if (
+                len(cleanedCands) > 0
+                and cleanedStrip.pt > self.cfg.StripAlgo.minStripPt
+            ):
                 cleanedStrips.append(cleanedStrip)
         return cleanedStrips
 
@@ -847,8 +1006,9 @@ class HPSAlgo:
                     cand.print()
 
         event_iso_cands = self.selectIsolationCands(event_iso_cands)
-        event_iso_cands = selectCandsByDeltaR(event_iso_cands, jet,
-                                              self.cfg.isolationConeSize + self.cfg.matchingConeSize)
+        event_iso_cands = selectCandsByDeltaR(
+            event_iso_cands, jet, self.cfg.isolationConeSize + self.cfg.matchingConeSize
+        )
         event_iso_cands = self.cleanCands(event_iso_cands, jet.constituents)
         if self.verbosity >= 2:
             print("#event_iso_cands = %i" % len(event_iso_cands))
@@ -862,7 +1022,11 @@ class HPSAlgo:
             if self.verbosity >= 4:
                 print(
                     "decayMode = %s: numChargedCands = %i, numStrips = %i"
-                    % (decayMode, cfgDecayMode["numChargedCands"], cfgDecayMode["numStrips"])
+                    % (
+                        decayMode,
+                        cfgDecayMode["numChargedCands"],
+                        cfgDecayMode["numStrips"],
+                    )
                 )
 
             decayMode_numChargedCands = cfgDecayMode["numChargedCands"]
@@ -883,7 +1047,8 @@ class HPSAlgo:
                 continue
 
             chargedCandCombos = self.combinatorics.generate(
-                decayMode_numChargedCands, min(len(signal_chargedCands), cfgDecayMode["maxChargedCands"])
+                decayMode_numChargedCands,
+                min(len(signal_chargedCands), cfgDecayMode["maxChargedCands"]),
             )
             if self.verbosity >= 4:
                 print("chargedCandCombos = %s" % chargedCandCombos)
@@ -897,7 +1062,10 @@ class HPSAlgo:
             for idxChargedCandCombo in range(numChargedCandCombos):
                 chargedCandCombo = chargedCandCombos[idxChargedCandCombo]
                 assert len(chargedCandCombo) == decayMode_numChargedCands
-                chargedCands = [signal_chargedCands[chargedCandCombo[idx]] for idx in range(decayMode_numChargedCands)]
+                chargedCands = [
+                    signal_chargedCands[chargedCandCombo[idx]]
+                    for idx in range(decayMode_numChargedCands)
+                ]
 
                 numStripCombos = len(stripCombos)
                 for idxStripCombo in range(max(1, numStripCombos)):
@@ -906,10 +1074,15 @@ class HPSAlgo:
                     if idxStripCombo < numStripCombos:
                         stripCombo = stripCombos[idxStripCombo]
                         assert len(stripCombo) == decayMode_numStrips
-                        strips = [selectedStrips[stripCombo[idx]] for idx in range(decayMode_numStrips)]
+                        strips = [
+                            selectedStrips[stripCombo[idx]]
+                            for idx in range(decayMode_numStrips)
+                        ]
                     if self.verbosity >= 4:
-                        print("Processing combination of chargedCands = %s & strips = %s" % (
-                        chargedCandCombo, stripCombo))
+                        print(
+                            "Processing combination of chargedCands = %s & strips = %s"
+                            % (chargedCandCombo, stripCombo)
+                        )
 
                     cleanedStrips = self.cleanStrips(strips, chargedCands)
                     if self.verbosity >= 4:
@@ -922,41 +1095,80 @@ class HPSAlgo:
                     tau_candidate = Tau(chargedCands, cleanedStrips, barcode)
                     tau_candidate.jet = jet
                     tau_candidate.decayMode = decayMode
-                    tau_candidate.signalConeSize = max(min(0.10, 3.0 / tau_candidate.pt), 0.05)
+                    tau_candidate.signalConeSize = max(
+                        min(0.10, 3.0 / tau_candidate.pt), 0.05
+                    )
                     passesSignalCone = True
                     for cand in tau_candidate.signal_chargedCands:
-                        if f.deltaR_thetaPhi(tau_candidate.theta, tau_candidate.phi, cand.theta,
-                                             cand.phi) > tau_candidate.signalConeSize:
+                        if (
+                            f.deltaR_thetaPhi(
+                                tau_candidate.theta,
+                                tau_candidate.phi,
+                                cand.theta,
+                                cand.phi,
+                            )
+                            > tau_candidate.signalConeSize
+                        ):
                             passesSignalCone = False
                             break
                     for strip in tau_candidate.signal_strips:
-                        if f.deltaR_thetaPhi(tau_candidate.theta, tau_candidate.phi, strip.theta,
-                                             strip.phi) > tau_candidate.signalConeSize:
+                        if (
+                            f.deltaR_thetaPhi(
+                                tau_candidate.theta,
+                                tau_candidate.phi,
+                                strip.theta,
+                                strip.phi,
+                            )
+                            > tau_candidate.signalConeSize
+                        ):
                             passesSignalCone = False
                             break
                     if (
-                            abs(round(tau_candidate.q)) == 1
-                            and f.deltaR_thetaPhi(tau_candidate.theta, tau_candidate.phi, tau_candidate.jet.theta,
-                                                  tau_candidate.jet.phi) < self.cfg.matchingConeSize
-                            and passesSignalCone
-                            and tau_candidate.mass > self.cfg.decayModes[decayMode]["minTauMass"]
-                            and tau_candidate.mass < self.cfg.decayModes[decayMode]["maxTauMass"]
+                        abs(round(tau_candidate.q)) == 1
+                        and f.deltaR_thetaPhi(
+                            tau_candidate.theta,
+                            tau_candidate.phi,
+                            tau_candidate.jet.theta,
+                            tau_candidate.jet.phi,
+                        )
+                        < self.cfg.matchingConeSize
+                        and passesSignalCone
+                        and tau_candidate.mass
+                        > self.cfg.decayModes[decayMode]["minTauMass"]
+                        and tau_candidate.mass
+                        < self.cfg.decayModes[decayMode]["maxTauMass"]
                     ):
-                        tau_iso_cands = selectCandsByDeltaR(jet_iso_cands, tau_candidate, self.cfg.isolationConeSize)
-                        tau_iso_cands = self.cleanCands(tau_iso_cands, tau_candidate.signal_cands)
+                        tau_iso_cands = selectCandsByDeltaR(
+                            jet_iso_cands, tau_candidate, self.cfg.isolationConeSize
+                        )
+                        tau_iso_cands = self.cleanCands(
+                            tau_iso_cands, tau_candidate.signal_cands
+                        )
                         tau_iso_cands.extend(event_iso_cands)
 
                         tau_candidate.iso_cands = tau_iso_cands
-                        tau_candidate.iso_chargedCands = selectCandsByPdgId(tau_iso_cands, [11, 13, 211])
-                        tau_candidate.iso_gammaCands = selectCandsByPdgId(tau_iso_cands, [22])
-                        tau_candidate.iso_neutralHadronCands = selectCandsByPdgId(tau_iso_cands, [130])
+                        tau_candidate.iso_chargedCands = selectCandsByPdgId(
+                            tau_iso_cands, [11, 13, 211]
+                        )
+                        tau_candidate.iso_gammaCands = selectCandsByPdgId(
+                            tau_iso_cands, [22]
+                        )
+                        tau_candidate.iso_neutralHadronCands = selectCandsByPdgId(
+                            tau_iso_cands, [130]
+                        )
                         # if self.metric == "eta-phi" or self.metric == "theta-phi":
                         #     tau_candidate.chargedIso_dR0p5 = comp_pt_sum(tau_candidate.iso_chargedCands)
                         #     tau_candidate.gammaIso_dR0p5 = comp_pt_sum(tau_candidate.iso_gammaCands)
                         #     tau_candidate.neutralHadronIso_dR0p5 = comp_pt_sum(tau_candidate.iso_neutralHadronCands)
-                        tau_candidate.chargedIso_dR0p5 = comp_pt_sum(tau_candidate.iso_chargedCands)
-                        tau_candidate.gammaIso_dR0p5 = comp_pt_sum(tau_candidate.iso_gammaCands)
-                        tau_candidate.neutralHadronIso_dR0p5 = comp_pt_sum(tau_candidate.iso_neutralHadronCands)
+                        tau_candidate.chargedIso_dR0p5 = comp_pt_sum(
+                            tau_candidate.iso_chargedCands
+                        )
+                        tau_candidate.gammaIso_dR0p5 = comp_pt_sum(
+                            tau_candidate.iso_gammaCands
+                        )
+                        tau_candidate.neutralHadronIso_dR0p5 = comp_pt_sum(
+                            tau_candidate.iso_neutralHadronCands
+                        )
                         # elif self.metric == "angle3d":
                         #     tau_candidate.chargedIso_dR0p5 = comp_p_sum(tau_candidate.iso_chargedCands)
                         #     tau_candidate.gammaIso_dR0p5 = comp_p_sum(tau_candidate.iso_gammaCands)
@@ -964,12 +1176,17 @@ class HPSAlgo:
                         # else:
                         #     raise RuntimeError("Invalid configuration parameter 'metric' = '%s' !!" % self.metric)
                         # CV: don't use neutral hadrons when computing the isolation of the tau
-                        tau_candidate.combinedIso_dR0p5 = tau_candidate.chargedIso_dR0p5 + tau_candidate.gammaIso_dR0p5
+                        tau_candidate.combinedIso_dR0p5 = (
+                            tau_candidate.chargedIso_dR0p5
+                            + tau_candidate.gammaIso_dR0p5
+                        )
 
                         # CV: constant alpha choosen such that idDiscr varies smoothly between 0 and 1
                         #     for typical values of the combined isolation pT-sum
                         alpha = 0.2
-                        tau_candidate.idDiscr = math.exp(-alpha * tau_candidate.combinedIso_dR0p5)
+                        tau_candidate.idDiscr = math.exp(
+                            -alpha * tau_candidate.combinedIso_dR0p5
+                        )
 
                         if self.verbosity >= 3:
                             tau_candidate.print()
@@ -980,22 +1197,46 @@ class HPSAlgo:
                             print("fails preselection:")
                             print(" q = %i" % round(tau_candidate.q))
                             print(
-                                " dR(tau,jet) = %1.2f" % f.deltaR_thetaPhi(tau_candidate.theta, tau_candidate.phi,
-                                                                           tau_candidate.jet.theta,
-                                                                           tau_candidate.jet.phi)
+                                " dR(tau,jet) = %1.2f"
+                                % f.deltaR_thetaPhi(
+                                    tau_candidate.theta,
+                                    tau_candidate.phi,
+                                    tau_candidate.jet.theta,
+                                    tau_candidate.jet.phi,
+                                )
                             )
-                            print(" signalConeSize = %1.2f" % tau_candidate.signalConeSize)
-                            for idx, cand in enumerate(tau_candidate.signal_chargedCands):
+                            print(
+                                " signalConeSize = %1.2f" % tau_candidate.signalConeSize
+                            )
+                            for idx, cand in enumerate(
+                                tau_candidate.signal_chargedCands
+                            ):
                                 print(
                                     " dR(tau,signal_chargedCand #%i) = %1.2f"
-                                    % (idx,
-                                       f.deltaR_thetaPhi(tau_candidate.theta, tau_candidate.phi, cand.theta, cand.phi))
+                                    % (
+                                        idx,
+                                        f.deltaR_thetaPhi(
+                                            tau_candidate.theta,
+                                            tau_candidate.phi,
+                                            cand.theta,
+                                            cand.phi,
+                                        ),
+                                    )
                                 )
-                            for idx, strip in enumerate(tau_candidate.signal_chargedCands):
+                            for idx, strip in enumerate(
+                                tau_candidate.signal_chargedCands
+                            ):
                                 print(
                                     " dR(tau,signal_strip #%i) = %1.2f"
-                                    % (idx, f.deltaR_thetaPhi(tau_candidate.theta, tau_candidate.phi, strip.theta,
-                                                              strip.phi))
+                                    % (
+                                        idx,
+                                        f.deltaR_thetaPhi(
+                                            tau_candidate.theta,
+                                            tau_candidate.phi,
+                                            strip.theta,
+                                            strip.phi,
+                                        ),
+                                    )
                                 )
                             print(" mass = %1.2f" % tau_candidate.mass)
 

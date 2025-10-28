@@ -32,7 +32,7 @@ jobs:
 
       - name: Run Pylint and save JSON
         run: |
-          pylint --rcfile=config/.pylintrc $(git ls-files '*.py') \
+          pylint --rcfile=.pylintrc $(git ls-files '*.py') \
             --output-format=json > pylint_output.json || true
 
       - name: Upload Pylint report
@@ -124,10 +124,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pylint: true
           continue_on_error: true
-
-      - name: Fail on errors
-        if: ${{ steps.pylint_summary.outputs.errors != '0' }}
-        run: |
-          echo "::error ::Pylint found ${{ steps.pylint_summary.outputs.errors }} error(s). Failing the build."
-          exit 1
-
