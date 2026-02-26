@@ -26,12 +26,12 @@ from enreg.tools.losses.initWeights import initWeights
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from enreg.tools.models.DeepSet import DeepSet
 from enreg.tools.models.LorentzNet import LorentzNet
-from enreg.tools.models.OmniParT import OmniParT
-from enreg.tools.models.OmniDeepSet import OmniDeepSet
+# from enreg.tools.models.OmniParT import OmniParT
+# from enreg.tools.models.OmniDeepSet import OmniDeepSet
 
 from enreg.tools.data_management.particleTransformer_dataset import load_row_groups, ParticleTransformerDataset
 
-from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression
+from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression, logTrainingProgress_p4
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
 
 
@@ -132,9 +132,18 @@ def train_loop(
         class_true_train = []
         class_pred_train = []
     elif kind == "jet_regression":
-        ratios = []
+        # ratios = []
+        pt_ratios = []
+        mass_ratios = []
+        eta_resolutions = []
+        phi_resolutions = []
     elif kind == "dm_multiclass":
         confusion_matrix = np.zeros((num_classes, num_classes), dtype=np.int64)
+    elif kind == "charge_classification":
+        accuracy_train = 0.0
+        accuracy_normalization_train = 0.0
+        class_true_train = []
+        class_pred_train = []
 
     weights_train = []
 
@@ -154,29 +163,33 @@ def train_loop(
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
-        if cfg.model_type == 'OmniParT':
-            if idx_epoch < cfg.models.OmniParT.num_rounds_frozen_backbone:
-                frost = 'freeze'
-            else:
-                frost = 'unfreeze'
-            model_inputs = model_inputs + (frost,)
-        if cfg.model_type == 'OmniDeepSet':
-            if idx_epoch < cfg.models.OmniDeepSet.num_rounds_frozen_backbone:
-                frost = 'freeze'
-            else:
-                frost = 'unfreeze'
-            model_inputs = model_inputs + (frost,)
+        # if cfg.model_type == 'OmniParT':
+        #     if idx_epoch < cfg.models.OmniParT.num_rounds_frozen_backbone:
+        #         frost = 'freeze'
+        #     else:
+        #         frost = 'unfreeze'
+        #     model_inputs = model_inputs + (frost,)
+        # if cfg.model_type == 'OmniDeepSet':
+        #     if idx_epoch < cfg.models.OmniDeepSet.num_rounds_frozen_backbone:
+        #         frost = 'freeze'
+        #     else:
+        #         frost = 'unfreeze'
+        #     model_inputs = model_inputs + (frost,)
 
         if kind == "jet_regression":
-            pred = model(*model_inputs).to(device=dev)[:, 0]
+            pred = model(*model_inputs).to(device=dev)
+            # pred = model(*model_inputs).to(device=dev)[:, 0]
         elif kind == "dm_multiclass":
             pred = model(*model_inputs).to(device=dev)
             y_for_loss = torch.nn.functional.one_hot(y_for_loss, num_classes).float()
         elif kind == "binary_classification":
             pred = model(*model_inputs).to(device=dev)
+        elif kind == "charge_classification":
+            pred = model(*model_inputs).to(device=dev)
         loss = loss_fn(pred, y_for_loss)
         if use_per_jet_weights:
-            loss = loss * weight
+            # loss = loss * weight
+            loss = loss * weight.unsqueeze(1)
         loss_train += loss.sum().item()
         normalization += torch.flatten(loss).size(dim=0)
 
@@ -187,16 +200,73 @@ def train_loop(
             class_true_train.extend(y_for_loss.detach().cpu().numpy())
             class_pred_train.extend(pred.detach().cpu().numpy())
         elif kind == "jet_regression":
-            pred_jet_pt = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+            # pred_jet_pt = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+            # gen_tau_pt = torch.squeeze(y["gen_tau_pt"], axis=-1)
+            # ratio = (pred_jet_pt / gen_tau_pt).numpy()
+            # ratio[np.isinf(ratio)] = 0
+            # ratio[np.isnan(ratio)] = 0
+            # ratios.extend(ratio)
+
+            pred = pred.detach().cpu()
+
+            pred_jet_pt = torch.exp(pred[:,0]) * torch.squeeze(y["reco_jet_pt"], axis=-1)
             gen_tau_pt = torch.squeeze(y["gen_tau_pt"], axis=-1)
-            ratio = (pred_jet_pt / gen_tau_pt).numpy()
-            ratio[np.isinf(ratio)] = 0
-            ratio[np.isnan(ratio)] = 0
-            ratios.extend(ratio)
+
+            pred_jet_eta = pred[:,2] + torch.squeeze(y["reco_jet_eta"], axis=-1)
+            gen_tau_eta = torch.squeeze(y["gen_tau_eta"], axis=-1)
+
+            pred_jet_mass = torch.exp(pred[:,3]) * torch.squeeze(y["reco_jet_mass"], axis=-1)
+            gen_tau_mass = torch.squeeze(y["gen_tau_mass"], axis=-1)
+
+            # pred_jet_phi = torch.atan2(pred[:,1], pred[:,2])
+            # gen_tau_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
+            # normalize sin/cos before computing phi
+            # norm = torch.sqrt(pred[:,1]**2 + pred[:,2]**2 + 1e-8)
+            # sin_phi = pred[:,1] / norm
+            # cos_phi = pred[:,2] / norm
+
+            # pred_jet_phi = torch.atan2(sin_phi, cos_phi)
+            # gen_tau_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
+            pred_jet_phi = pred[:,1] + torch.squeeze(y["reco_jet_phi"], axis=-1)
+            gen_tau_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
+
+            # calculate here the metrics such as ratios and resolutions etc
+            pt_ratio = (pred_jet_pt / gen_tau_pt).numpy()
+            mass_ratio = (pred_jet_mass / gen_tau_mass).numpy()
+            eta_res = (pred_jet_eta - gen_tau_eta).numpy()
+            phi_res = torch.atan2(
+                torch.sin(pred_jet_phi - gen_tau_phi),
+                torch.cos(pred_jet_phi - gen_tau_phi)
+            ).numpy()
+            
+            # ensure that values are ok and extend the empty lists below
+
+            # clean NaNs and infs
+            pt_ratio[np.isinf(pt_ratio)] = 0
+            pt_ratio[np.isnan(pt_ratio)] = 0
+            mass_ratio[np.isinf(mass_ratio)] = 0
+            mass_ratio[np.isnan(mass_ratio)] = 0
+            eta_res[np.isinf(eta_res)] = 0
+            eta_res[np.isnan(eta_res)] = 0
+            phi_res[np.isinf(phi_res)] = 0
+            phi_res[np.isnan(phi_res)] = 0
+
+            pt_ratios.extend(pt_ratio)
+            mass_ratios.extend(mass_ratio)
+            eta_resolutions.extend(eta_res)
+            phi_resolutions.extend(phi_res)
+
+                                    
         elif kind == "dm_multiclass":
             pred_dm = torch.argmax(pred.detach().cpu(), axis=-1).numpy()
             true_dm = torch.argmax(y_for_loss.cpu(), axis=-1).numpy()
             confusion_matrix += sklearn.metrics.confusion_matrix(true_dm, pred_dm, labels=range(num_classes))
+        elif kind == "charge_classification":
+            accuracy = (pred.argmax(dim=-1) == y_for_loss).type(torch.float32)
+            accuracy_train += accuracy.sum().item()
+            accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
+            class_true_train.extend(y_for_loss.detach().cpu().numpy())
+            class_pred_train.extend(pred.detach().cpu().numpy())
 
         weights_train.extend(weight.detach().cpu().numpy())
 
@@ -239,22 +309,44 @@ def train_loop(
             np.array(weights_train),
         )
     elif kind == "jet_regression":
-        mean_reco_gen_ratio = np.mean(np.abs(ratios))
-        median_reco_gen_ratio = np.median(np.abs(ratios))
-        stdev_reco_gen_ratio = np.std(np.abs(ratios))
-        iqr_reco_gen_ratio = np.quantile(np.abs(ratios), 0.75) - np.quantile(np.abs(ratios), 0.25)
-        logging_data = logTrainingProgress_regression(
+        # pt
+        pt_mean = np.mean(np.abs(pt_ratios))
+        pt_median = np.median(np.abs(pt_ratios))
+        pt_stdev = np.std(np.abs(pt_ratios))
+        pt_iqr = np.quantile(np.abs(pt_ratios), 0.75) - np.quantile(np.abs(pt_ratios), 0.25)
+        # mass
+        mass_mean = np.mean(np.abs(mass_ratios))
+        mass_median = np.median(np.abs(mass_ratios))
+        mass_stdev = np.std(np.abs(mass_ratios))
+        mass_iqr = np.quantile(np.abs(mass_ratios), 0.75) - np.quantile(np.abs(mass_ratios), 0.25)
+        # eta
+        eta_mean = np.mean(np.abs(eta_resolutions))
+        eta_stdev = np.std(np.abs(eta_resolutions))
+        # phi
+        phi_mean = np.mean(np.abs(phi_resolutions))
+        phi_stdev = np.std(np.abs(phi_resolutions))
+
+        logging_data = logTrainingProgress_p4(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
             loss_train,
-            mean_reco_gen_ratio,
-            median_reco_gen_ratio,
-            stdev_reco_gen_ratio,
-            iqr_reco_gen_ratio,
-            np.array(weights_train),
-            np.array(ratios)
+            pt_ratios,
+            mass_ratios,
+            pt_mean,
+            pt_median,
+            pt_stdev,
+            pt_iqr,
+            mass_mean,
+            mass_median,
+            mass_stdev,
+            mass_iqr,
+            eta_mean,
+            eta_stdev,
+            phi_mean,
+            phi_stdev
         )
+
     elif kind == "dm_multiclass":
         logging_data = logTrainingProgress_decaymode(
             tensorboard,
@@ -263,6 +355,18 @@ def train_loop(
             loss_train,
             np.array(weights_train),
             confusion_matrix
+        )
+    elif kind == "charge_classification":
+        accuracy_train /= accuracy_normalization_train
+        logging_data = logTrainingProgress(
+            tensorboard,
+            idx_epoch,
+            tensorboard_tag,
+            loss_train,
+            accuracy_train,
+            np.array(class_true_train),
+            np.array(class_pred_train),
+            np.array(weights_train),
         )
     tensorboard.flush()
     print("Loss = {}".format(loss_train))
@@ -296,7 +400,8 @@ def trainModel(cfg: DictConfig) -> None:
     kind = cfg.training_type
     model_config = cfg.models[cfg.model_type]
 
-    suffix = f"_{cfg.models.OmniParT.version}" if cfg.model_type == "OmniParT" else ""
+    suffix = ""
+    # suffix = f"_{cfg.models.OmniParT.version}" if cfg.model_type == "OmniParT" else ""
     model_output_path = os.path.join(
         cfg.output_dir,
         cfg.training_type,
@@ -385,26 +490,26 @@ def trainModel(cfg: DictConfig) -> None:
         ).to(device=dev)
     elif cfg.model_type == "DeepSet":
         model = DeepSet(input_dim, num_classes).to(device=dev)
-    elif cfg.model_type == "OmniParT":
-        model = OmniParT(
-            input_dim=input_dim,
-            cfg=cfg.models.OmniParT,
-            num_classes=num_classes,
-            num_layers=cfg.models.OmniParT.hyperparameters.num_layers,
-            embed_dims=cfg.models.OmniParT.hyperparameters.embed_dims,
-            use_pre_activation_pair=False,
-            for_inference=False,
-            use_amp=False,
-            metric='eta-phi',
-            verbosity=cfg.verbosity,
-        ).to(device=dev)
-    elif cfg.model_type == "OmniDeepSet":
-        model = OmniDeepSet(
-            input_dim=input_dim,
-            cfg=cfg.models.OmniParT,
-            num_classes=num_classes,
-            use_amp=False,
-        ).to(device=dev)
+    # elif cfg.model_type == "OmniParT":
+    #     model = OmniParT(
+    #         input_dim=input_dim,
+    #         cfg=cfg.models.OmniParT,
+    #         num_classes=num_classes,
+    #         num_layers=cfg.models.OmniParT.hyperparameters.num_layers,
+    #         embed_dims=cfg.models.OmniParT.hyperparameters.embed_dims,
+    #         use_pre_activation_pair=False,
+    #         for_inference=False,
+    #         use_amp=False,
+    #         metric='eta-phi',
+    #         verbosity=cfg.verbosity,
+    #     ).to(device=dev)
+    # elif cfg.model_type == "OmniDeepSet":
+    #     model = OmniDeepSet(
+    #         input_dim=input_dim,
+    #         cfg=cfg.models.OmniParT,
+    #         num_classes=num_classes,
+    #         use_amp=False,
+    #     ).to(device=dev)
 
     initWeights(model)
     print("Finished building model:")
@@ -446,8 +551,11 @@ def trainModel(cfg: DictConfig) -> None:
                 print("Using CrossEntropyLoss.")
                 loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
         elif kind == "jet_regression":
-            loss_fn = nn.HuberLoss(reduction='mean', delta=1.0)
+            # loss_fn = nn.HuberLoss(reduction='mean', delta=1.0)
+            loss_fn = nn.HuberLoss(reduction='none', delta=1.0)
         elif kind == "dm_multiclass":
+            loss_fn = nn.CrossEntropyLoss(reduction="none")
+        elif kind == "charge_classification":
             loss_fn = nn.CrossEntropyLoss(reduction="none")
 
         if cfg.training.fast_optimizer == "AdamW":
@@ -588,11 +696,51 @@ def trainModel(cfg: DictConfig) -> None:
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
                 model_inputs = unpack_data(X, dev, feature_set)
                 y_for_loss = y[kind]
+                # print("DEBUG kind =", kind)
                 with torch.no_grad():
                     if kind == "jet_regression":
-                        pred = model(*model_inputs)[:, 0]
-                        pred = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
-                        y_for_loss = torch.exp(y_for_loss.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        # pred = model(*model_inputs)[:, 0]
+                        # pred = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        # y_for_loss = torch.exp(y_for_loss.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        pred = model(*model_inputs)
+                        pred = pred.detach().cpu()
+                        y_for_loss = y_for_loss.detach().cpu()
+
+                        reco_pt = torch.squeeze(y["reco_jet_pt"], axis=-1)
+                        reco_mass = torch.squeeze(y["reco_jet_mass"], axis=-1)
+                        reco_eta = torch.squeeze(y["reco_jet_eta"], axis=-1)
+                        reco_phi = torch.squeeze(y["reco_jet_phi"], axis=-1)
+                        gen_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
+
+                        pred_jet_pt = torch.exp(pred[:, 0]) * reco_pt
+                        pt_true = torch.exp(y_for_loss[:, 0]) * reco_pt
+
+                        pred_jet_mass = torch.exp(pred[:, 3]) * reco_mass
+                        mass_true = torch.exp(y_for_loss[:, 3]) * reco_mass
+
+                        # # pred_jet_phi = torch.atan2(pred[:, 1], pred[:, 2])
+                        # # phi_true = torch.atan2(y_for_loss[:, 1], y_for_loss[:, 2])
+                        # # normalize prediction
+                        # norm_pred = torch.sqrt(pred[:,1]**2 + pred[:,2]**2 + 1e-8)
+                        # sin_pred = pred[:,1] / norm_pred
+                        # cos_pred = pred[:,2] / norm_pred
+                        # pred_jet_phi = torch.atan2(sin_pred, cos_pred)
+
+                        # # normalize target
+                        # norm_true = torch.sqrt(y_for_loss[:,1]**2 + y_for_loss[:,2]**2 + 1e-8)
+                        # sin_true = y_for_loss[:,1] / norm_true
+                        # cos_true = y_for_loss[:,2] / norm_true
+                        # phi_true = torch.atan2(sin_true, cos_true)
+
+                        pred_jet_eta = pred[:, 2] + reco_eta
+                        eta_true = y_for_loss[:, 2] + reco_eta
+
+                        pred_jet_phi = pred[:, 1] + reco_phi
+                        phi_true = y_for_loss[:, 1] + reco_phi
+
+                        pred = torch.stack([pred_jet_pt, pred_jet_eta, pred_jet_phi, pred_jet_mass], dim=1)
+                        y_for_loss = torch.stack([pt_true, eta_true, phi_true, mass_true], dim=1)
+
                     elif kind == "dm_multiclass":
                         pred = model(*model_inputs)
                         pred = torch.softmax(pred, axis=-1)
@@ -600,6 +748,11 @@ def trainModel(cfg: DictConfig) -> None:
                     elif kind == "binary_classification":
                         pred = model(*model_inputs)  # [:, 1]
                         pred = torch.softmax(pred, axis=-1)[:, 1]
+                    elif kind == "charge_classification":
+                        pred = model(*model_inputs)  # [:, 1]
+                        pred = torch.softmax(pred, axis=-1)[:, 1]
+                    else:
+                        raise RuntimeError(f"Unknown training kind: {kind}")
                 preds.extend(pred.detach().cpu().numpy())
                 targets.extend(y_for_loss.detach().cpu().numpy())
             preds = np.array(preds)

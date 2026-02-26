@@ -117,6 +117,76 @@ def logTrainingProgress_regression(
 
     return logging_data
 
+def logTrainingProgress_p4(
+        tensorboard,
+        idx_epoch,
+        mode,
+        loss,
+        pt_ratios,
+        mass_ratios,
+        pt_mean,
+        pt_median,
+        pt_stdev,
+        pt_iqr,
+        mass_mean,
+        mass_median,
+        mass_stdev,
+        mass_iqr,
+        eta_mean,
+        eta_stdev,
+        phi_mean,
+        phi_stdev
+):
+
+    tensorboard.add_scalar("Loss/%s" % mode, loss, global_step=idx_epoch)
+
+    tensorboard.add_scalar("pt mean ratio/%s" % mode, pt_mean, global_step=idx_epoch)
+    tensorboard.add_scalar("pt median ratio/%s" % mode, pt_median, global_step=idx_epoch)
+    tensorboard.add_scalar("pt stdev ratio/%s" % mode, pt_stdev, global_step=idx_epoch)
+    tensorboard.add_scalar("pt IQR ratio/%s" % mode, pt_iqr, global_step=idx_epoch)
+
+    tensorboard.add_scalar("Mass mean ratio/%s" % mode, mass_mean, global_step=idx_epoch)
+    tensorboard.add_scalar("Mass median ratio/%s" % mode, mass_median, global_step=idx_epoch)
+    tensorboard.add_scalar("Mass stdev ratio/%s" % mode, mass_stdev, global_step=idx_epoch)
+    tensorboard.add_scalar("Mass IQR ratio/%s" % mode, mass_iqr, global_step=idx_epoch)
+
+    tensorboard.add_scalar("Eta mean ratio/%s" % mode, eta_mean, global_step=idx_epoch)
+    tensorboard.add_scalar("Eta stdev ratio/%s" % mode, eta_stdev, global_step=idx_epoch)
+
+
+    tensorboard.add_scalar("Phi mean ratio/%s" % mode, phi_mean, global_step=idx_epoch)
+    tensorboard.add_scalar("Phi stdev ratio/%s" % mode, phi_stdev, global_step=idx_epoch)
+
+
+    fig_pt = plt.figure()
+    plt.hist(pt_ratios, bins=100, histtype="step")
+    plt.xlabel("pt_pred / pt_gen")
+    tensorboard.add_figure(f"pt_ratio/{mode}", fig_pt, idx_epoch)
+
+    fig_mass = plt.figure()
+    plt.hist(mass_ratios, bins=100, histtype="step")
+    plt.xlabel("mass_pred / mass_gen")
+    tensorboard.add_figure(f"mass_ratio/{mode}", fig_mass, idx_epoch)
+
+    logging_data = {
+        "loss": float(loss),
+        "pt_mean": float(pt_mean),
+        "pt_median": float(pt_median),
+        "pt_stdev": float(pt_stdev),
+        "pt_iqr": float(pt_iqr),
+        "mass_mean": float(mass_mean),
+        "mass_median": float(mass_median),
+        "mass_stdev": float(mass_stdev),
+        "mass_iqr": float(mass_iqr),
+        "eta_mean": float(eta_mean),
+        "eta_stdev": float(eta_stdev),
+        "phi_mean": float(phi_mean),
+        "phi_stdev": float(phi_stdev)
+    }
+
+    return logging_data
+
+
 
 def logTrainingProgress_decaymode(
         tensorboard,

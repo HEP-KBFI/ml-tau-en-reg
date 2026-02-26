@@ -9,13 +9,15 @@ comet:
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: training-outputs/240809_3var_kinematics
-# data_path: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
-data_path: /scratch/project_465001293/mltau-data/v2
+output_dir: training-outputs/260226_p4_regression_e3_dim4
+data_path: /scratch/persistent/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/260206
+# data_path: /scratch/project_465001293/mltau-data/v2
 
 #override this using command line args
-training_type: dm_multiclass
+# training_type: dm_multiclass
 # training_type: energy_regression
+# training_type: charge_classification
+training_type: jet_regression
 # training_type: binary_classification
 
 #override this using command line args
@@ -26,15 +28,15 @@ model_type: ParticleTransformer
 #these samples can be used for training and validation
 #qq is added back using command line flags for the binary classification task
 training_samples:
-    - z_train.parquet
+    - zz_train.parquet
     #  - zh_train.parquet
-    - qq_train.parquet
+    # - qq_train.parquet
 
 #these are never used in the training code, only for the final evaluation
 test_samples:
-    - z_test.parquet
+    - zz_test.parquet
     #  - zh_test.parquet
-    - qq_test.parquet
+    # - qq_test.parquet
 
 #the training sample will be further subdividied as follows to train and valid
 trainSize: 1e6
@@ -44,6 +46,7 @@ reco_jet_pt_cut:
     binary_classification: 20
     dm_multiclass: 5
     jet_regression: 0
+    charge_classification: 5
 
 dataset:
     trainSize: ${trainSize}
@@ -56,9 +59,9 @@ dataset:
     min_jet_pt: 0
     max_jet_pt: 1000
     feature_set:
-        # - cand_ParT_features
+        - cand_ParT_features
         # - cand_omni_kinematics
-        - cand_omni_features_wPID
+        # - cand_omni_features_wPID
     features:
         - cand_pt
         - cand_mass
@@ -74,12 +77,14 @@ dataset:
 #number of output classes for different tasks
 num_classes:
     dm_multiclass: 6 # Changed from 16
-    jet_regression: 1
+    jet_regression: 4 # Changed from 1
     binary_classification: 2
+    charge_classification: 2
 
 training:
     lr: 1e-4
-    num_epochs: 100
+    num_epochs: 10
+    # num_epochs: 100
     batch_size: 4096
     num_dataloader_workers: 2
     prefetch_factor: 100

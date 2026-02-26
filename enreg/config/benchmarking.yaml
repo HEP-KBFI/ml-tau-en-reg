@@ -1,6 +1,6 @@
-NTUPLE_BASE_DIR: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
+NTUPLE_BASE_DIR: /scratch/persistent/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/260206
 # NTUPLE_BASE_DIR: /scratch/project_465001293/mltau-data/v2
-PLOTS_OUTPUT_DIR: /home/laurits/test_master_evaluator
+PLOTS_OUTPUT_DIR: /home/norman/test_master_evaluator
 ALGORITHM_PLOT_STYLES:
     DeepSet:
         name: DeepSet
@@ -62,6 +62,7 @@ comparison_tasks:
     - jet_regression
     - binary_classification
     - dm_multiclass
+    - charge_classification
 
 defaults:
     - metrics: metrics

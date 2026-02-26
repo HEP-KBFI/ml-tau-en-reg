@@ -10,6 +10,12 @@ from omegaconf import DictConfig
 from enreg.tools.data_management import ntupelizer as nt
 from enreg.tools.data_management import ntupelizer_slurm_tools as nst
 
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 
 def save_record_to_file(data: ak.Record, output_path: str) -> None:
     print(f"Saving {len(data)} processed entries to {output_path}")
@@ -89,6 +95,39 @@ def prepare_inputs(cfg: DictConfig):
 
     # create executables for slurm
     nst.multipath_slurm_ntupelizer(all_input_paths, all_output_paths)
+
+# def prepare_inputs(cfg: DictConfig):
+#     all_input_paths = []
+#     all_output_paths = []
+
+#     for sample_name in cfg.samples_to_process:
+#         print(f"creating inputs for {sample_name}")
+#         output_dir = cfg.samples[sample_name].output_dir
+#         input_dir = cfg.samples[sample_name].input_dir
+#         os.makedirs(output_dir, exist_ok=True)
+#         input_wcp = os.path.join(input_dir, "root", "*.root")
+
+#         # get sorted list of root files, limit to n_files if specified
+#         input_paths = sorted(list(glob.glob(input_wcp))[:cfg.n_files])
+
+#         # compute number of chunks, at least 1
+#         n_chunks = max(1, len(input_paths) // cfg.files_per_job)
+#         input_path_chunks = list(np.array_split(input_paths, n_chunks))
+
+#         print(f"found {len(input_paths)} files, {len(input_path_chunks)} chunks")
+
+#         # generate corresponding output paths
+#         output_paths = [
+#             os.path.join(output_dir, os.path.basename(chunk[0]).replace(".root", ".parquet"))
+#             for chunk in input_path_chunks
+#         ]
+
+#         all_output_paths.extend(output_paths)
+#         all_input_paths.extend(input_path_chunks)
+
+#     # create slurm job scripts
+#     nst.multipath_slurm_ntupelizer(all_input_paths, all_output_paths)
+
 
 
 @hydra.main(config_path="../config", config_name="ntupelizer", version_base=None)

@@ -36,6 +36,7 @@ def load_sample(path):
         "gen_jet_p4s", #generated jet p4
         "gen_jet_tau_p4s", #tau visible momentum, excluding neutrino
         "gen_jet_tau_decaymode", #tau decay mode, as in 
+        "gen_jet_tau_charge",
     ]
     data = []
     for fi in tqdm.tqdm(list(glob.glob(path + "/*.parquet"))):
@@ -63,11 +64,11 @@ def split_train_test(data, split=0.8):
 if __name__ == "__main__":
 
     for sample_long, sample_short in [
-        ("p8_ee_qq_ecm380", "qq"),
-        ("p8_ee_ZH_Htautau_ecm380", "zh"),
-        ("p8_ee_Z_Ztautau_ecm380", "z")
+        ("p8_ee_qq_ecm365", "qq"),
+        ("p8_ee_ZH_Htautau_ecm365", "zh"),
+        ("p8_ee_ZZ_tautau_ecm365", "zz")
     ]:
-        data = load_sample("/local/laurits/ml-tau-en-reg/ntuples/20241001_drop_pyhepmc_FULL/" + sample_long)
+        data = load_sample("/local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/" + sample_long)
         data_train, data_test = split_train_test(data)
         ak.to_parquet(data_train, sample_short + "_train.parquet", row_group_size=1024)
         ak.to_parquet(data_test, sample_short + "_test.parquet", row_group_size=1024)
