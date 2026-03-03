@@ -134,28 +134,23 @@ class ParticleTransformerDataset(IterableDataset):
         # log_pt_ratio = torch.log(gen_tau_pt/reco_jet_pt)
         log_pt_ratio = torch.log((gen_tau_pt + eps) / (reco_jet_pt + eps))
 
-        reco_jet_phi = torch.tensor(ak.to_numpy(jet_p4s.phi), dtype=torch.float32)
-        gen_tau_phi = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.phi), dtype=torch.float32)
-        # gen_tau_sin_phi = torch.tensor(np.sin(ak.to_numpy(gen_jet_tau_p4s.phi)), dtype=torch.float32)
-        # gen_tau_cos_phi = torch.tensor(np.cos(ak.to_numpy(gen_jet_tau_p4s.phi)), dtype=torch.float32)
-        delta_phi = gen_tau_phi-reco_jet_phi
-        
         reco_jet_eta = torch.tensor(ak.to_numpy(jet_p4s.eta), dtype=torch.float32)
         gen_tau_eta = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.eta), dtype=torch.float32)
         delta_eta = gen_tau_eta-reco_jet_eta
 
+        reco_jet_phi = torch.tensor(ak.to_numpy(jet_p4s.phi), dtype=torch.float32)
+        gen_tau_phi = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.phi), dtype=torch.float32)
+        delta_phi = gen_tau_phi-reco_jet_phi
+
         reco_jet_mass = torch.tensor(ak.to_numpy(jet_p4s.mass), dtype=torch.float32)
         gen_tau_mass = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.mass), dtype=torch.float32)
-        # log_mass_ratio = torch.log(gen_tau_mass/reco_jet_mass)
         log_mass_ratio = torch.log((gen_tau_mass + eps) / (reco_jet_mass + eps))
 
 
-        # jet_regression_target = torch.log(gen_tau_pt/reco_jet_pt)
+        # jet_regression_target = torch.log(gen_tau_pt/reco_jet_pt) # Old pt ratio regression
         jet_regression_target = torch.stack(
             [
                 log_pt_ratio,
-                # gen_tau_sin_phi,
-                # gen_tau_cos_phi,
                 delta_phi,
                 delta_eta,
                 log_mass_ratio,
@@ -164,19 +159,13 @@ class ParticleTransformerDataset(IterableDataset):
         )
         jet_regression_target[torch.isnan(jet_regression_target)] = 0
         jet_regression_target[torch.isinf(jet_regression_target)] = 0
-        # print("target stats:",
-        #     torch.min(jet_regression_target),
-        #     torch.max(jet_regression_target))
 
         gen_jet_tau_decaymode = ak.to_numpy(data.gen_jet_tau_decaymode)
         reduced_gen_decay_modes = g.get_reduced_decaymodes(gen_jet_tau_decaymode)
         ohe_prepared_decay_modes = g.prepare_one_hot_encoding(reduced_gen_decay_modes)
-        gen_jet_tau_decaymode_reduced = torch.tensor(ohe_prepared_decay_modes).long()
-
-        gen_jet_tau_decaymode_exists = (torch.tensor(ak.to_numpy(data.gen_jet_tau_decaymode)) != -1).long()
-
-        # charge target
-        gen_tau_charge = torch.tensor(ak.to_numpy(data.gen_jet_tau_charge) != -1).long()
+        gen_jet_tau_decaymode_reduced = torch.tensor(ohe_prepared_decay_modes).long() # DM multiclass target
+        gen_jet_tau_decaymode_exists = (torch.tensor(ak.to_numpy(data.gen_jet_tau_decaymode)) != -1).long() # Binary classification target
+        gen_tau_charge = torch.tensor(ak.to_numpy(data.gen_jet_tau_charge) != -1).long() # charge target
 
         #X, y, w
         return (

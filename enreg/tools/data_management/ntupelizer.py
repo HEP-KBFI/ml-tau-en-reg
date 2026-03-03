@@ -55,16 +55,12 @@ def load_single_file_contents(
         tree = in_file[tree_path]
         print(f"ROOT file has {tree.num_entries} entries")
         arrays = tree.arrays(branches)
-        # print("arrays(tree.arrays(branches)) have fields: ", arrays.fields)
-        # print("branches are: ", branches)
 
         # add index links
         arrays["idx_reco"] = tree["_RecoMCTruthLink_from.index"].array()
         arrays["idx_mc"]   = tree["_RecoMCTruthLink_to.index"].array()
         arrays["idx_track"] = tree["_PandoraPFOs_tracks.index"].array()
         arrays["_MCParticles_daughters.index"] = tree["_MCParticles_daughters/_MCParticles_daughters.index"].array()
-
-        # print("final arrays have fields: ", arrays.fields)
 
         return arrays
 

@@ -26,8 +26,6 @@ from enreg.tools.losses.initWeights import initWeights
 from enreg.tools.models.ParticleTransformer import ParticleTransformer
 from enreg.tools.models.DeepSet import DeepSet
 from enreg.tools.models.LorentzNet import LorentzNet
-# from enreg.tools.models.OmniParT import OmniParT
-# from enreg.tools.models.OmniDeepSet import OmniDeepSet
 
 from enreg.tools.data_management.particleTransformer_dataset import load_row_groups, ParticleTransformerDataset
 
@@ -132,7 +130,7 @@ def train_loop(
         class_true_train = []
         class_pred_train = []
     elif kind == "jet_regression":
-        # ratios = []
+        # ratios = [] # Old pt ratio regression
         pt_ratios = []
         mass_ratios = []
         eta_resolutions = []
@@ -163,22 +161,9 @@ def train_loop(
         y_for_loss = y[kind].to(device=dev)
         weight = weight.to(device=dev)
 
-        # if cfg.model_type == 'OmniParT':
-        #     if idx_epoch < cfg.models.OmniParT.num_rounds_frozen_backbone:
-        #         frost = 'freeze'
-        #     else:
-        #         frost = 'unfreeze'
-        #     model_inputs = model_inputs + (frost,)
-        # if cfg.model_type == 'OmniDeepSet':
-        #     if idx_epoch < cfg.models.OmniDeepSet.num_rounds_frozen_backbone:
-        #         frost = 'freeze'
-        #     else:
-        #         frost = 'unfreeze'
-        #     model_inputs = model_inputs + (frost,)
-
         if kind == "jet_regression":
             pred = model(*model_inputs).to(device=dev)
-            # pred = model(*model_inputs).to(device=dev)[:, 0]
+            # pred = model(*model_inputs).to(device=dev)[:, 0] # Old pt ratio regression
         elif kind == "dm_multiclass":
             pred = model(*model_inputs).to(device=dev)
             y_for_loss = torch.nn.functional.one_hot(y_for_loss, num_classes).float()
@@ -188,7 +173,7 @@ def train_loop(
             pred = model(*model_inputs).to(device=dev)
         loss = loss_fn(pred, y_for_loss)
         if use_per_jet_weights:
-            # loss = loss * weight
+            # loss = loss * weight # Old pt ratio regression
             loss = loss * weight.unsqueeze(1)
         loss_train += loss.sum().item()
         normalization += torch.flatten(loss).size(dim=0)
@@ -199,7 +184,10 @@ def train_loop(
             accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
             class_true_train.extend(y_for_loss.detach().cpu().numpy())
             class_pred_train.extend(pred.detach().cpu().numpy())
+
         elif kind == "jet_regression":
+
+            # Old pt regression code:
             # pred_jet_pt = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
             # gen_tau_pt = torch.squeeze(y["gen_tau_pt"], axis=-1)
             # ratio = (pred_jet_pt / gen_tau_pt).numpy()
@@ -208,29 +196,20 @@ def train_loop(
             # ratios.extend(ratio)
 
             pred = pred.detach().cpu()
-
+            # pt
             pred_jet_pt = torch.exp(pred[:,0]) * torch.squeeze(y["reco_jet_pt"], axis=-1)
             gen_tau_pt = torch.squeeze(y["gen_tau_pt"], axis=-1)
-
+            # eta
             pred_jet_eta = pred[:,2] + torch.squeeze(y["reco_jet_eta"], axis=-1)
             gen_tau_eta = torch.squeeze(y["gen_tau_eta"], axis=-1)
-
+            # phi
+            pred_jet_phi = pred[:,1] + torch.squeeze(y["reco_jet_phi"], axis=-1)
+            gen_tau_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
+            # mass
             pred_jet_mass = torch.exp(pred[:,3]) * torch.squeeze(y["reco_jet_mass"], axis=-1)
             gen_tau_mass = torch.squeeze(y["gen_tau_mass"], axis=-1)
 
-            # pred_jet_phi = torch.atan2(pred[:,1], pred[:,2])
-            # gen_tau_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
-            # normalize sin/cos before computing phi
-            # norm = torch.sqrt(pred[:,1]**2 + pred[:,2]**2 + 1e-8)
-            # sin_phi = pred[:,1] / norm
-            # cos_phi = pred[:,2] / norm
-
-            # pred_jet_phi = torch.atan2(sin_phi, cos_phi)
-            # gen_tau_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
-            pred_jet_phi = pred[:,1] + torch.squeeze(y["reco_jet_phi"], axis=-1)
-            gen_tau_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
-
-            # calculate here the metrics such as ratios and resolutions etc
+            # calculate P4 component ratios and resolutions
             pt_ratio = (pred_jet_pt / gen_tau_pt).numpy()
             mass_ratio = (pred_jet_mass / gen_tau_mass).numpy()
             eta_res = (pred_jet_eta - gen_tau_eta).numpy()
@@ -238,8 +217,6 @@ def train_loop(
                 torch.sin(pred_jet_phi - gen_tau_phi),
                 torch.cos(pred_jet_phi - gen_tau_phi)
             ).numpy()
-            
-            # ensure that values are ok and extend the empty lists below
 
             # clean NaNs and infs
             pt_ratio[np.isinf(pt_ratio)] = 0
@@ -251,12 +228,12 @@ def train_loop(
             phi_res[np.isinf(phi_res)] = 0
             phi_res[np.isnan(phi_res)] = 0
 
+            # Add to empty lists defined above L134-137
             pt_ratios.extend(pt_ratio)
             mass_ratios.extend(mass_ratio)
             eta_resolutions.extend(eta_res)
             phi_resolutions.extend(phi_res)
-
-                                    
+                    
         elif kind == "dm_multiclass":
             pred_dm = torch.argmax(pred.detach().cpu(), axis=-1).numpy()
             true_dm = torch.argmax(y_for_loss.cpu(), axis=-1).numpy()
@@ -314,17 +291,17 @@ def train_loop(
         pt_median = np.median(np.abs(pt_ratios))
         pt_stdev = np.std(np.abs(pt_ratios))
         pt_iqr = np.quantile(np.abs(pt_ratios), 0.75) - np.quantile(np.abs(pt_ratios), 0.25)
-        # mass
-        mass_mean = np.mean(np.abs(mass_ratios))
-        mass_median = np.median(np.abs(mass_ratios))
-        mass_stdev = np.std(np.abs(mass_ratios))
-        mass_iqr = np.quantile(np.abs(mass_ratios), 0.75) - np.quantile(np.abs(mass_ratios), 0.25)
         # eta
         eta_mean = np.mean(np.abs(eta_resolutions))
         eta_stdev = np.std(np.abs(eta_resolutions))
         # phi
         phi_mean = np.mean(np.abs(phi_resolutions))
         phi_stdev = np.std(np.abs(phi_resolutions))
+        # mass
+        mass_mean = np.mean(np.abs(mass_ratios))
+        mass_median = np.median(np.abs(mass_ratios))
+        mass_stdev = np.std(np.abs(mass_ratios))
+        mass_iqr = np.quantile(np.abs(mass_ratios), 0.75) - np.quantile(np.abs(mass_ratios), 0.25)
 
         logging_data = logTrainingProgress_p4(
             tensorboard,
@@ -401,7 +378,6 @@ def trainModel(cfg: DictConfig) -> None:
     model_config = cfg.models[cfg.model_type]
 
     suffix = ""
-    # suffix = f"_{cfg.models.OmniParT.version}" if cfg.model_type == "OmniParT" else ""
     model_output_path = os.path.join(
         cfg.output_dir,
         cfg.training_type,
@@ -490,26 +466,6 @@ def trainModel(cfg: DictConfig) -> None:
         ).to(device=dev)
     elif cfg.model_type == "DeepSet":
         model = DeepSet(input_dim, num_classes).to(device=dev)
-    # elif cfg.model_type == "OmniParT":
-    #     model = OmniParT(
-    #         input_dim=input_dim,
-    #         cfg=cfg.models.OmniParT,
-    #         num_classes=num_classes,
-    #         num_layers=cfg.models.OmniParT.hyperparameters.num_layers,
-    #         embed_dims=cfg.models.OmniParT.hyperparameters.embed_dims,
-    #         use_pre_activation_pair=False,
-    #         for_inference=False,
-    #         use_amp=False,
-    #         metric='eta-phi',
-    #         verbosity=cfg.verbosity,
-    #     ).to(device=dev)
-    # elif cfg.model_type == "OmniDeepSet":
-    #     model = OmniDeepSet(
-    #         input_dim=input_dim,
-    #         cfg=cfg.models.OmniParT,
-    #         num_classes=num_classes,
-    #         use_amp=False,
-    #     ).to(device=dev)
 
     initWeights(model)
     print("Finished building model:")
@@ -551,7 +507,7 @@ def trainModel(cfg: DictConfig) -> None:
                 print("Using CrossEntropyLoss.")
                 loss_fn = nn.CrossEntropyLoss(weight=classweight_tensor, reduction="none")
         elif kind == "jet_regression":
-            # loss_fn = nn.HuberLoss(reduction='mean', delta=1.0)
+            # loss_fn = nn.HuberLoss(reduction='mean', delta=1.0) # Old pt ratio regression
             loss_fn = nn.HuberLoss(reduction='none', delta=1.0)
         elif kind == "dm_multiclass":
             loss_fn = nn.CrossEntropyLoss(reduction="none")
@@ -696,9 +652,9 @@ def trainModel(cfg: DictConfig) -> None:
             for (X, y, weight) in tqdm.tqdm(dataloader_full, total=len(dataloader_full)):
                 model_inputs = unpack_data(X, dev, feature_set)
                 y_for_loss = y[kind]
-                # print("DEBUG kind =", kind)
                 with torch.no_grad():
                     if kind == "jet_regression":
+                        # Old pt regression code
                         # pred = model(*model_inputs)[:, 0]
                         # pred = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
                         # y_for_loss = torch.exp(y_for_loss.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
@@ -714,29 +670,12 @@ def trainModel(cfg: DictConfig) -> None:
 
                         pred_jet_pt = torch.exp(pred[:, 0]) * reco_pt
                         pt_true = torch.exp(y_for_loss[:, 0]) * reco_pt
-
-                        pred_jet_mass = torch.exp(pred[:, 3]) * reco_mass
-                        mass_true = torch.exp(y_for_loss[:, 3]) * reco_mass
-
-                        # # pred_jet_phi = torch.atan2(pred[:, 1], pred[:, 2])
-                        # # phi_true = torch.atan2(y_for_loss[:, 1], y_for_loss[:, 2])
-                        # # normalize prediction
-                        # norm_pred = torch.sqrt(pred[:,1]**2 + pred[:,2]**2 + 1e-8)
-                        # sin_pred = pred[:,1] / norm_pred
-                        # cos_pred = pred[:,2] / norm_pred
-                        # pred_jet_phi = torch.atan2(sin_pred, cos_pred)
-
-                        # # normalize target
-                        # norm_true = torch.sqrt(y_for_loss[:,1]**2 + y_for_loss[:,2]**2 + 1e-8)
-                        # sin_true = y_for_loss[:,1] / norm_true
-                        # cos_true = y_for_loss[:,2] / norm_true
-                        # phi_true = torch.atan2(sin_true, cos_true)
-
                         pred_jet_eta = pred[:, 2] + reco_eta
                         eta_true = y_for_loss[:, 2] + reco_eta
-
                         pred_jet_phi = pred[:, 1] + reco_phi
                         phi_true = y_for_loss[:, 1] + reco_phi
+                        pred_jet_mass = torch.exp(pred[:, 3]) * reco_mass
+                        mass_true = torch.exp(y_for_loss[:, 3]) * reco_mass
 
                         pred = torch.stack([pred_jet_pt, pred_jet_eta, pred_jet_phi, pred_jet_mass], dim=1)
                         y_for_loss = torch.stack([pt_true, eta_true, phi_true, mass_true], dim=1)

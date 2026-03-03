@@ -9,9 +9,9 @@ comet:
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: training-outputs/260226_p4_regression_e3_dim4
+output_dir: training-outputs/260226_p4_regression_e100_dim4
 data_path: /scratch/persistent/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/260206
-# data_path: /scratch/project_465001293/mltau-data/v2
+# data_path: /scratch/project_465001293/mltau-data/v2 # This is LUMI?
 
 #override this using command line args
 # training_type: dm_multiclass
@@ -77,14 +77,13 @@ dataset:
 #number of output classes for different tasks
 num_classes:
     dm_multiclass: 6 # Changed from 16
-    jet_regression: 4 # Changed from 1
+    jet_regression: 4 # Changed from 1 (It used to be just [log(GenTau_pt/RecoJet_pt]), now [pt ratio, delta eta, delta phi, mass ratio]
     binary_classification: 2
     charge_classification: 2
 
 training:
     lr: 1e-4
-    num_epochs: 10
-    # num_epochs: 100
+    num_epochs: 100
     batch_size: 4096
     num_dataloader_workers: 2
     prefetch_factor: 100

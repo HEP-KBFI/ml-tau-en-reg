@@ -117,6 +117,7 @@ def logTrainingProgress_regression(
 
     return logging_data
 
+# Added new logging for the full P4 - not yet tested, might be nonsense
 def logTrainingProgress_p4(
         tensorboard,
         idx_epoch,
