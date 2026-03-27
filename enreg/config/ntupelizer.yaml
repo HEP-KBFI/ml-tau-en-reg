@@ -87,36 +87,36 @@ branches:
 
 samples_to_process:
 # Comment out the ones you don't wish to process
-# 365 GeV running mode (ttbar threshold)
-  - p8_ee_ZH_Htautau_ecm365
-  - p8_ee_ZZ_tautau_ecm365
-  - p8_ee_qq_ecm365
+# # 365 GeV running mode (ttbar threshold)
+#   - p8_ee_ZH_Htautau_ecm365
+#   - p8_ee_ZZ_tautau_ecm365
+#   - p8_ee_qq_ecm365
 # 91 GeV running mode (Z pole)
-  - p8_ee_Z_tautau_ecm91
+  # - p8_ee_Z_tautau_ecm91
   - p8_ee_Z_qq_ecm91
 samples:
 # Comment out the ones you don't wish to process
-# 365 GeV running mode (ttbar threshold)
-  p8_ee_ZH_Htautau_ecm365:
-    input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_ZH_Htautau_ecm365/
-    output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_ZH_Htautau_ecm365/
-    is_signal: True
-  p8_ee_ZZ_tautau_ecm365:
-    input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_ZZ_tautau_ecm365/
-    output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_ZZ_tautau_ecm365/
-    is_signal: True
-  p8_ee_qq_ecm365:
-    input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_qq_ecm365/
-    output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_qq_ecm365/
-    is_signal: False
+# # 365 GeV running mode (ttbar threshold)
+#   p8_ee_ZH_Htautau_ecm365:
+#     input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_ZH_Htautau_ecm365/
+#     output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_ZH_Htautau_ecm365/
+#     is_signal: True
+#   p8_ee_ZZ_tautau_ecm365:
+#     input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_ZZ_tautau_ecm365/
+#     output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_ZZ_tautau_ecm365/
+#     is_signal: True
+#   p8_ee_qq_ecm365:
+#     input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_qq_ecm365/
+#     output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_qq_ecm365/
+#     is_signal: False
 # 91 GeV running mode (Z pole)
-  p8_ee_Z_tautau_ecm91:
-    input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_Z_tautau_ecm91/
-    output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_Z_tautau_ecm91/
-    is_signal: True
+  # p8_ee_Z_tautau_ecm91:
+  #   input_dir: /local/joosep/mlpf/cld/v1.2.5_key4hep_2025-05-29/gen/p8_ee_Z_tautau_ecm91/
+  #   output_dir: /local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/p8_ee_Z_tautau_ecm91/
+  #   is_signal: True
   p8_ee_Z_qq_ecm91:
-    input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_Z_qq_ecm91/
-    output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_Z_qq_ecm91/
+    input_dir: /local/joosep/mlpf/cld/v1.2.5_key4hep_2025-05-29/gen/p8_ee_Z_qq_ecm91/
+    output_dir: /local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/p8_ee_Z_qq_ecm91/
     is_signal: False
 
 # validation:

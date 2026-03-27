@@ -31,6 +31,7 @@ from enreg.tools.data_management.particleTransformer_dataset import load_row_gro
 
 from enreg.tools.models.logTrainingProgress import logTrainingProgress, logTrainingProgress_regression, logTrainingProgress_p4
 from enreg.tools.models.logTrainingProgress import logTrainingProgress_decaymode
+from enreg.tools.models.logTrainingProgress import logTrainingProgress_charge
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -38,6 +39,49 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(o, np.ndarray):
             return o.tolist()
         return super().default(o)
+
+
+def is_history_scalar(value):
+    return np.isscalar(value) or (isinstance(value, np.ndarray) and value.ndim == 0)
+
+
+def get_regression_components(cfg):
+    return tuple(cfg.dataset.regression_components)
+
+
+def get_regression_index_map(regression_components):
+    return {name: idx for idx, name in enumerate(regression_components)}
+
+
+def reconstruct_full_p4(pred, y, regression_index_map):
+    reco_pt = torch.squeeze(y["reco_jet_pt"], axis=-1)
+    reco_eta = torch.squeeze(y["reco_jet_eta"], axis=-1)
+    reco_phi = torch.squeeze(y["reco_jet_phi"], axis=-1)
+    reco_mass = torch.squeeze(y["reco_jet_mass"], axis=-1)
+
+    pred_jet_pt = reco_pt
+    pred_jet_eta = reco_eta
+    pred_jet_phi = reco_phi
+    pred_jet_mass = reco_mass
+
+    if "log_pt" in regression_index_map:
+        pred_jet_pt = torch.exp(pred[:, regression_index_map["log_pt"]]) * reco_pt
+    if "delta_eta" in regression_index_map:
+        pred_jet_eta = pred[:, regression_index_map["delta_eta"]] + reco_eta
+    if "delta_phi" in regression_index_map:
+        pred_jet_phi = pred[:, regression_index_map["delta_phi"]] + reco_phi
+    elif "sin_delta_phi" in regression_index_map and "cos_delta_phi" in regression_index_map:
+        pred_delta_phi = torch.atan2(
+            pred[:, regression_index_map["sin_delta_phi"]],
+            pred[:, regression_index_map["cos_delta_phi"]],
+        )
+        pred_jet_phi = pred_delta_phi + reco_phi
+    if "log_mass" in regression_index_map:
+        pred_jet_mass = torch.exp(pred[:, regression_index_map["log_mass"]]) * reco_mass
+
+    pred_jet_phi = torch.atan2(torch.sin(pred_jet_phi), torch.cos(pred_jet_phi))
+
+    return pred_jet_pt, pred_jet_eta, pred_jet_phi, pred_jet_mass
 
 
 def unpack_data(X, dev, feature_set):
@@ -110,11 +154,15 @@ def train_loop(
         tensorboard,
         feature_set,
         num_classes,
+        diagnostics_output_dir,
         kind="jet_regression",
         train=True,
         use_comet=True,
         experiment=None
 ):
+    regression_component_names = get_regression_components(cfg)
+    regression_index_map = get_regression_index_map(regression_component_names)
+
     if train:
         print("::::: TRAIN LOOP :::::")
     else:
@@ -130,11 +178,13 @@ def train_loop(
         class_true_train = []
         class_pred_train = []
     elif kind == "jet_regression":
-        # ratios = [] # Old pt ratio regression
-        pt_ratios = []
-        mass_ratios = []
-        eta_resolutions = []
-        phi_resolutions = []
+        pt_responses = []
+        mass_responses = []
+        eta_residuals = []
+        phi_residuals = []
+        gen_tau_pts = []
+        component_loss_sums = np.zeros(len(regression_component_names), dtype=np.float64)
+        component_normalization = 0.0
     elif kind == "dm_multiclass":
         confusion_matrix = np.zeros((num_classes, num_classes), dtype=np.int64)
     elif kind == "charge_classification":
@@ -142,6 +192,8 @@ def train_loop(
         accuracy_normalization_train = 0.0
         class_true_train = []
         class_pred_train = []
+        gen_tau_pts = []
+        gen_tau_etas = []
 
     weights_train = []
 
@@ -177,6 +229,9 @@ def train_loop(
             loss = loss * weight.unsqueeze(1)
         loss_train += loss.sum().item()
         normalization += torch.flatten(loss).size(dim=0)
+        if kind == "jet_regression":
+            component_loss_sums += loss.detach().sum(dim=0).cpu().numpy()
+            component_normalization += loss.size(dim=0)
 
         if kind == "binary_classification":
             accuracy = (pred.argmax(dim=-1) == y_for_loss).type(torch.float32)
@@ -196,22 +251,15 @@ def train_loop(
             # ratios.extend(ratio)
 
             pred = pred.detach().cpu()
-            # pt
-            pred_jet_pt = torch.exp(pred[:,0]) * torch.squeeze(y["reco_jet_pt"], axis=-1)
+            pred_jet_pt, pred_jet_eta, pred_jet_phi, pred_jet_mass = reconstruct_full_p4(pred, y, regression_index_map)
             gen_tau_pt = torch.squeeze(y["gen_tau_pt"], axis=-1)
-            # eta
-            pred_jet_eta = pred[:,2] + torch.squeeze(y["reco_jet_eta"], axis=-1)
             gen_tau_eta = torch.squeeze(y["gen_tau_eta"], axis=-1)
-            # phi
-            pred_jet_phi = pred[:,1] + torch.squeeze(y["reco_jet_phi"], axis=-1)
             gen_tau_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
-            # mass
-            pred_jet_mass = torch.exp(pred[:,3]) * torch.squeeze(y["reco_jet_mass"], axis=-1)
             gen_tau_mass = torch.squeeze(y["gen_tau_mass"], axis=-1)
 
             # calculate P4 component ratios and resolutions
-            pt_ratio = (pred_jet_pt / gen_tau_pt).numpy()
-            mass_ratio = (pred_jet_mass / gen_tau_mass).numpy()
+            pt_response = (pred_jet_pt / gen_tau_pt).numpy()
+            mass_response = (pred_jet_mass / gen_tau_mass).numpy()
             eta_res = (pred_jet_eta - gen_tau_eta).numpy()
             phi_res = torch.atan2(
                 torch.sin(pred_jet_phi - gen_tau_phi),
@@ -219,20 +267,20 @@ def train_loop(
             ).numpy()
 
             # clean NaNs and infs
-            pt_ratio[np.isinf(pt_ratio)] = 0
-            pt_ratio[np.isnan(pt_ratio)] = 0
-            mass_ratio[np.isinf(mass_ratio)] = 0
-            mass_ratio[np.isnan(mass_ratio)] = 0
+            pt_response[np.isinf(pt_response)] = 0
+            pt_response[np.isnan(pt_response)] = 0
+            mass_response[np.isinf(mass_response)] = 0
+            mass_response[np.isnan(mass_response)] = 0
             eta_res[np.isinf(eta_res)] = 0
             eta_res[np.isnan(eta_res)] = 0
             phi_res[np.isinf(phi_res)] = 0
             phi_res[np.isnan(phi_res)] = 0
 
-            # Add to empty lists defined above L134-137
-            pt_ratios.extend(pt_ratio)
-            mass_ratios.extend(mass_ratio)
-            eta_resolutions.extend(eta_res)
-            phi_resolutions.extend(phi_res)
+            pt_responses.extend(pt_response)
+            mass_responses.extend(mass_response)
+            eta_residuals.extend(eta_res)
+            phi_residuals.extend(phi_res)
+            gen_tau_pts.extend(gen_tau_pt.numpy())
                     
         elif kind == "dm_multiclass":
             pred_dm = torch.argmax(pred.detach().cpu(), axis=-1).numpy()
@@ -244,6 +292,8 @@ def train_loop(
             accuracy_normalization_train += torch.flatten(accuracy).size(dim=0)
             class_true_train.extend(y_for_loss.detach().cpu().numpy())
             class_pred_train.extend(pred.detach().cpu().numpy())
+            gen_tau_pts.extend(torch.squeeze(y["gen_tau_pt"], axis=-1).detach().cpu().numpy())
+            gen_tau_etas.extend(torch.squeeze(y["gen_tau_eta"], axis=-1).detach().cpu().numpy())
 
         weights_train.extend(weight.detach().cpu().numpy())
 
@@ -255,9 +305,22 @@ def train_loop(
             lr_scheduler.step()
 
     loss_train /= normalization
+    component_losses = None
+    if kind == "jet_regression":
+        component_losses = {
+            component_name: float(component_loss_sums[idx] / component_normalization)
+            for idx, component_name in enumerate(regression_component_names)
+        }
     if use_comet:
         if train:
             experiment.log_metric(name="loss_train", value=loss_train, step=idx_epoch)
+            if kind == "jet_regression":
+                for component_name, component_loss in component_losses.items():
+                    experiment.log_metric(
+                        name="{}_loss_train".format(component_name),
+                        value=component_loss,
+                        step=idx_epoch
+                    )
             if kind == "dm_multiclass":
                 experiment.log_confusion_matrix(
                     y_true=None,
@@ -272,6 +335,13 @@ def train_loop(
 
         else:
             experiment.log_metric(name="loss_validation", value=loss_train, step=idx_epoch)
+            if kind == "jet_regression":
+                for component_name, component_loss in component_losses.items():
+                    experiment.log_metric(
+                        name="{}_loss_validation".format(component_name),
+                        value=component_loss,
+                        step=idx_epoch
+                    )
 
     if kind == "binary_classification":
         accuracy_train /= accuracy_normalization_train
@@ -286,43 +356,33 @@ def train_loop(
             np.array(weights_train),
         )
     elif kind == "jet_regression":
-        # pt
-        pt_mean = np.mean(np.abs(pt_ratios))
-        pt_median = np.median(np.abs(pt_ratios))
-        pt_stdev = np.std(np.abs(pt_ratios))
-        pt_iqr = np.quantile(np.abs(pt_ratios), 0.75) - np.quantile(np.abs(pt_ratios), 0.25)
-        # eta
-        eta_mean = np.mean(np.abs(eta_resolutions))
-        eta_stdev = np.std(np.abs(eta_resolutions))
-        # phi
-        phi_mean = np.mean(np.abs(phi_resolutions))
-        phi_stdev = np.std(np.abs(phi_resolutions))
-        # mass
-        mass_mean = np.mean(np.abs(mass_ratios))
-        mass_median = np.median(np.abs(mass_ratios))
-        mass_stdev = np.std(np.abs(mass_ratios))
-        mass_iqr = np.quantile(np.abs(mass_ratios), 0.75) - np.quantile(np.abs(mass_ratios), 0.25)
-
+        pt_responses = np.array(pt_responses)
+        mass_responses = np.array(mass_responses)
+        eta_residuals = np.array(eta_residuals)
+        phi_residuals = np.array(phi_residuals)
+        gen_tau_pts = np.array(gen_tau_pts)
         logging_data = logTrainingProgress_p4(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
             loss_train,
-            pt_ratios,
-            mass_ratios,
-            pt_mean,
-            pt_median,
-            pt_stdev,
-            pt_iqr,
-            mass_mean,
-            mass_median,
-            mass_stdev,
-            mass_iqr,
-            eta_mean,
-            eta_stdev,
-            phi_mean,
-            phi_stdev
+            component_losses,
+            pt_responses,
+            mass_responses,
+            eta_residuals,
+            phi_residuals,
+            gen_tau_pts,
+            cfg.jet_regression_plots.pt_bins,
+            output_dir=diagnostics_output_dir,
         )
+        if use_comet:
+            for metric_name, metric_value in logging_data.items():
+                if metric_name == "loss" or metric_name.startswith("loss_"):
+                    continue
+                if isinstance(metric_value, (list, np.ndarray)):
+                    continue
+                metric_suffix = "train" if train else "validation"
+                experiment.log_metric(name=f"{metric_name}_{metric_suffix}", value=metric_value, step=idx_epoch)
 
     elif kind == "dm_multiclass":
         logging_data = logTrainingProgress_decaymode(
@@ -335,7 +395,7 @@ def train_loop(
         )
     elif kind == "charge_classification":
         accuracy_train /= accuracy_normalization_train
-        logging_data = logTrainingProgress(
+        logging_data = logTrainingProgress_charge(
             tensorboard,
             idx_epoch,
             tensorboard_tag,
@@ -344,6 +404,11 @@ def train_loop(
             np.array(class_true_train),
             np.array(class_pred_train),
             np.array(weights_train),
+            np.array(gen_tau_pts),
+            np.array(gen_tau_etas),
+            cfg.charge_classification_plots.pt_bins,
+            cfg.charge_classification_plots.eta_bins,
+            output_dir=diagnostics_output_dir,
         )
     tensorboard.flush()
     print("Loss = {}".format(loss_train))
@@ -376,8 +441,11 @@ def trainModel(cfg: DictConfig) -> None:
 
     kind = cfg.training_type
     model_config = cfg.models[cfg.model_type]
+    regression_components = get_regression_components(cfg)
 
     suffix = ""
+    if kind == "jet_regression":
+        suffix = "__" + "_".join(regression_components)
     model_output_path = os.path.join(
         cfg.output_dir,
         cfg.training_type,
@@ -442,6 +510,8 @@ def trainModel(cfg: DictConfig) -> None:
         input_dim += 10
 
     num_classes = cfg.num_classes[kind]
+    if kind == "jet_regression":
+        num_classes = len(regression_components)
     if cfg.model_type == "ParticleTransformer":
         model = ParticleTransformer(
             input_dim=input_dim,
@@ -541,6 +611,7 @@ def trainModel(cfg: DictConfig) -> None:
         print("Starting training...")
         print(" current time:", datetime.datetime.now())
         tensorboard = SummaryWriter(os.path.join(model_output_path, "tensorboard_logs"))
+        diagnostics_output_dir = os.path.join(model_output_path, "epoch_diagnostics")
         min_loss_validation = -1.0
         # early_stopper = EarlyStopper(patience=10)
         for idx_epoch in range(cfg.training.num_epochs):
@@ -560,6 +631,7 @@ def trainModel(cfg: DictConfig) -> None:
                 tensorboard,
                 feature_set,
                 num_classes,
+                diagnostics_output_dir,
                 kind=kind,
                 use_comet=use_comet,
                 experiment=experiment
@@ -581,6 +653,7 @@ def trainModel(cfg: DictConfig) -> None:
                     tensorboard,
                     feature_set,
                     num_classes,
+                    diagnostics_output_dir,
                     kind=kind,
                     train=False,
                     use_comet=use_comet,
@@ -594,9 +667,11 @@ def trainModel(cfg: DictConfig) -> None:
 
             new_history_data = {}
             for key, value in val_logging_data.items():
-                new_history_data[key + "_validation"] = value
+                if is_history_scalar(value):
+                    new_history_data[key + "_validation"] = value
             for key, value in train_logging_data.items():
-                new_history_data[key + "_train"] = value
+                if is_history_scalar(value):
+                    new_history_data[key + "_train"] = value
 
             history_data_path = os.path.join(model_output_path, "history.json")
             if os.path.exists(history_data_path):
@@ -654,29 +729,14 @@ def trainModel(cfg: DictConfig) -> None:
                 y_for_loss = y[kind]
                 with torch.no_grad():
                     if kind == "jet_regression":
-                        # Old pt regression code
-                        # pred = model(*model_inputs)[:, 0]
-                        # pred = torch.exp(pred.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
-                        # y_for_loss = torch.exp(y_for_loss.detach().cpu()) * torch.squeeze(y["reco_jet_pt"], axis=-1)
                         pred = model(*model_inputs)
                         pred = pred.detach().cpu()
-                        y_for_loss = y_for_loss.detach().cpu()
-
-                        reco_pt = torch.squeeze(y["reco_jet_pt"], axis=-1)
-                        reco_mass = torch.squeeze(y["reco_jet_mass"], axis=-1)
-                        reco_eta = torch.squeeze(y["reco_jet_eta"], axis=-1)
-                        reco_phi = torch.squeeze(y["reco_jet_phi"], axis=-1)
-                        gen_phi = torch.squeeze(y["gen_tau_phi"], axis=-1)
-
-                        pred_jet_pt = torch.exp(pred[:, 0]) * reco_pt
-                        pt_true = torch.exp(y_for_loss[:, 0]) * reco_pt
-                        pred_jet_eta = pred[:, 2] + reco_eta
-                        eta_true = y_for_loss[:, 2] + reco_eta
-                        pred_jet_phi = pred[:, 1] + reco_phi
-                        phi_true = y_for_loss[:, 1] + reco_phi
-                        pred_jet_mass = torch.exp(pred[:, 3]) * reco_mass
-                        mass_true = torch.exp(y_for_loss[:, 3]) * reco_mass
-
+                        regression_index_map = get_regression_index_map(regression_components)
+                        pred_jet_pt, pred_jet_eta, pred_jet_phi, pred_jet_mass = reconstruct_full_p4(pred, y, regression_index_map)
+                        pt_true = torch.squeeze(y["gen_tau_pt"], axis=-1)
+                        eta_true = torch.squeeze(y["gen_tau_eta"], axis=-1)
+                        phi_true = torch.squeeze(y["gen_tau_phi"], axis=-1)
+                        mass_true = torch.squeeze(y["gen_tau_mass"], axis=-1)
                         pred = torch.stack([pred_jet_pt, pred_jet_eta, pred_jet_phi, pred_jet_mass], dim=1)
                         y_for_loss = torch.stack([pt_true, eta_true, phi_true, mass_true], dim=1)
 

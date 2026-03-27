@@ -66,7 +66,15 @@ def load_single_file_contents(
 
 
 def calculate_p4(p_type: str, arrays: ak.Array):
-    particles = ak.Record({k.replace(f"{p_type}.", ""): arrays[k] for k in arrays.fields if p_type in k})
+    # Old implementation:
+    # particles = ak.Record({k.replace(f"{p_type}.", ""): arrays[k] for k in arrays.fields if p_type in k})
+    #
+    # Using `if p_type in k` is too broad for collections like MCParticles because it also pulls in
+    # relation/index helper branches such as `_MCParticles_daughters.index`. Those fields are not
+    # particle-level arrays and may have a different nested structure, which later breaks masking
+    # and broadcasting. Restrict to the actual collection payload branches that start with
+    # `<collection>.`.
+    particles = ak.Record({k.replace(f"{p_type}.", ""): arrays[k] for k in arrays.fields if k.startswith(f"{p_type}.")})
     particle_p4 = vector.awk(
         ak.zip(
             {
@@ -353,7 +361,14 @@ def get_stable_mc_particles(mc_particles, mc_p4):
     neutrino_mask = (abs(mc_particles["PDG"]) != 12) * (abs(mc_particles["PDG"]) != 14) * (
             abs(mc_particles["PDG"]) != 16)
     particle_mask = stable_pythia_mask * neutrino_mask
-    mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    # Old implementation:
+    # mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    #
+    # For some samples, the MC particle fields do not share exactly the same internal
+    # ListArray/ListOffsetArray layout, even though they are event-aligned. Applying a jagged
+    # boolean mask field-by-field can therefore fail with an index-out-of-range in awkward.
+    # Zip the fields first and apply the mask once on the combined particle record instead.
+    mc_particles = ak.zip({field: mc_particles[field] for field in mc_particles.fields})[particle_mask]
     mc_p4 = g.reinitialize_p4(mc_p4[particle_mask])
     return mc_p4, mc_particles
 
@@ -463,7 +478,13 @@ def retrieve_stable_gen_particles(mc_particles, mc_p4):
     neutrino_mask = (abs(mc_particles["PDG"]) != 12) * (abs(mc_particles["PDG"]) != 14) * (
             abs(mc_particles["PDG"]) != 16)
     particle_mask = stable_pythia_mask * neutrino_mask
-    stable_mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    # Old implementation:
+    # stable_mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    #
+    # This fails for samples where a field has a slightly different jagged layout than the field
+    # used to build `particle_mask`. Masking the zipped particle record is more robust because the
+    # boolean jagged slice is applied only once to a single aligned structure.
+    stable_mc_particles = ak.zip({field: mc_particles[field] for field in mc_particles.fields})[particle_mask]
     stable_mc_p4 = g.reinitialize_p4(mc_p4[particle_mask])
     return stable_mc_p4, stable_mc_particles
 

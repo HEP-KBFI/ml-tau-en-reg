@@ -64,11 +64,10 @@ def split_train_test(data, split=0.8):
 if __name__ == "__main__":
 
     for sample_long, sample_short in [
-        ("p8_ee_qq_ecm365", "qq"),
-        ("p8_ee_ZH_Htautau_ecm365", "zh"),
-        ("p8_ee_ZZ_tautau_ecm365", "zz")
+        ("p8_ee_Z_qq_ecm91", "qq"),
+        # ("p8_ee_Z_tautau_ecm91", "z")
     ]:
-        data = load_sample("/local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/" + sample_long)
+        data = load_sample("/local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/" + sample_long)
         data_train, data_test = split_train_test(data)
         ak.to_parquet(data_train, sample_short + "_train.parquet", row_group_size=1024)
         ak.to_parquet(data_test, sample_short + "_test.parquet", row_group_size=1024)
