@@ -1,5 +1,5 @@
 regression:
-    base_dir: /home/laurits/ml-tau-en-reg/training-outputs/20201204_ParT_ntrain_v2/v1/trainfrac_1e4/jet_regression
+    base_dir: /home/norman/ml-tau/ml-tau-en-reg/training-outputs/260209_jet_reg/jet_regression
     algorithms:
         ParticleTransformer:
             data_dir: ${regression.base_dir}

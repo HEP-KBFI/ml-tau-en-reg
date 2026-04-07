@@ -5,7 +5,9 @@ tree_path: events
 branches:
   - MCParticles.PDG
   - MCParticles.generatorStatus
+  - MCParticles.simulatorStatus
   - MCParticles.charge
+  - MCParticles.time
   - MCParticles.mass
   - MCParticles.vertex.x
   - MCParticles.vertex.y
@@ -16,64 +18,109 @@ branches:
   - MCParticles.momentum.x
   - MCParticles.momentum.y
   - MCParticles.momentum.z
+  - MCParticles.momentumAtEndpoint.x
+  - MCParticles.momentumAtEndpoint.y
+  - MCParticles.momentumAtEndpoint.z
+  - MCParticles.spin.x
+  - MCParticles.spin.y
+  - MCParticles.spin.z
   - MCParticles.parents_begin
   - MCParticles.parents_end
   - MCParticles.daughters_begin
   - MCParticles.daughters_end
-  - MCParticles#1.index
-  - MergedRecoParticles.type
-  - MergedRecoParticles.energy
-  - MergedRecoParticles.momentum.x
-  - MergedRecoParticles.momentum.y
-  - MergedRecoParticles.momentum.z
-  - MergedRecoParticles.referencePoint.x
-  - MergedRecoParticles.referencePoint.y
-  - MergedRecoParticles.referencePoint.z
-  - MergedRecoParticles.charge
-  - MergedRecoParticles.mass
-  - MergedRecoParticles.goodnessOfPID
-  - MergedRecoParticles.covMatrix[10]
-  - MergedRecoParticles.clusters_begin
-  - MergedRecoParticles.clusters_end
-  - MergedRecoParticles.tracks_begin
-  - MergedRecoParticles.tracks_end
-  - MergedRecoParticles.particles_begin
-  - MergedRecoParticles.particles_end
-  - MergedRecoParticles.particleIDs_begin
-  - MergedRecoParticles.particleIDs_end
+  - PandoraPFOs.PDG
+  - PandoraPFOs.energy
+  - PandoraPFOs.momentum.x
+  - PandoraPFOs.momentum.y
+  - PandoraPFOs.momentum.z
+  - PandoraPFOs.referencePoint.x
+  - PandoraPFOs.referencePoint.y
+  - PandoraPFOs.referencePoint.z
+  - PandoraPFOs.charge
+  - PandoraPFOs.mass
+  - PandoraPFOs.goodnessOfPID
+  - PandoraPFOs.covMatrix.values[10]
+  - PandoraPFOs.clusters_begin
+  - PandoraPFOs.clusters_end
+  - PandoraPFOs.tracks_begin
+  - PandoraPFOs.tracks_end
+  - PandoraPFOs.particles_begin
+  - PandoraPFOs.particles_end
+  - SiTracks_Refitted.type
+  - SiTracks_Refitted.chi2
+  - SiTracks_Refitted.ndf
+  - SiTracks_Refitted.Nholes
+  - SiTracks_Refitted.subdetectorHitNumbers_begin
+  - SiTracks_Refitted.subdetectorHitNumbers_end
+  - SiTracks_Refitted.subdetectorHoleNumbers_begin
+  - SiTracks_Refitted.subdetectorHoleNumbers_end
+  - SiTracks_Refitted.trackStates_begin
+  - SiTracks_Refitted.trackStates_end
+  - SiTracks_Refitted.trackerHits_begin
+  - SiTracks_Refitted.trackerHits_end
+  - SiTracks_Refitted.tracks_begin
+  - SiTracks_Refitted.tracks_end
+  - PrimaryVertices.type
+  - PrimaryVertices.chi2
+  - PrimaryVertices.ndf
   - PrimaryVertices.position.x
   - PrimaryVertices.position.y
   - PrimaryVertices.position.z
-  - SiTracks_Refitted_1.location
-  - SiTracks_Refitted_1.referencePoint.x
-  - SiTracks_Refitted_1.referencePoint.y
-  - SiTracks_Refitted_1.referencePoint.z
-  - SiTracks_Refitted_1.D0
-  - SiTracks_Refitted_1.Z0
-  - SiTracks_Refitted_1.phi
-  - SiTracks_Refitted_1.tanLambda
-  - SiTracks_Refitted_1.omega
-  - SiTracks_Refitted_1.covMatrix[21]
+  - PrimaryVertices.covMatrix.values[6]
+  - PrimaryVertices.algorithmType
+  - PrimaryVertices.parameters_begin
+  - PrimaryVertices.parameters_end
+  - PrimaryVertices.particles_begin
+  - PrimaryVertices.particles_end
+  - _SiTracks_Refitted_trackStates.location
+  - _SiTracks_Refitted_trackStates.D0
+  - _SiTracks_Refitted_trackStates.phi
+  - _SiTracks_Refitted_trackStates.omega
+  - _SiTracks_Refitted_trackStates.Z0
+  - _SiTracks_Refitted_trackStates.tanLambda
+  - _SiTracks_Refitted_trackStates.time
+  - _SiTracks_Refitted_trackStates.referencePoint.x
+  - _SiTracks_Refitted_trackStates.referencePoint.y
+  - _SiTracks_Refitted_trackStates.referencePoint.z
+  - _SiTracks_Refitted_trackStates.covMatrix.values[21]
+  - _MCParticles_daughters/_MCParticles_daughters.index
+
 samples_to_process:
-  - p8_ee_Z_Ztautau_ecm380
-  - p8_ee_ZH_Htautau_ecm380
-  - p8_ee_qq_ecm380
+# Comment out the ones you don't wish to process
+# # 365 GeV running mode (ttbar threshold)
+#   - p8_ee_ZH_Htautau_ecm365
+#   - p8_ee_ZZ_tautau_ecm365
+#   - p8_ee_qq_ecm365
+# 91 GeV running mode (Z pole)
+  # - p8_ee_Z_tautau_ecm91
+  - p8_ee_Z_qq_ecm91
 samples:
-  p8_ee_Z_Ztautau_ecm380:
-    input_dir: /local/joosep/clic_edm4hep/2024_07/p8_ee_Z_Ztautau_ecm380/
-    output_dir: /local/laurits/ml-tau-en-reg/ntuples/20241001_drop_pyhepmc_FULL/p8_ee_Z_Ztautau_ecm380/
-    is_signal: True
-  p8_ee_ZH_Htautau_ecm380:
-    input_dir: /local/joosep/clic_edm4hep/2024_07/p8_ee_ZH_Htautau_ecm380/
-    output_dir: /local/laurits/ml-tau-en-reg/ntuples/20241001_drop_pyhepmc_FULL/p8_ee_ZH_Htautau_ecm380/
-    is_signal: True
-  p8_ee_qq_ecm380:
-    input_dir: /local/joosep/clic_edm4hep/2024_07/p8_ee_qq_ecm380/
-    output_dir: /local/laurits/ml-tau-en-reg/ntuples/20241001_drop_pyhepmc_FULL/p8_ee_qq_ecm380/
+# Comment out the ones you don't wish to process
+# # 365 GeV running mode (ttbar threshold)
+#   p8_ee_ZH_Htautau_ecm365:
+#     input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_ZH_Htautau_ecm365/
+#     output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_ZH_Htautau_ecm365/
+#     is_signal: True
+#   p8_ee_ZZ_tautau_ecm365:
+#     input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_ZZ_tautau_ecm365/
+#     output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_ZZ_tautau_ecm365/
+#     is_signal: True
+#   p8_ee_qq_ecm365:
+#     input_dir: /local/joosep/mlpf/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/gen/p8_ee_qq_ecm365/
+#     output_dir: /local/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/p8_ee_qq_ecm365/
+#     is_signal: False
+# 91 GeV running mode (Z pole)
+  # p8_ee_Z_tautau_ecm91:
+  #   input_dir: /local/joosep/mlpf/cld/v1.2.5_key4hep_2025-05-29/gen/p8_ee_Z_tautau_ecm91/
+  #   output_dir: /local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/p8_ee_Z_tautau_ecm91/
+  #   is_signal: True
+  p8_ee_Z_qq_ecm91:
+    input_dir: /local/joosep/mlpf/cld/v1.2.5_key4hep_2025-05-29/gen/p8_ee_Z_qq_ecm91/
+    output_dir: /local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/p8_ee_Z_qq_ecm91/
     is_signal: False
-validation:
-  output_dir: $HOME/CLIC_ntuple_validation
-  validation_samples:
-    - p8_ee_Z_Ztautau_ecm380
-    - p8_ee_ZH_Htautau_ecm380
-    - p8_ee_qq_ecm380
+
+# validation:
+#   output_dir: $HOME/CLIC_ntuple_validation
+#   validation_samples:
+#     - p8_ee_ZH_Htautau_ecm240
+#     - p8_ee_ZZ_tautau_ecm365

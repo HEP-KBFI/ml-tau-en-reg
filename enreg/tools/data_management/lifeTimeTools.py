@@ -282,8 +282,10 @@ Wraps the above helper functions to find the PCA and lifetime variables.
 def findTrackPCAs(
     arrays,
     ev,
-    recoParticleCollection="MergedRecoParticles",
-    trackCollection="SiTracks_Refitted_1",
+    # recoParticleCollection="MergedRecoParticles",
+    recoParticleCollection="PandoraPFOs", 
+    # trackCollection="SiTracks_Refitted_1",
+    trackCollection="SiTracks_Refitted",
     vertexCollection="PrimaryVertices",
     debug=-1,
 ):
@@ -294,7 +296,12 @@ def findTrackPCAs(
     ]
     # particles_ = arrays[recoParticleCollection]
     particles = ak.Record({k.replace(f"{recoParticleCollection}.", ""): arrays[k] for k in arrays.fields})
-    reco_particle_mask = particles["type"] != 0
+    # CLD
+    # print("###############################################################################################################################")
+    # print(particles.fields)
+    reco_particle_mask = particles["PDG"] != 0
+    # CLIC
+    # reco_particle_mask = particles["type"] != 0
     trkIndexMap = arrays["idx_track"][ev]
     partTickleTrackLink_b = particles["tracks_begin"][reco_particle_mask][ev]
     partTickleTrackLink_e = particles["tracks_end"][reco_particle_mask][ev]
@@ -341,28 +348,47 @@ def findTrackPCAs(
         if part_trkidx < 0:
             if debug >= 0:
                 print("Found no SiTrack for particle! Maybe neutral?")
-        elif si_trkidx < 0 or si_trkidx >= len(arrays[ev][trackCollection + ".location"]):
+        # # CLIC
+        # elif si_trkidx < 0 or si_trkidx >= len(arrays[ev][trackCollection + ".location"]):
+        #     print("Warning, invalid track indx, please check!")
+        # else:
+        #     if debug >= 0:
+        #         print("Found SiTrack for particle!")
+        #     trackP = {}
+        #     pr = [
+        #         arrays[trackCollection + ".referencePoint.x"][ev][si_trkidx],
+        #         arrays[trackCollection + ".referencePoint.y"][ev][si_trkidx],
+        #         arrays[trackCollection + ".referencePoint.z"][ev][si_trkidx],
+        #     ]
+        #     d0 = arrays[trackCollection + ".D0"][ev][si_trkidx]
+        #     z0 = arrays[trackCollection + ".Z0"][ev][si_trkidx]
+        #     phi0 = arrays[trackCollection + ".phi"][ev][si_trkidx]
+        #     tanL = arrays[trackCollection + ".tanLambda"][ev][si_trkidx]
+        #     omega = arrays[trackCollection + ".omega"][ev][si_trkidx]
+        #     # declared with 21 entries but only has 15 as expected
+        #     cov = arrays[trackCollection + ".covMatrix[21]"][ev][si_trkidx]
+        #     """ following:
+        #         https://github.com/iLCSoft/ILDPerformance/blob/master/tracking/src/DDDiagnostics.cc#L777-L803
+        #         We only use the sign of omega, error not needed
+        #     """
+        # CLD
+        elif si_trkidx < 0 or si_trkidx >= len(arrays[ev]["_SiTracks_Refitted_trackStates.location"]):
             print("Warning, invalid track indx, please check!")
         else:
             if debug >= 0:
                 print("Found SiTrack for particle!")
             trackP = {}
             pr = [
-                arrays[trackCollection + ".referencePoint.x"][ev][si_trkidx],
-                arrays[trackCollection + ".referencePoint.y"][ev][si_trkidx],
-                arrays[trackCollection + ".referencePoint.z"][ev][si_trkidx],
+                arrays["_SiTracks_Refitted_trackStates.referencePoint.x"][ev][si_trkidx],
+                arrays["_SiTracks_Refitted_trackStates.referencePoint.y"][ev][si_trkidx],
+                arrays["_SiTracks_Refitted_trackStates.referencePoint.z"][ev][si_trkidx],
             ]
-            d0 = arrays[trackCollection + ".D0"][ev][si_trkidx]
-            z0 = arrays[trackCollection + ".Z0"][ev][si_trkidx]
-            phi0 = arrays[trackCollection + ".phi"][ev][si_trkidx]
-            tanL = arrays[trackCollection + ".tanLambda"][ev][si_trkidx]
-            omega = arrays[trackCollection + ".omega"][ev][si_trkidx]
-            # declared with 21 entries but only has 15 as expected
-            cov = arrays[trackCollection + ".covMatrix[21]"][ev][si_trkidx]
-            """ following:
-                https://github.com/iLCSoft/ILDPerformance/blob/master/tracking/src/DDDiagnostics.cc#L777-L803
-                We only use the sign of omega, error not needed
-            """
+            d0 = arrays["_SiTracks_Refitted_trackStates.D0"][ev][si_trkidx]
+            z0 = arrays["_SiTracks_Refitted_trackStates.Z0"][ev][si_trkidx]
+            phi0 = arrays["_SiTracks_Refitted_trackStates.phi"][ev][si_trkidx]
+            tanL = arrays["_SiTracks_Refitted_trackStates.tanLambda"][ev][si_trkidx]
+            omega = arrays["_SiTracks_Refitted_trackStates.omega"][ev][si_trkidx]
+            cov = arrays["_SiTracks_Refitted_trackStates.covMatrix.values[21]"][ev][si_trkidx]
             d0_error = cov[0]
             z0_error = cov[9]
             phi0_error = cov[2]

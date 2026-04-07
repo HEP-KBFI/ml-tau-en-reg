@@ -77,6 +77,7 @@ def prepare_job_file(
                 #SBATCH --cpus-per-task=1
                 #SBATCH -e {error_file}
                 #SBATCH -o {log_file}
+                #SBATCH --mem=8G
                 env
                 date
                 ./run.sh python {run_script} slurm_run=True +input_file={input_file} +output_file={output_file}

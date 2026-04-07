@@ -8,39 +8,73 @@ from particle import pdgid
 from enreg.tools import general as g
 from enreg.tools.data_management import lifeTimeTools as lt
 
+# # CLIC
+# def load_single_file_contents(
+#         path: str,
+#         tree_path: str = "events",
+#         branches: list = [
+#             "MCParticles",
+#             "MergedRecoParticles",
+#             "SiTracks_Refitted_1",
+#             "PrimaryVertices",
+#             "MCParticles#1.index"
+#         ],
+# ) -> ak.Array:
+#     with uproot.open(path) as in_file:
+#         tree = in_file[tree_path]
+#         print(f"ROOT file has {tree.num_entries} entries")
+#         arrays = tree.arrays(branches)
+#         idx0 = "RecoMCTruthLink#0/RecoMCTruthLink#0.index"
+#         idx1 = "RecoMCTruthLink#1/RecoMCTruthLink#1.index"
+#         idx_recoparticle = tree.arrays(idx0)[idx0]
+#         idx_mc_particlesarticle = tree.arrays(idx1)[idx1]
+#         # index in the MergedRecoParticles collection
+#         arrays["idx_reco"] = idx_recoparticle
+#         # index in the MCParticles collection
+#         arrays["idx_mc"] = idx_mc_particlesarticle
+#         # index the track collection
+#         idx3 = "MergedRecoParticles#1/MergedRecoParticles#1.index"
+#         idx_recoparticle_track = tree.arrays(idx3)[idx3]
+#         arrays["idx_track"] = idx_recoparticle_track
+#     return arrays
 
+
+# CLD
 def load_single_file_contents(
-        path: str,
-        tree_path: str = "events",
-        branches: list = [
-            "MCParticles",
-            "MergedRecoParticles",
-            "SiTracks_Refitted_1",
-            "PrimaryVertices",
-            "MCParticles#1.index"
-        ],
+    path: str,
+    tree_path: str = "events",
+    branches: list = [
+        "MCParticles",
+        "PandoraPFOs",
+        "SiTracks_Refitted",
+        "PrimaryVertices",
+        "_SiTracks_Refitted_trackStates"
+    ],
 ) -> ak.Array:
     with uproot.open(path) as in_file:
         tree = in_file[tree_path]
         print(f"ROOT file has {tree.num_entries} entries")
         arrays = tree.arrays(branches)
-        idx0 = "RecoMCTruthLink#0/RecoMCTruthLink#0.index"
-        idx1 = "RecoMCTruthLink#1/RecoMCTruthLink#1.index"
-        idx_recoparticle = tree.arrays(idx0)[idx0]
-        idx_mc_particlesarticle = tree.arrays(idx1)[idx1]
-        # index in the MergedRecoParticles collection
-        arrays["idx_reco"] = idx_recoparticle
-        # index in the MCParticles collection
-        arrays["idx_mc"] = idx_mc_particlesarticle
-        # index the track collection
-        idx3 = "MergedRecoParticles#1/MergedRecoParticles#1.index"
-        idx_recoparticle_track = tree.arrays(idx3)[idx3]
-        arrays["idx_track"] = idx_recoparticle_track
-    return arrays
+
+        # add index links
+        arrays["idx_reco"] = tree["_RecoMCTruthLink_from.index"].array()
+        arrays["idx_mc"]   = tree["_RecoMCTruthLink_to.index"].array()
+        arrays["idx_track"] = tree["_PandoraPFOs_tracks.index"].array()
+        arrays["_MCParticles_daughters.index"] = tree["_MCParticles_daughters/_MCParticles_daughters.index"].array()
+
+        return arrays
 
 
 def calculate_p4(p_type: str, arrays: ak.Array):
-    particles = ak.Record({k.replace(f"{p_type}.", ""): arrays[k] for k in arrays.fields if p_type in k})
+    # Old implementation:
+    # particles = ak.Record({k.replace(f"{p_type}.", ""): arrays[k] for k in arrays.fields if p_type in k})
+    #
+    # Using `if p_type in k` is too broad for collections like MCParticles because it also pulls in
+    # relation/index helper branches such as `_MCParticles_daughters.index`. Those fields are not
+    # particle-level arrays and may have a different nested structure, which later breaks masking
+    # and broadcasting. Restrict to the actual collection payload branches that start with
+    # `<collection>.`.
+    particles = ak.Record({k.replace(f"{p_type}.", ""): arrays[k] for k in arrays.fields if k.startswith(f"{p_type}.")})
     particle_p4 = vector.awk(
         ak.zip(
             {
@@ -229,7 +263,10 @@ def retrieve_tau_jet_info(arrays: ak.Array, gen_jets):
         "daughter_PDG": []
     }
     for event_idx, event in enumerate(arrays):
-        idx_map = arrays['MCParticles#1.index'][event_idx]
+        # # CLIC
+        # idx_map = arrays['MCParticles#1.index'][event_idx]
+        # CLD
+        idx_map = arrays['_MCParticles_daughters.index'][event_idx]
         d_begin = arrays['MCParticles.daughters_begin'][event_idx]
         d_end = arrays['MCParticles.daughters_end'][event_idx]
         tau_mask = (np.abs(arrays['MCParticles.PDG'][event_idx]) == 15) * (
@@ -324,7 +361,14 @@ def get_stable_mc_particles(mc_particles, mc_p4):
     neutrino_mask = (abs(mc_particles["PDG"]) != 12) * (abs(mc_particles["PDG"]) != 14) * (
             abs(mc_particles["PDG"]) != 16)
     particle_mask = stable_pythia_mask * neutrino_mask
-    mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    # Old implementation:
+    # mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    #
+    # For some samples, the MC particle fields do not share exactly the same internal
+    # ListArray/ListOffsetArray layout, even though they are event-aligned. Applying a jagged
+    # boolean mask field-by-field can therefore fail with an index-out-of-range in awkward.
+    # Zip the fields first and apply the mask once on the combined particle record instead.
+    mc_particles = ak.zip({field: mc_particles[field] for field in mc_particles.fields})[particle_mask]
     mc_p4 = g.reinitialize_p4(mc_p4[particle_mask])
     return mc_p4, mc_particles
 
@@ -332,14 +376,20 @@ def get_stable_mc_particles(mc_particles, mc_p4):
 def get_reco_particle_pdg(reco_particles):
     reco_particle_pdg = []
     for i in range(len(reco_particles.charge)):
-        pdgs = ak.flatten(reco_particles["type"][i], axis=-1).to_numpy()
+        # # CLIC
+        # pdgs = ak.flatten(reco_particles["type"][i], axis=-1).to_numpy()
+        # CLD
+        pdgs = ak.flatten(reco_particles["PDG"][i], axis=-1).to_numpy()
         mapped_pdgs = ak.from_iter([map_pdgid_to_candid(pdgs[j]) for j in range(len(pdgs))])
         reco_particle_pdg.append(mapped_pdgs)
     return ak.from_iter(reco_particle_pdg)
 
 
 def clean_reco_particles(reco_particles, reco_p4):
-    mask = reco_particles["type"] != 0
+    # # CLIC
+    # mask = reco_particles["type"] != 0
+    # CLD
+    mask = reco_particles["PDG"] != 0
     reco_particles = ak.Record({field: reco_particles[field][mask] for field in reco_particles.fields})
     reco_p4 = g.reinitialize_p4(reco_p4[mask])
     return reco_particles, reco_p4
@@ -428,14 +478,23 @@ def retrieve_stable_gen_particles(mc_particles, mc_p4):
     neutrino_mask = (abs(mc_particles["PDG"]) != 12) * (abs(mc_particles["PDG"]) != 14) * (
             abs(mc_particles["PDG"]) != 16)
     particle_mask = stable_pythia_mask * neutrino_mask
-    stable_mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    # Old implementation:
+    # stable_mc_particles = ak.Record({field: mc_particles[field][particle_mask] for field in mc_particles.fields})
+    #
+    # This fails for samples where a field has a slightly different jagged layout than the field
+    # used to build `particle_mask`. Masking the zipped particle record is more robust because the
+    # boolean jagged slice is applied only once to a single aligned structure.
+    stable_mc_particles = ak.zip({field: mc_particles[field] for field in mc_particles.fields})[particle_mask]
     stable_mc_p4 = g.reinitialize_p4(mc_p4[particle_mask])
     return stable_mc_p4, stable_mc_particles
 
 
 def process_input_file(input_path: str, tree_path: str, branches: list, remove_background: bool):
     arrays = load_single_file_contents(input_path, tree_path, branches)
-    reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrays=arrays)
+    # # CLIC
+    # reco_particles, reco_p4 = calculate_p4(p_type="MergedRecoParticles", arrays=arrays)
+    # CLD
+    reco_particles, reco_p4 = calculate_p4(p_type="PandoraPFOs", arrays=arrays)
     mc_particles, mc_p4 = calculate_p4(p_type="MCParticles", arrays=arrays)
     reco_particles, reco_p4 = clean_reco_particles(reco_particles=reco_particles, reco_p4=reco_p4)
     reco_jets, reco_jet_constituent_indices = cluster_jets(reco_p4, min_pt=0.0)

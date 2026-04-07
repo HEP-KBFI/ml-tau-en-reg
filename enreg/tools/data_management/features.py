@@ -67,6 +67,12 @@ def deltaPhi(phi1, phi2):
     return np.abs(np.arctan2(np.sin(diff), np.cos(diff)))
 
 
+def signedDeltaPhi(phi1, phi2):
+    """Calculates the signed wrapped azimuthal angle difference."""
+    diff = phi1 - phi2
+    return np.arctan2(np.sin(diff), np.cos(diff))
+
+
 # @numba.njit()
 def deltaTheta(theta1, theta2):
     """ Calculates the difference in polar angle of two objects.
@@ -99,6 +105,11 @@ def deltaEta(eta1, eta2):
             The difference in pseudorapidity
     """
     return np.abs(eta1 - eta2)
+
+
+def signedDeltaEta(eta1, eta2):
+    """Calculates the signed pseudorapidity difference."""
+    return eta1 - eta2
 
 
 # @numba.njit()

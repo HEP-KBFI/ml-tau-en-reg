@@ -40,6 +40,7 @@ class ParticleTransformerDataset(IterableDataset):
         self.row_groups = row_groups
         self.cfg = cfg
         self.reco_jet_pt_cut = reco_jet_pt_cut
+        self.regression_components = tuple(self.cfg.regression_components)
         self.num_rows = sum([rg.num_rows for rg in self.row_groups])
         print(f"There are {'{:,}'.format(self.num_rows)} jets in the dataset.")
 
@@ -50,8 +51,8 @@ class ParticleTransformerDataset(IterableDataset):
 
         #ParticleTransformer features from https://arxiv.org/pdf/2202.03772, table 2
         cand_ParT_features = ak.Array({
-            "cand_deta": f.deltaEta(jet_constituent_p4s.eta, jet_p4s.eta),
-            "cand_dphi": f.deltaPhi(jet_constituent_p4s.phi, jet_p4s.phi),
+            "cand_deta": f.signedDeltaEta(jet_constituent_p4s.eta, jet_p4s.eta),
+            "cand_dphi": f.signedDeltaPhi(jet_constituent_p4s.phi, jet_p4s.phi),
             "cand_logpt": np.log(jet_constituent_p4s.pt),
             "cand_loge": np.log(jet_constituent_p4s.energy),
             "cand_logptrel": np.log(jet_constituent_p4s.pt / jet_p4s.pt),
@@ -126,16 +127,54 @@ class ParticleTransformerDataset(IterableDataset):
         else:
             weight_tensors = torch.tensor(ak.to_numpy(data.weight), dtype=torch.float32)
 
+        # pt, phi, eta, mass
+        eps = 1e-6
+
         reco_jet_pt = torch.tensor(ak.to_numpy(jet_p4s.pt), dtype=torch.float32)
         gen_tau_pt = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.pt), dtype=torch.float32)
+        if torch.any(reco_jet_pt <= 0) or torch.any(gen_tau_pt <= 0):
+            raise ValueError("Encountered non-positive pt while building jet_regression targets.")
+        log_pt_ratio = torch.log(gen_tau_pt / reco_jet_pt)
 
-        jet_regression_target = torch.log(gen_tau_pt/reco_jet_pt)
+        reco_jet_eta = torch.tensor(ak.to_numpy(jet_p4s.eta), dtype=torch.float32)
+        gen_tau_eta = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.eta), dtype=torch.float32)
+        delta_eta = gen_tau_eta-reco_jet_eta
+
+        reco_jet_phi = torch.tensor(ak.to_numpy(jet_p4s.phi), dtype=torch.float32)
+        gen_tau_phi = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.phi), dtype=torch.float32)
+        delta_phi = torch.atan2(
+            torch.sin(gen_tau_phi - reco_jet_phi),
+            torch.cos(gen_tau_phi - reco_jet_phi)
+        )
+        sin_delta_phi = torch.sin(delta_phi)
+        cos_delta_phi = torch.cos(delta_phi)
+
+        reco_jet_mass = torch.tensor(ak.to_numpy(jet_p4s.mass), dtype=torch.float32)
+        gen_tau_mass = torch.tensor(ak.to_numpy(gen_jet_tau_p4s.mass), dtype=torch.float32)
+        log_mass_ratio = torch.log((gen_tau_mass + eps) / (reco_jet_mass + eps))
+
+
+        regression_target_map = {
+            "log_pt": log_pt_ratio,
+            "delta_phi": delta_phi,
+            "sin_delta_phi": sin_delta_phi,
+            "cos_delta_phi": cos_delta_phi,
+            "delta_eta": delta_eta,
+            "log_mass": log_mass_ratio,
+        }
+        jet_regression_target = torch.stack(
+            [regression_target_map[name] for name in self.regression_components],
+            dim=1
+        )
+        jet_regression_target[torch.isnan(jet_regression_target)] = 0
+        jet_regression_target[torch.isinf(jet_regression_target)] = 0
+
         gen_jet_tau_decaymode = ak.to_numpy(data.gen_jet_tau_decaymode)
         reduced_gen_decay_modes = g.get_reduced_decaymodes(gen_jet_tau_decaymode)
         ohe_prepared_decay_modes = g.prepare_one_hot_encoding(reduced_gen_decay_modes)
-        gen_jet_tau_decaymode_reduced = torch.tensor(ohe_prepared_decay_modes).long()
-
-        gen_jet_tau_decaymode_exists = (torch.tensor(ak.to_numpy(data.gen_jet_tau_decaymode)) != -1).long()
+        gen_jet_tau_decaymode_reduced = torch.tensor(ohe_prepared_decay_modes).long() # DM multiclass target
+        gen_jet_tau_decaymode_exists = (torch.tensor(ak.to_numpy(data.gen_jet_tau_decaymode)) != -1).long() # Binary classification target
+        gen_tau_charge = torch.tensor(ak.to_numpy(data.gen_jet_tau_charge) != -1).long() # charge target
 
         #X, y, w
         return (
@@ -154,9 +193,17 @@ class ParticleTransformerDataset(IterableDataset):
             {
                 "reco_jet_pt": reco_jet_pt,
                 "gen_tau_pt": gen_tau_pt,
+                "reco_jet_mass": reco_jet_mass,
+                "gen_tau_mass": gen_tau_mass,
+                "gen_tau_eta": gen_tau_eta,
+                "gen_tau_abs_eta": torch.abs(gen_tau_eta),
+                "reco_jet_eta": reco_jet_eta,
+                "gen_tau_phi": gen_tau_phi,
+                "reco_jet_phi": reco_jet_phi,
                 "jet_regression": jet_regression_target,
                 "binary_classification": gen_jet_tau_decaymode_exists,
-                "dm_multiclass": gen_jet_tau_decaymode_reduced
+                "dm_multiclass": gen_jet_tau_decaymode_reduced,
+                "charge_classification": gen_tau_charge
             },
 
             #weights

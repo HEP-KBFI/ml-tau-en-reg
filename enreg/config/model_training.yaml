@@ -9,13 +9,16 @@ comet:
 
 #everything that the user should modify is here
 #override these using command line args
-output_dir: training-outputs/240809_3var_kinematics
-# data_path: /scratch/persistent/laurits/ml-tau/20241002_Training_ntuples_geq20gev
-data_path: /scratch/project_465001293/mltau-data/v2
+output_dir: training-outputs/260319_p4_regression_z_tautau_91_e150
+# output_dir: training-outputs/260319_charge_classification_z_tautau_91_e150
+data_path: /scratch/persistent/norman/ml-tau/cld/v1.2.3_key4hep_2025-05-29_CLD_f1e8f9/260319
+# data_path: /scratch/project_465001293/mltau-data/v2 # This is LUMI?
 
 #override this using command line args
-training_type: dm_multiclass
+# training_type: dm_multiclass
 # training_type: energy_regression
+# training_type: charge_classification
+training_type: jet_regression
 # training_type: binary_classification
 
 #override this using command line args
@@ -27,14 +30,16 @@ model_type: ParticleTransformer
 #qq is added back using command line flags for the binary classification task
 training_samples:
     - z_train.parquet
-    #  - zh_train.parquet
-    - qq_train.parquet
+    # - zz_train.parquet
+    # - zh_train.parquet
+    # - qq_train.parquet
 
 #these are never used in the training code, only for the final evaluation
 test_samples:
     - z_test.parquet
-    #  - zh_test.parquet
-    - qq_test.parquet
+    # - zz_test.parquet
+    # - zh_test.parquet
+    # - qq_test.parquet
 
 #the training sample will be further subdividied as follows to train and valid
 trainSize: 1e6
@@ -44,21 +49,27 @@ reco_jet_pt_cut:
     binary_classification: 20
     dm_multiclass: 5
     jet_regression: 0
+    charge_classification: 5
 
 dataset:
     trainSize: ${trainSize}
     fraction_valid: ${fraction_valid}
     row_group_size: 1024
     max_cands: 16
+    regression_components:
+        - log_pt
+        - delta_eta
+        - delta_phi
+        - log_mass
     use_lifetime: False
     min_jet_theta: 0.0
     max_jet_theta: 1000
     min_jet_pt: 0
     max_jet_pt: 1000
     feature_set:
-        # - cand_ParT_features
+        - cand_ParT_features
         # - cand_omni_kinematics
-        - cand_omni_features_wPID
+        # - cand_omni_features_wPID
     features:
         - cand_pt
         - cand_mass
@@ -74,12 +85,13 @@ dataset:
 #number of output classes for different tasks
 num_classes:
     dm_multiclass: 6 # Changed from 16
-    jet_regression: 1
+    jet_regression: 4 # Kept in sync at runtime with dataset.regression_components
     binary_classification: 2
+    charge_classification: 2
 
 training:
     lr: 1e-4
-    num_epochs: 100
+    num_epochs: 150
     batch_size: 4096
     num_dataloader_workers: 2
     prefetch_factor: 100
@@ -93,6 +105,13 @@ training:
     fast_optimizer: AdamW
     slow_optimizer: None
     verbosity: 1
+
+jet_regression_plots:
+    pt_bins: [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200]
+
+charge_classification_plots:
+    pt_bins: [5, 10, 20, 30, 40, 60, 80, 120, 200]
+    eta_bins: [-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5]
 
 #disable creation of the outputs dir which we don't use
 #https://stackoverflow.com/questions/65104134/disable-file-output-of-hydra
