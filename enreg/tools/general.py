@@ -6,8 +6,10 @@ import numpy as np
 import awkward as ak
 
 
-# def load_all_data(input_loc: str | list, n_files: int = None, columns: list = None) -> ak.Array:
-def load_all_data(input_loc, n_files: int = None, columns: list = None) -> ak.Array:
+def load_all_data(
+    input_loc: str | list, n_files: int = None, columns: list = None
+) -> ak.Array:
+    # def load_all_data(input_loc, n_files: int = None, columns: list = None) -> ak.Array:
     """Loads all .parquet files specified by the input. The input can be a list of input_paths, a directory where the files
     are located or a wildcard path.
 

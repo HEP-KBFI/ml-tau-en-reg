@@ -1,50 +1,16 @@
-import matplotlib
-import copy
-import pickle as pkl
-import sys
 import os
-import numpy as np
-from tqdm import tqdm
-import tensorflow_datasets as tfds
-import math
-
-import numba
-import awkward
-import vector
-import fastjet
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 import mplhep
-
-import boost_histogram as bh
-import mplhep
-
 import torch
-from torch.nn.utils.rnn import pad_sequence
-import torch.nn as nn
-from torch import Tensor
-
-import onnxscript
-import onnx
+import numpy as np
 import onnxruntime as rt
-from onnxconverter_common import float16
-from onnxscript.function_libs.torch_lib.tensor_typing import TFloat
 
 
 import hydra
 from omegaconf import DictConfig
 from hydra.utils import instantiate
 
-# contrib op: https://github.com/microsoft/onnxruntime/blob/main/docs/ContribOperators.md#commicrosoftmultiheadattention
-# CMSSW ONNXRuntime version: https://github.com/cms-sw/cmsdist/blob/REL/CMSSW_14_1_0_pre3/el9_amd64_gcc12/onnxruntime.spec
-# ONNXRuntime compatiblity table: https://onnxruntime.ai/docs/reference/compatibility.html
+OPSET_VERSION = 17
 
-# with pytorch 2.5.0, we should use at least opset 20 (previous opsets did not work)
-# from onnxscript import opset20 as op
-
-opset_version = 17
-# custom_opset = onnxscript.values.Opset(domain="onnx-script", version=1)
-# msft_op = onnxscript.values.Opset("com.microsoft", 1)
 
 mplhep.style.use("CMS")
 
@@ -127,7 +93,8 @@ def model_to_onnx(cfg: DictConfig) -> None:
     )
 
 
-# ONNX graph will explicitly contain the standard attention computations (matmuls + softmax), not a fused "Attention" node. This can improve compatibility but sacrifices performance.
+# ONNX graph will explicitly contain the standard attention computations (matmuls + softmax), not a fused "Attention"
+# node. This can improve compatibility but sacrifices performance.
 
 
 if __name__ == "__main__":
