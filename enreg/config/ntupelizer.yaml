@@ -112,11 +112,11 @@ samples:
 # 91 GeV running mode (Z pole)
   # p8_ee_Z_tautau_ecm91:
   #   input_dir: /local/joosep/mlpf/cld/v1.2.5_key4hep_2025-05-29/gen/p8_ee_Z_tautau_ecm91/
-  #   output_dir: /local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/p8_ee_Z_tautau_ecm91/
+  #   output_dir: /local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/260401/p8_ee_Z_tautau_ecm91/
   #   is_signal: True
   p8_ee_Z_qq_ecm91:
     input_dir: /local/joosep/mlpf/cld/v1.2.5_key4hep_2025-05-29/gen/p8_ee_Z_qq_ecm91/
-    output_dir: /local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/p8_ee_Z_qq_ecm91/
+    output_dir: /local/norman/ml-tau/cld/v1.2.5_key4hep_2025-05-29/260401/p8_ee_Z_qq_ecm91/
     is_signal: False
 
 # validation:
