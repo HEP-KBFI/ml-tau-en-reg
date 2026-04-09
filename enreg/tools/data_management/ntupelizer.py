@@ -407,7 +407,7 @@ def filter_gen_jets(gen_jets, gen_jet_constituent_indices, stable_mc_particles):
     for gj_pdg in gen_jet_pdgs:
         sub_mask = []
         for gjp in gj_pdg:
-            if (15 in np.abs(gjp)) or (13 in np.abs(gjp)):
+            if (15 in np.abs(gjp)) or (13 in np.abs(gjp)) or (11 in np.abs(gjp)):
                 sub_mask.append(False)
             else:
                 sub_mask.append(True)
@@ -1009,6 +1009,11 @@ def process_input_file(input_path: str, tree_path: str, branches: list, remove_b
         "gen_jet_tau_decay_vertex_z": gen_tau_jet_info["tau_gen_jet_DV_z"],
     }
     data = ak.Record({key: ak.flatten(value, axis=1) for key, value in data.items()})
+
+    # Keep only hadronic reco jets: veto jets that contain reconstructed electrons or muons.
+    lepton_mask = (abs(data.reco_cand_pdg) == 11) | (abs(data.reco_cand_pdg) == 13)
+    hadronic_jet_mask = ak.sum(lepton_mask, axis=1) == 0
+    data = ak.Record({key: data[key][hadronic_jet_mask] for key in data.fields})
 
     ## remove backgrounds for signal samples
     removal_mask = data.gen_jet_tau_decaymode != 16

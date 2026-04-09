@@ -84,11 +84,16 @@ def prepare_inputs(cfg: DictConfig):
 
         # divide the input list into chunks of files_per_job
         # each chunk of N input files will yield exactly one output file
-        input_paths = sorted(list(glob.glob(input_wcp)[:cfg.n_files]))
-        input_path_chunks = list(np.array_split(input_paths, len(input_paths) // cfg.files_per_job))
+        input_paths = sorted(glob.glob(input_wcp))
+        if cfg.n_files > 0:
+            input_paths = input_paths[:cfg.n_files]
+        n_chunks = max(1, int(np.ceil(len(input_paths) / cfg.files_per_job))) if input_paths else 0
+        input_path_chunks = list(np.array_split(input_paths, n_chunks)) if n_chunks > 0 else []
         print(f"found {len(input_paths)} files, {len(input_path_chunks)} chunks")
-        output_paths = [os.path.join(output_dir, os.path.basename(chunk[0]).replace(".root", ".parquet")) for chunk in
-                        input_path_chunks]
+        output_paths = [
+            os.path.join(output_dir, os.path.basename(chunk[0]).replace(".root", ".parquet"))
+            for chunk in input_path_chunks
+        ]
 
         all_output_paths.extend(output_paths)
         all_input_paths.extend(input_path_chunks)
